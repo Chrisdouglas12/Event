@@ -1,5 +1,5 @@
-const CACHE_NAME = "ihgc-scanner-shell-v1";
-const SHELL_PATHS = ["/staff/scanner", "/staff/login", "/manifest.json"];
+const CACHE_NAME = "ihgc-scanner-shell-v2";
+const SHELL_PATHS = ["/staff/scanner", "/staff/login", "/staff/walk-in", "/staff/lookup", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -54,7 +54,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.mode === "navigate" && ["/staff/scanner", "/staff/login"].includes(url.pathname)) {
+  if (request.mode === "navigate" && ["/staff/scanner", "/staff/login", "/staff/walk-in", "/staff/lookup"].includes(url.pathname)) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       try {
