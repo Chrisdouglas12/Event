@@ -12,63 +12,33 @@ interface TimeLeft {
   isEnded: boolean;
 }
 
-export function Countdown() {
-  const [mounted, setMounted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
+function calculateTime(): TimeLeft {
+  const targetTime = new Date(SITE_CONFIG.startsAt).getTime();
+  const endTime = new Date(SITE_CONFIG.endsAt).getTime();
+  const now = new Date().getTime();
+
+  if (now >= endTime) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isLive: false, isEnded: true };
+  }
+  if (now >= targetTime) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isLive: true, isEnded: false };
+  }
+
+  const diff = Math.max(0, targetTime - now);
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / 1000 / 60) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
     isLive: false,
     isEnded: false,
-  });
+  };
+}
+
+export function Countdown() {
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTime);
 
   useEffect(() => {
-    setMounted(true);
-
-    const calculateTime = () => {
-      const targetTime = new Date(SITE_CONFIG.startsAt).getTime();
-      const endTime = new Date(SITE_CONFIG.endsAt).getTime();
-      const now = new Date().getTime();
-
-      if (now >= endTime) {
-        return {
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0,
-          isLive: false,
-          isEnded: true,
-        };
-      }
-
-      if (now >= targetTime) {
-        return {
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0,
-          isLive: true,
-          isEnded: false,
-        };
-      }
-
-      const diff = Math.max(0, targetTime - now);
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / 1000 / 60) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
-
-      return {
-        days,
-        hours,
-        minutes,
-        seconds,
-        isLive: false,
-        isEnded: false,
-      };
-    };
-
     setTimeLeft(calculateTime());
     const interval = setInterval(() => {
       setTimeLeft(calculateTime());
@@ -76,33 +46,6 @@ export function Countdown() {
 
     return () => clearInterval(interval);
   }, []);
-
-  if (!mounted) {
-    // Hydration-safe initial placeholder
-    return (
-      <div className="flex items-center gap-4 text-white opacity-90 py-2">
-        <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">--</div>
-          <div className="text-[10px] uppercase tracking-widest text-gray-300 font-medium">Days</div>
-        </div>
-        <span className="text-2xl text-gray-400 font-light">:</span>
-        <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">--</div>
-          <div className="text-[10px] uppercase tracking-widest text-gray-300 font-medium">Hours</div>
-        </div>
-        <span className="text-2xl text-gray-400 font-light">:</span>
-        <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">--</div>
-          <div className="text-[10px] uppercase tracking-widest text-gray-300 font-medium">Minutes</div>
-        </div>
-        <span className="text-2xl text-gray-400 font-light">:</span>
-        <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">--</div>
-          <div className="text-[10px] uppercase tracking-widest text-gray-300 font-medium">Seconds</div>
-        </div>
-      </div>
-    );
-  }
 
   if (timeLeft.isEnded) {
     return (
@@ -122,7 +65,7 @@ export function Countdown() {
   }
 
   return (
-    <div className="flex items-center gap-3 sm:gap-6 text-white py-2">
+    <div suppressHydrationWarning className="flex items-center gap-3 sm:gap-6 text-white py-2">
       <div className="text-center min-w-[50px] sm:min-w-[60px]">
         <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">
           {String(timeLeft.days).padStart(2, "0")}
