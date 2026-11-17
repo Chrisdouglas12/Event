@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-mint: #8EE3D6;
+  --color-mint-hover: #7BD4C7;
+  --color-mint-light: #EAF9F7;
+  --color-mint-border: #CDEFEA;
+
+  --color-navy-dark: #0E1020;
+  --color-navy-footer: #171A2B;
+  --color-navy-card: #121528;
+
+  --color-ink: #111320;
+  --color-muted: #6B7280;
+  --color-subtle: #9CA3AF;
+  --color-input-bg: #F3F4F6;
+
+  --font-heading: var(--font-montserrat), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+}
+
+:root {
+  --font-montserrat: 'Montserrat', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+}
+
+body {
+  color: var(--color-ink);
+  background-color: #FFFFFF;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+/* Numerals for countdowns */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Asymmetric chamfer corner matching KILO 'Why Attend' section */
+.clip-chamfer-tr {
+  clip-path: polygon(0 0, calc(100% - 48px) 0, 100% 48px, 100% 100%, 0 100%);
+}
+
+/* Scroll reveal animations (restrained: fade + translate, 300-400ms ease-out) */
+.reveal {
+  opacity: 0;
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+  will-change: opacity, transform;
+}
+.reveal-up {
+  transform: translateY(24px);
+}
+.reveal-left {
+  transform: translateX(-24px);
+}
+.reveal-right {
+  transform: translateX(24px);
+}
+.reveal-visible {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Gentle hover lift for cards */
+.hover-lift {
+  transition: transform 250ms ease-out, box-shadow 250ms ease-out;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+/* Scanner viewfinder scan line */
+@keyframes scanline {
+  0%, 100% { top: 8%; }
+  50% { top: 88%; }
+}
+
+/* Custom styled scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F3F4F6;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+

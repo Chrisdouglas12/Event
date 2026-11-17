@@ -1,0 +1,28 @@
+import { SupportedCurrency } from "@/config/currencies";
+import { PaymentProvider } from "./provider.interface";
+import { PaystackProvider } from "./paystack.ts";
+import { PayPalProvider } from "./paypal.ts";
+
+const paystack = new PaystackProvider();
+const paypal = new PayPalProvider();
+
+export function getPaymentProvider(currency: SupportedCurrency): PaymentProvider {
+  switch (currency) {
+    case "NGN":
+      return paystack;
+    case "USD":
+    case "EUR":
+    case "GBP":
+      return paypal;
+    default:
+      return paystack;
+  }
+}
+
+export function getPaymentProviderByName(name: "paystack" | "paypal"): PaymentProvider {
+  return name === "paypal" ? paypal : paystack;
+}
+
+export { paystack, paypal };
+export * from "./provider.interface";
+
