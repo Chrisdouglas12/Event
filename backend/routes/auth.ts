@@ -2,7 +2,7 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import argon2 from 'argon2';
+import { hashPassword, verifyPassword, getHasherName } from "../lib/password.ts";
 import mongoose from 'mongoose';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -159,7 +159,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
     }
 
     // ── 3. Verify password ────────────────────────────────────────────────
-    const passwordOk = await argon2.verify(staff.passwordHash, password);
+    const passwordOk = await verifyPassword(staff.passwordHash, password);
     if (!passwordOk) {
       await logAudit({
         staffId: staff._id,
@@ -301,7 +301,7 @@ router.post(
       const staff = await StaffUser.findById(req.staff!._id).select('+passwordHash');
       if (!staff) return res.status(404).json({ error: 'Staff not found' });
 
-      const ok = await argon2.verify(staff.passwordHash, currentPassword);
+      const ok = await verifyPassword(staff.passwordHash, currentPassword);
       if (!ok) {
         await logAudit({
           staffId: staff._id,
@@ -314,7 +314,7 @@ router.post(
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const newHash = await argon2.hash(newPassword, {
+      const newHash = await hashPassword(newPassword, {
         type: argon2.argon2id,
         memoryCost: 19456,
         timeCost: 2,
@@ -371,7 +371,7 @@ router.post(
         return res.status(400).json({ error: `role must be one of: ${STAFF_ROLES.join(', ')}` });
       }
 
-      const passwordHash = await argon2.hash(password, {
+      const passwordHash = await hashPassword(password, {
         type: argon2.argon2id,
         memoryCost: 19456,
         timeCost: 2,

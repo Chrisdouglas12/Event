@@ -1,19 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Origin of the backend API (from NEXT_PUBLIC_API_BASE). Empty when unset or invalid.
+function apiOrigin(): string {
+  const base = process.env.NEXT_PUBLIC_API_BASE;
+  if (!base) return "";
+  try {
+    return new URL(base).origin;
+  } catch {
+    return "";
+  }
+}
+
 export function proxy(request: NextRequest) {
+  // ── 1. PROXY API REQUESTS TO EXPRESS BACKEND ─────────────────────────────
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE;
+  // If the request is for /api and we have a base URL, forward it immediately.
+  if (request.nextUrl.pathname.startsWith("/api") && apiBase) {
+    return NextResponse.rewrite(
+      new URL(request.nextUrl.pathname + request.nextUrl.search, apiBase)
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── 2. CSP & SECURITY HEADERS ────────────────────────────────────────────
   const random = globalThis.crypto.getRandomValues(new Uint8Array(16));
   const nonce = btoa(Array.from(random, (byte) => String.fromCharCode(byte)).join(""));
   const scriptSource =
     process.env.NODE_ENV === "production"
       ? `'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com`
       : `'self' 'nonce-${nonce}' 'unsafe-eval' https://challenges.cloudflare.com`;
+  const connectSource = [
+    "'self'",
+    apiOrigin(),
+    "https://challenges.cloudflare.com",
+    "https://api.paypal.com",
+    "https://api-m.paypal.com",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const policy = [
     "default-src 'self'",
     `script-src ${scriptSource}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://challenges.cloudflare.com https://api.paypal.com https://api-m.paypal.com",
+    `connect-src ${connectSource}`,
     "frame-src https://challenges.cloudflare.com https://www.google.com",
     "object-src 'none'",
     "base-uri 'self'",

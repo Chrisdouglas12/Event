@@ -1,19 +1,32 @@
-import { db } from "@/db";
-import { desc } from "drizzle-orm";
-import { attendees } from "@/db/schema";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+
 export default async function AdminAttendeesPage() {
   let allAttendees: any[] = [];
+
   try {
-    allAttendees = await db.query.attendees.findMany({
-      orderBy: [desc(attendees.createdAt)],
-      limit: 50,
+    const cookieStore = await cookies();
+    const token = cookieStore.get("staff_token")?.value;
+
+    const res = await fetch(`${API_BASE}/api/admin/attendees`, {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
+
+    if (res.ok) {
+      const data = await res.json();
+      allAttendees = data.attendees || [];
+    } else {
+      console.error("[admin/attendees] API failed with status:", res.status);
+    }
   } catch (err) {
-    console.error("[admin/attendees] DB unavailable:", err);
+    console.error("[admin/attendees] Failed to fetch:", err);
   }
 
   return (
@@ -105,4 +118,3 @@ export default async function AdminAttendeesPage() {
     </div>
   );
 }
-

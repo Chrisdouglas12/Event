@@ -22,6 +22,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 👇 MAKE SURE this function hits your Express backend /api/auth/me
   const user = await requireRole("admin");
   if (!user) {
     redirect("/staff/login");
@@ -108,4 +109,3 @@ export default async function AdminLayout({
     </div>
   );
 }
-

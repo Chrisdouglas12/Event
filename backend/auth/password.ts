@@ -1,4 +1,4 @@
-import { argon2id } from "hash-wasm";
+import { hashPassword, verifyPassword, getHasherName } from "../src/lib/password.js";
 
 const SALT_BYTES = 16;
 const HASH_BYTES = 32;

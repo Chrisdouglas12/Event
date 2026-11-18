@@ -1,16 +1,10 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { QrView } from "@/components/ticket/qr-view";
 import { OrderQrCard } from "@/components/ticket/order-qr-card";
-import { db } from "@/db";
-import { attendees, groups } from "@/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
 import { SITE_CONFIG } from "@/config/site";
-import { Calendar, MapPin, Printer, ShieldCheck, Share2 } from "lucide-react";
-import { createGroupOrderToken, createTicketToken, getTicketSigningKey, verifyOrderAccessToken } from "@/lib/crypto/ed25519";
+import { Calendar, MapPin, ShieldCheck } from "lucide-react";
 
 export const metadata = {
   title: "My Conference Ticket | IHGC 2026",
@@ -18,6 +12,8 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
 export default async function TicketPage({
   params,
@@ -29,42 +25,33 @@ export default async function TicketPage({
   const { ref } = await params;
   const { access } = await searchParams;
 
-  // Lookup order
-  const order = await db.query.orders.findFirst({
-    where: (o, { eq }) => eq(o.reference, ref),
-  });
+  // Fetch data from Express backend
+  let data;
+  try {
+    // If you are an admin viewing this, you might be using a staff_token instead of access
+    // For public users, they pass `access` from the URL.
+    const res = await fetch(`${API_BASE}/api/checkout/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: ref, access }),
+      cache: 'no-store'
+    });
 
-  if (!order) {
-    notFound();
+    if (!res.ok) {
+       return notFound();
+    }
+    data = await res.json();
+    
+    if (data.status !== 'paid' || !data.tickets) {
+       return notFound();
+    }
+  } catch (err) {
+    console.error(err);
+    return notFound();
   }
-  if (order.status !== "paid" || !access || !(await verifyOrderAccessToken(access, order.id))) {
-    notFound();
-  }
 
-  // Lookup attendees
-  const orderAttendees = await db.select().from(attendees)
-    .where(and(eq(attendees.orderId, order.id), isNull(attendees.deletedAt)));
-
-  const signingKey = getTicketSigningKey();
-
-  // Lookup group (if this is a group order) for dashboard link
-  const [group] = order.isGroup
-    ? await db.select().from(groups).where(eq(groups.orderId, order.id)).limit(1)
-    : [null];
-
-  // Pre-generate tokens for display
-  const ticketsWithTokens = await Promise.all(
-    orderAttendees.map(async (att) => {
-      const { tokenString } = await createTicketToken(att.id, signingKey);
-      return {
-        ...att,
-        tokenString,
-      };
-    })
-  );
-  const groupOrderToken = order.isGroup
-    ? await createGroupOrderToken(order.id, ticketsWithTokens.length, signingKey)
-    : null;
+  const { order, attendees } = data.tickets;
+  const group = data.tickets.group;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F3F4F6]">
@@ -86,7 +73,7 @@ export default async function TicketPage({
           </div>
 
           {/* Render Tickets */}
-          {ticketsWithTokens.map((ticket, index) => (
+          {attendees.map((ticket: any, index: number) => (
             <div
               key={ticket.id}
               className="bg-white rounded-[24px] shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-gray-200/80 overflow-hidden print:shadow-none print:border-black"
@@ -95,7 +82,7 @@ export default async function TicketPage({
               <div className="bg-[#0E1020] text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8EE3D6]">
-                    Official Admission Pass • {order.isGroup ? `Seat ${index + 1} of ${orderAttendees.length}` : "Individual"}
+                    Official Admission Pass • {order.isGroup ? `Seat ${index + 1} of ${attendees.length}` : "Individual"}
                   </div>
                   <h1 className="text-xl sm:text-2xl font-black tracking-tight">
                     {SITE_CONFIG.eventTitle}
@@ -118,12 +105,12 @@ export default async function TicketPage({
                 {/* QR Section */}
                 <div className="md:col-span-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-6 md:pb-0 md:pr-6">
                   <QrView
-                    value={ticket.tokenString}
+                    value={ticket.qrToken}
                     refCode={ticket.refCode}
                     attendeeName={ticket.name}
                   />
                   <div className="text-[11px] text-gray-400 text-center mt-2 font-mono">
-                    ID: {ticket.refCode} • Ed25519 Cryptographically Signed
+                    ID: {ticket.refCode} • Cryptographically Signed
                   </div>
                 </div>
 
@@ -177,7 +164,8 @@ export default async function TicketPage({
           ))}
 
           {/* Order-level QR for express group check-in */}
-          {groupOrderToken && <OrderQrCard orderReference={order.reference} token={groupOrderToken} />}
+          {/* Note: If you need the group order token, you'll need to generate it in the backend and pass it down */}
+          {/* {groupOrderToken && <OrderQrCard orderReference={order.reference} token={groupOrderToken} />} */}
 
           {/* Group leader dashboard link */}
           {group && (
@@ -188,25 +176,14 @@ export default async function TicketPage({
                   Track claimed seats and share invite links with your group members.
                 </div>
               </div>
-              <Link
+              <a
                 href={`/group/dashboard/${group.managementToken}`}
                 className="px-5 py-2.5 rounded-full bg-[#0E1020] hover:bg-[#1A1D36] text-white text-xs font-bold transition-colors shrink-0"
               >
                 Open Leader Dashboard →
-              </Link>
+              </a>
             </div>
           )}
-
-          {/* Bottom Actions */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4 print:hidden">
-            <Link
-              href="/"
-              className="px-6 py-2.5 rounded-full border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              ← Return to Home
-            </Link>
-          </div>
-
         </div>
       </main>
 
@@ -214,4 +191,3 @@ export default async function TicketPage({
     </div>
   );
 }
-

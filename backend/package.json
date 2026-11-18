@@ -18,5 +18,8 @@
     "mongoose": "^9.12.2",
     "otplib": "^13.6.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
 }

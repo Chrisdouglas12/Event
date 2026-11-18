@@ -77,6 +77,19 @@ const orderSchema = new mongoose.Schema(
       maxlength: 255,
       trim: true,
     },
+    // Number of seats this order holds; powers the per-ticket-type cap.
+    seats: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    // Ticket type (conference) this order was placed against.
+    ticketTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TicketType',
+      default: null,
+    },
+    paidAt: { type: Date, default: null },
     idempotencyKey: {
       type: String,
       required: true,
@@ -91,9 +104,8 @@ const orderSchema = new mongoose.Schema(
   { collection: 'orders' }
 );
 
-orderSchema.pre('save', function (next) {
+orderSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,9 +176,8 @@ const paymentSchema = new mongoose.Schema(
   { collection: 'payments' }
 );
 
-paymentSchema.pre('save', function (next) {
+paymentSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -279,9 +290,8 @@ const manualPaymentSchema = new mongoose.Schema(
   { collection: 'manual_payments' }
 );
 
-manualPaymentSchema.pre('save', function (next) {
+manualPaymentSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,16 +299,15 @@ manualPaymentSchema.pre('save', function (next) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Orders
-orderSchema.index({ reference: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ payerPhoneE164: 1 });
 orderSchema.index({ payerEmail: 1 });
 orderSchema.index({ expiresAt: 1 });
+orderSchema.index({ ticketTypeId: 1, status: 1 });
 // reference + idempotencyKey already unique via field-level `unique: true`
 
 // Payments
 paymentSchema.index({ orderId: 1 });
-paymentSchema.index({ providerRef: 1 });
 // providerRef already unique via field-level `unique: true`
 
 // Webhook events

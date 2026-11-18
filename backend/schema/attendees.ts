@@ -2,9 +2,8 @@ import mongoose from 'mongoose';
 
 import {  CURRENCIES, ATTENDEE_STATUSES  } from '../constants/enums.ts';
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // TICKET TYPE
-// ─────────────────────────────────────────────────────────────────────────────
 
 const ticketTypeSchema = new mongoose.Schema(
   {
@@ -24,8 +23,7 @@ const ticketTypeSchema = new mongoose.Schema(
       required: true,
       default: true,
     },
-    // Prices are embedded because they are always read together with the
-    // ticket type and there are only a handful per type (one per currency).
+  
     prices: [
       {
         currency: {
@@ -50,8 +48,6 @@ const ticketTypeSchema = new mongoose.Schema(
   { collection: 'ticket_types' }
 );
 
-// One price per currency per ticket type — mirror of the Postgres
-// unique(ticketTypeId, currency) constraint.
 ticketTypeSchema.path('prices').validate(function (prices) {
   const seen = new Set();
   for (const p of prices) {
@@ -61,7 +57,7 @@ ticketTypeSchema.path('prices').validate(function (prices) {
   return true;
 }, 'Duplicate currency in ticket prices');
 
-ticketTypeSchema.pre('save', function (next) {
+ticketTypeSchema.pre('save', function () {
   if (Array.isArray(this.prices)) {
     this.prices.forEach((p) => {
       if (p.isModified && p.isModified('amountMinor')) {
@@ -69,12 +65,11 @@ ticketTypeSchema.pre('save', function (next) {
       }
     });
   }
-  next();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 // GROUP
-// ─────────────────────────────────────────────────────────────────────────────
 
 const groupSchema = new mongoose.Schema(
   {
@@ -131,14 +126,12 @@ const groupSchema = new mongoose.Schema(
   { collection: 'groups' }
 );
 
-groupSchema.pre('save', function (next) {
+groupSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // ATTENDEE
-// ─────────────────────────────────────────────────────────────────────────────
 
 const attendeeSchema = new mongoose.Schema(
   {
@@ -234,19 +227,17 @@ const attendeeSchema = new mongoose.Schema(
     bookletIssuedAt:  { type: Date, default: null },
     createdAt:        { type: Date, default: Date.now },
     updatedAt:        { type: Date, default: Date.now },
-    deletedAt:        { type: Date, default: null }, // soft delete
+    deletedAt:        { type: Date, default: null }, 
   },
   { collection: 'attendees' }
 );
 
-attendeeSchema.pre('save', function (next) {
+attendeeSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // GROUP SEAT
-// ─────────────────────────────────────────────────────────────────────────────
 
 const groupSeatSchema = new mongoose.Schema(
   {
@@ -278,9 +269,8 @@ const groupSeatSchema = new mongoose.Schema(
   { collection: 'group_seats' }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // INDEXES
-// ─────────────────────────────────────────────────────────────────────────────
 
 // Ticket types
 ticketTypeSchema.index({ isActive: 1 });
@@ -288,17 +278,14 @@ ticketTypeSchema.index({ 'prices.currency': 1 });
 
 // Groups
 groupSchema.index({ orderId: 1 });
-// managementToken already unique via field-level `unique: true`
 
 // Attendees
-attendeeSchema.index({ refCode: 1 });
 attendeeSchema.index({ phoneE164: 1 });
 attendeeSchema.index({ email: 1 });
-attendeeSchema.index({ qrTokenHash: 1 });
 attendeeSchema.index({ orderId: 1 });
 attendeeSchema.index({ groupId: 1 });
 attendeeSchema.index({ status: 1 });
-// Skip soft-deleted docs in the common lookups.
+
 attendeeSchema.index(
   { deletedAt: 1 },
   { partialFilterExpression: { deletedAt: { $type: 'date' } } }
@@ -306,12 +293,10 @@ attendeeSchema.index(
 
 // Group seats
 groupSeatSchema.index({ groupId: 1 });
-groupSeatSchema.index({ inviteCode: 1 });
 groupSeatSchema.index({ attendeeId: 1 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // EXPORTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const TicketType = mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema);
 export const Group = mongoose.models.Group      || mongoose.model('Group',      groupSchema);

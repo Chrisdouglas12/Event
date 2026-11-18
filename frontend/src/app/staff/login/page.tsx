@@ -6,6 +6,8 @@ import Image from "next/image";
 import { ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+
 export default function StaffLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -21,7 +23,7 @@ export default function StaffLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -36,6 +38,11 @@ export default function StaffLoginPage() {
         setChallenge(data.challenge);
         setLoading(false);
         return;
+      }
+
+      // 👇 Set the cookie so Next.js Server Components can read it
+      if (data.session?.token) {
+        document.cookie = `staff_token=${data.session.token}; path=/; max-age=43200; SameSite=Lax`;
       }
 
       router.push("/admin");
@@ -53,7 +60,7 @@ export default function StaffLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/totp", {
+      const res = await fetch(`${API_BASE}/api/auth/totp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge, token: totpToken }),
@@ -62,6 +69,10 @@ export default function StaffLoginPage() {
 
       if (!res.ok) {
         throw new Error(data.error || "Verification failed.");
+      }
+
+      if (data.session?.token) {
+        document.cookie = `staff_token=${data.session.token}; path=/; max-age=43200; SameSite=Lax`;
       }
 
       router.push("/admin");
@@ -98,7 +109,7 @@ export default function StaffLoginPage() {
             </h1>
             <p className="text-xs text-gray-500">
               {challenge
-              ? "Enter the 6-digit code from your authenticator app."
+                ? "Enter the 6-digit code from your authenticator app."
                 : "IHGC 2026 operations console — authorized personnel only."}
             </p>
           </div>

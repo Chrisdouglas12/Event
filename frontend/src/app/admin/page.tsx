@@ -1,68 +1,58 @@
 import Link from "next/link";
-import { db } from "@/db";
-import { orders, attendees } from "@/db/schema";
-import { and, count, eq, isNull } from "drizzle-orm";
-import { Users, Receipt, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
+import { cookies } from "next/headers"; // 👈 Added
+import { Users, Receipt, CheckCircle2, AlertCircle } from "lucide-react";
 import { formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
 
 export const dynamic = "force-dynamic";
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+
 export default async function AdminDashboardPage() {
   let dbAvailable = true;
 
-  // Aggregate attendee counts
-  let totalAttendees: { value: number } | undefined;
-  let confirmedAttendees: { value: number } | undefined;
-  let checkedInAttendees: { value: number } | undefined;
-  let totalOrders: { value: number } | undefined;
-  let paidOrders: { value: number } | undefined;
-  let pendingOrders: { value: number } | undefined;
-  let paidOrdersList: any[] = [];
-
-  try {
-    [totalAttendees] = await db.select({ value: count() }).from(attendees).where(isNull(attendees.deletedAt));
-    [confirmedAttendees] = await db
-      .select({ value: count() })
-      .from(attendees)
-      .where(and(eq(attendees.status, "confirmed"), isNull(attendees.deletedAt)));
-    [checkedInAttendees] = await db
-      .select({ value: count() })
-      .from(attendees)
-      .where(and(eq(attendees.status, "checked_in"), isNull(attendees.deletedAt)));
-
-    [totalOrders] = await db.select({ value: count() }).from(orders);
-    [paidOrders] = await db
-      .select({ value: count() })
-      .from(orders)
-      .where(eq(orders.status, "paid"));
-    [pendingOrders] = await db
-      .select({ value: count() })
-      .from(orders)
-      .where(eq(orders.status, "pending_payment"));
-
-    paidOrdersList = await db.query.orders.findMany({
-      where: (o, { eq }) => eq(o.status, "paid"),
-    });
-  } catch (err) {
-    dbAvailable = false;
-    console.error("[admin] dashboard DB unavailable:", err);
-  }
-
-  const revenueByCurrency: Record<SupportedCurrency, number> = {
-    NGN: 0,
-    USD: 0,
-    EUR: 0,
-    GBP: 0,
+  // Default metrics (in case the API fails)
+  let totalAttendees = 0;
+  let confirmedAttendees = 0;
+  let checkedInAttendees = 0;
+  let totalOrders = 0;
+  let paidOrders = 0;
+  let pendingOrders = 0;
+  let revenueByCurrency: Record<SupportedCurrency, number> = {
+    NGN: 0, USD: 0, EUR: 0, GBP: 0,
   };
 
-  for (const o of paidOrdersList) {
-    if (revenueByCurrency[o.currency as SupportedCurrency] !== undefined) {
-      revenueByCurrency[o.currency as SupportedCurrency] += o.totalMinor;
+  try {
+    // 👇 Read the token from the cookie we set during login
+    const cookieStore = await cookies();
+    const token = cookieStore.get("staff_token")?.value;
+
+    const res = await fetch(`${API_BASE}/api/admin/dashboard-stats`, {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`, // 👈 Pass the token to Express
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      totalAttendees = data.totalAttendees || 0;
+      confirmedAttendees = data.confirmedAttendees || 0;
+      checkedInAttendees = data.checkedInAttendees || 0;
+      totalOrders = data.totalOrders || 0;
+      paidOrders = data.paidOrders || 0;
+      pendingOrders = data.pendingOrders || 0;
+      revenueByCurrency = { ...revenueByCurrency, ...(data.revenueByCurrency || {}) };
+    } else {
+      console.error("[admin] Dashboard API failed with status:", res.status);
+      dbAvailable = false;
     }
+  } catch (err) {
+    dbAvailable = false;
+    console.error("[admin] dashboard API unavailable:", err);
   }
 
   const attendanceTarget = 10000;
-  const currentTotal = confirmedAttendees?.value || 0;
+  const currentTotal = confirmedAttendees || 0;
   const percentage = Math.min(100, Math.round((currentTotal / attendanceTarget) * 100));
 
   return (
@@ -79,7 +69,7 @@ export default async function AdminDashboardPage() {
 
       {!dbAvailable && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl px-4 py-3">
-          Database not connected — showing empty metrics. Set <code>DATABASE_URL</code> in <code>.env</code> and apply migrations with <code>pnpm db:migrate</code>.
+          Backend API not reachable — showing empty metrics. Ensure your Express server is running and <code>NEXT_PUBLIC_API_BASE</code> is set.
         </div>
       )}
 
@@ -91,10 +81,10 @@ export default async function AdminDashboardPage() {
             <Users className="w-4 h-4 text-[#0E7A6E]" />
           </div>
           <div className="text-3xl font-black text-[#111320]">
-            {confirmedAttendees?.value || 0}
+            {confirmedAttendees}
           </div>
           <div className="text-[11px] text-gray-400">
-            Total registered: {totalAttendees?.value || 0}
+            Total registered: {totalAttendees}
           </div>
         </div>
 
@@ -104,10 +94,10 @@ export default async function AdminDashboardPage() {
             <Receipt className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-3xl font-black text-[#111320]">
-            {paidOrders?.value || 0}
+            {paidOrders}
           </div>
           <div className="text-[11px] text-gray-400">
-            Pending checkout: {pendingOrders?.value || 0}
+            Pending checkout: {pendingOrders}
           </div>
         </div>
 
@@ -117,10 +107,10 @@ export default async function AdminDashboardPage() {
             <CheckCircle2 className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-3xl font-black text-[#111320]">
-            {checkedInAttendees?.value || 0}
+            {checkedInAttendees}
           </div>
           <div className="text-[11px] text-gray-400">
-            Awaiting arrival: {(confirmedAttendees?.value || 0) - (checkedInAttendees?.value || 0)}
+            Awaiting arrival: {confirmedAttendees - checkedInAttendees}
           </div>
         </div>
 
@@ -138,7 +128,7 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Revenue PER CURRENCY Section (Non-negotiable: Never sum different currencies) */}
+      {/* Revenue PER CURRENCY Section */}
       <div className="bg-white rounded-[20px] border border-gray-200 p-6 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -155,37 +145,17 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="text-xs font-bold text-gray-500">Nigerian Naira (NGN)</div>
-            <div className="text-xl font-extrabold text-[#111320] mt-1">
-              {formatMoneyMinor(revenueByCurrency.NGN, "NGN")}
+          {(["NGN", "USD", "EUR", "GBP"] as SupportedCurrency[]).map((curr) => (
+            <div key={curr} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="text-xs font-bold text-gray-500">
+                {curr === "NGN" ? "Nigerian Naira" : curr === "USD" ? "US Dollar" : curr === "EUR" ? "Euro" : "British Pound"} ({curr})
+              </div>
+              <div className="text-xl font-extrabold text-[#111320] mt-1">
+                {formatMoneyMinor(revenueByCurrency[curr], curr)}
+              </div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{curr} orders</div>
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">NGN orders</div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="text-xs font-bold text-gray-500">US Dollar (USD)</div>
-            <div className="text-xl font-extrabold text-[#111320] mt-1">
-              {formatMoneyMinor(revenueByCurrency.USD, "USD")}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">USD orders</div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="text-xs font-bold text-gray-500">Euro (EUR)</div>
-            <div className="text-xl font-extrabold text-[#111320] mt-1">
-              {formatMoneyMinor(revenueByCurrency.EUR, "EUR")}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">EUR orders</div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="text-xs font-bold text-gray-500">British Pound (GBP)</div>
-            <div className="text-xl font-extrabold text-[#111320] mt-1">
-              {formatMoneyMinor(revenueByCurrency.GBP, "GBP")}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">GBP orders</div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -196,7 +166,7 @@ export default async function AdminDashboardPage() {
           className="p-5 rounded-[16px] bg-white border border-gray-200 hover:border-gray-300 transition-colors shadow-2xs block space-y-1"
         >
           <div className="text-sm font-bold text-[#111320]">Manage Orders →</div>
-          <div className="text-xs text-gray-500">View payment references, retry verifications, and inspectpayer records.</div>
+          <div className="text-xs text-gray-500">View payment references, retry verifications, and inspect payer records.</div>
         </Link>
 
         <Link
@@ -210,4 +180,3 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
-
