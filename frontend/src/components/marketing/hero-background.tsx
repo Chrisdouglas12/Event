@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Earth with two orbits of flags, as in the sketch:
  *  - eq1: a vertical orbit (over the poles)
  *  - eq2: a wide, slightly tilted horizontal orbit
  *
- * FIXED:
- * - Earth CENTERED, equator na straight horizontal line for middle (no bent)
- * - Earth dey rotate like real earth: slow, steady, west -> east
- * - Flags dey STRAIGHT, no wobble. Both rings dey rotate as ONE, same speed, same direction.
+ * - Earth centred, equator is a straight horizontal line through the middle
+ * - Flags connect seamlessly into one continuous belt
+ * - Both rings rotate as ONE rigid body
+ * - Background features moving constellations and starfields
+ * - A 3D campground photo sits far behind everything as a depth backdrop:
+ *   navy-graded, vignetted, slowly drifting and parallaxing with the pointer
  */
 export function HeroBackground() {
   const hostRef = useRef<HTMLDivElement>(null);
-  // Dev-only label so you can see texture loading without DevTools
-  const [status, setStatus] = useState("");
 
   useEffect(() => {
     const host = hostRef.current;
@@ -45,8 +45,6 @@ export function HeroBackground() {
       camera.position.z = 9;
 
       const world = new THREE.Group();
-      // FIX 1: No bent. Camera dey look straight at equator.
-      // Before: 0.4 - na why globe dey bend. Now: 0
       const BASE_TILT = 0;
       world.rotation.x = BASE_TILT;
       scene.add(world);
@@ -59,9 +57,6 @@ export function HeroBackground() {
 
       // ---------- Earth ----------
       const earthTilt = new THREE.Group();
-      // FIX 1b: No axial bent, equator stays CENTERED and horizontal.
-      // Before: 0.41 (23.5°) - na why equator shift. Now: 0
-      earthTilt.rotation.z = 0;
       world.add(earthTilt);
 
       const earthMat = new THREE.MeshStandardMaterial({
@@ -72,23 +67,17 @@ export function HeroBackground() {
       const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 96), earthMat);
       earthTilt.add(earth);
 
-      // Real Earth photo: your own file first, then CDNs that allow cross-origin use.
       const sources = [
         "/textures/earth.jpg",
         "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg",
         "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r152/examples/textures/planets/earth_atmos_2048.jpg",
         "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
       ];
-      const labels = ["local file", "jsdelivr 1", "jsdelivr 2", "unpkg"];
       const loader = new THREE.TextureLoader();
       loader.setCrossOrigin("anonymous");
       const tryLoad = (i: number) => {
         if (disposed) return;
-        if (i >= sources.length) {
-          setStatus("Earth: all sources failed, using placeholder");
-          return;
-        }
-        setStatus(`Earth: loading (${labels[i]})...`);
+        if (i >= sources.length) return;
         loader.load(
           sources[i],
           (tex) => {
@@ -97,7 +86,6 @@ export function HeroBackground() {
             tex.anisotropy = 8;
             earthMat.map = tex;
             earthMat.needsUpdate = true;
-            setStatus(`Earth: loaded (${labels[i]})`);
           },
           undefined,
           () => tryLoad(i + 1)
@@ -129,7 +117,66 @@ export function HeroBackground() {
       );
       world.add(atmosphere);
 
-      // ---------- Stars ----------
+      // ---------- Campground backdrop (3D plane far behind the globe) ----------
+      const BACKDROP_Z = -14;
+      let imgAspect = 1.5;
+      let backdropTex: InstanceType<typeof THREE.Texture> | null = null;
+
+      const backdropMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uMap: { value: null as InstanceType<typeof THREE.Texture> | null },
+          uScale: { value: new THREE.Vector2(1, 1) },
+          uOffset: { value: new THREE.Vector2(0, 0) },
+          uTime: { value: 0 },
+          uOpacity: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec2 vNdc;
+          void main(){
+            vUv = uv;
+            vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vNdc = p.xy / p.w;
+            gl_Position = p;
+          }`,
+        fragmentShader: `
+          uniform sampler2D uMap;
+          uniform vec2 uScale;
+          uniform vec2 uOffset;
+          uniform float uTime;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          varying vec2 vNdc;
+          void main(){
+            // slow cinematic drift
+            vec2 drift = vec2(sin(uTime * 0.05), cos(uTime * 0.04)) * 0.012;
+            vec2 uv = vUv * uScale + uOffset + drift;
+            vec3 c = texture2D(uMap, uv).rgb;
+
+            // navy colour grade: blend the photo with a blue-tinted mono version
+            float l = dot(c, vec3(0.299, 0.587, 0.114));
+            vec3 tinted = vec3(l) * vec3(0.42, 0.62, 1.0) * 1.05;
+            vec3 col = mix(c * 0.75, tinted, 0.55) * 0.8;
+
+            // screen-space fades so it melts into the dark blue background
+            float vig = 1.0 - smoothstep(0.55, 1.35, length(vNdc * vec2(0.85, 1.0)));
+            float bottom = smoothstep(-1.0, -0.2, vNdc.y);
+            float top = smoothstep(1.05, 0.7, vNdc.y);
+
+            float a = uOpacity * 0.6 * vig * bottom * top;
+            gl_FragColor = vec4(col, a);
+          }`,
+      });
+      const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), backdropMat);
+      backdrop.position.z = BACKDROP_Z;
+      backdrop.renderOrder = -10; // draw first, everything else sits in front
+      backdrop.visible = false; // shown once the image has loaded
+      scene.add(backdrop);
+
+      // ---------- Constellations & Stars ----------
+      // Background Starfield
       const starCount = 800;
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
@@ -148,15 +195,26 @@ export function HeroBackground() {
       );
       scene.add(stars);
 
+      // Heavenly bodies flying around (Constellations)
+      const shootingStars: { mesh: InstanceType<typeof THREE.Mesh>, speed: number, offset: number }[] = [];
+      const starShape = new THREE.SphereGeometry(0.04, 4, 4);
+      const starMat = new THREE.MeshBasicMaterial({ color: 0x8EE3D6 }); // Mint color
+
+      for (let i = 0; i < 12; i++) {
+        const mesh = new THREE.Mesh(starShape, starMat);
+        scene.add(mesh);
+        shootingStars.push({
+          mesh,
+          speed: 0.5 + Math.random() * 0.5,
+          offset: Math.random() * Math.PI * 2,
+        });
+      }
+
       // ---------- The two flag orbits ----------
-      // FIX 3: Both rings SAME speed, SAME direction = IN ONE ACCORD, as one.
-      // Before: 0.14 and -0.12 (opposite) - na why dem dey fight each other.
-      // Now: both 0.08, same direction.
+      // Using count logic so they form a perfect, connected ring
       const rings = [
-        // eq1: vertical, seen as a narrow ellipse running over the poles
-        { r: 2.75, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 22 },
-        // eq2: wide horizontal orbit, rising slightly to the right
-        { r: 3.1, rot: [0, 0, 0.3], speed: 0.08, count: 26 },
+        { r: 2.3, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 18 },
+        { r: 2.62, rot: [0, 0, 0.3], speed: 0.08, count: 22 },
       ];
 
       const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
@@ -171,7 +229,7 @@ export function HeroBackground() {
         tiltGroup.add(spinner);
         spinners.push({ g: spinner, speed: ring.speed });
 
-        // thin orbit line
+        // Orbit line
         const pts: InstanceType<typeof THREE.Vector3>[] = [];
         for (let i = 0; i <= 180; i++) {
           const a = (i / 180) * Math.PI * 2;
@@ -184,8 +242,9 @@ export function HeroBackground() {
           )
         );
 
-        // flags sized so neighbours nearly touch, forming a continuous belt
-        const w = ((2 * Math.PI * ring.r) / ring.count) * 0.94;
+        // Continuous belt calculation
+        // By increasing the width factor to 1.0 (or slightly more to overlap), they touch seamlessly.
+        const w = ((2 * Math.PI * ring.r) / ring.count) * 1.01;
         const h = w * 0.62;
 
         for (let i = 0; i < ring.count; i++) {
@@ -193,24 +252,18 @@ export function HeroBackground() {
           const tex = makeFlagTexture(THREE, def);
           textures.push(tex);
 
-          // FIX 2: Plane with NO extra segments. Before: PlaneGeometry(w, h, 10, 6)
-          // na those segments allow the wobble. Now: 1x1, flag na STRAIGHT rigid card.
           const geo = new THREE.PlaneGeometry(w, h, 1, 1);
           const mesh = new THREE.Mesh(
             geo,
             new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, toneMapped: false })
           );
 
-          // sits on the orbit line, faces outward, width runs along the orbit
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
           anchor.rotation.y = Math.PI / 2 - a;
           anchor.add(mesh);
           spinner.add(anchor);
-
-          // FIX 2b: No more flagItems / phase / per-flag sin wobble.
-          // Flags no dey move individually again. Only the spinner group moves.
         }
       });
 
@@ -224,7 +277,7 @@ export function HeroBackground() {
 
         const vh = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const vw = vh * camera.aspect;
-        const FIT = 7.2; // outer orbit diameter plus flag size
+        const FIT = 6.2;
 
         if (w >= 1024) {
           const s = Math.min((vh * 0.95) / FIT, (vw * 0.52) / FIT);
@@ -233,13 +286,48 @@ export function HeroBackground() {
         } else {
           const s = Math.min((vw * 0.98) / FIT, (vh * 0.98) / FIT);
           world.scale.setScalar(s);
-          // FIX 1c: Centered. Equator for middle of globe.
           world.position.set(0, 0, 0);
         }
+
+        // Backdrop: 30% larger than the view at its depth (room for parallax),
+        // with "cover" UVs so the photo is never stretched.
+        const dFar = camera.position.z - BACKDROP_Z;
+        const vhF = 2 * Math.tan((camera.fov * Math.PI) / 360) * dFar;
+        const vwF = vhF * camera.aspect;
+        backdrop.scale.set(vwF * 1.3, vhF * 1.3, 1);
+
+        let sx = 1;
+        let sy = 1;
+        if (imgAspect > camera.aspect) sx = camera.aspect / imgAspect;
+        else sy = imgAspect / camera.aspect;
+        sx *= 0.94;
+        sy *= 0.94;
+        backdropMat.uniforms.uScale.value.set(sx, sy);
+        backdropMat.uniforms.uOffset.value.set((1 - sx) / 2, (1 - sy) / 2);
       };
       layout();
       const ro = new ResizeObserver(layout);
       ro.observe(host);
+
+      // Load the campground photo (public/images/campground_2.jpg)
+      // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
+      new THREE.TextureLoader().load(
+        "/images/campground_2.jpg",
+        (tex) => {
+          if (disposed) {
+            tex.dispose();
+            return;
+          }
+          tex.anisotropy = 4;
+          backdropTex = tex;
+          backdropMat.uniforms.uMap.value = tex;
+          imgAspect = tex.image.width / tex.image.height;
+          backdrop.visible = true;
+          layout();
+        },
+        undefined,
+        (err) => console.warn("[HeroBackground] campground image failed to load:", err)
+      );
 
       // ---------- Pointer parallax ----------
       const pointer = { x: 0, y: 0 };
@@ -260,23 +348,35 @@ export function HeroBackground() {
         raf = 0;
         if (disposed) return;
         const dt = Math.min(clock.getDelta(), 0.05) * motion;
+        const t = clock.getElapsedTime();
 
-        // FIX 2c: LIKE REAL EARTH - slow, steady.
-        // Before: dt * 0.2 - too fast, e dey rush.
-        // Now: dt * 0.05 - one full turn in ~2 mins, calm like real earth.
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
         stars.rotation.y += dt * 0.005;
 
-        // Rings rotate as ONE rigid body - no per-flag movement
+        // Animate heavenly bodies in an arc
+        shootingStars.forEach((star, i) => {
+          const angle = t * star.speed + star.offset;
+          const radius = 6 + (i % 3) * 2;
+          star.mesh.position.x = Math.cos(angle) * radius;
+          star.mesh.position.y = Math.sin(angle) * radius * 0.6;
+          star.mesh.position.z = Math.sin(angle) * 2 - 2; // slight depth
+        });
+
+        // Rotate rings together as one
         spinners.forEach((r) => (r.g.rotation.y += dt * r.speed));
 
-        // FIX 2d: DELETED the wobble loop completely.
-        // No more: arr[i+2] = Math.sin(...) * 0.04
-
-        // Gentle parallax only - no bent. Keep X at 0, Y small.
         world.rotation.x += (BASE_TILT + pointer.y * 0.05 - world.rotation.x) * 0.04;
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;
+
+        // Backdrop: fade in, drift, and shift opposite to the globe for depth
+        const u = backdropMat.uniforms;
+        u.uTime.value = t * motion;
+        if (backdropTex) u.uOpacity.value = Math.min(1, u.uOpacity.value + dt * 0.7);
+        backdrop.position.x += (-pointer.x * 0.7 - backdrop.position.x) * 0.03;
+        backdrop.position.y += (pointer.y * 0.4 - backdrop.position.y) * 0.03;
+        backdrop.rotation.y += (pointer.x * 0.05 - backdrop.rotation.y) * 0.03;
+        backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
 
         renderer.render(scene, camera);
         schedule();
@@ -319,13 +419,13 @@ export function HeroBackground() {
           else mat?.dispose?.();
         });
         textures.forEach((t) => t.dispose());
+        backdropTex?.dispose();
         earthMat.map?.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       };
     })().catch((err) => {
       console.warn("[HeroBackground] 3D scene disabled:", err);
-      setStatus("3D scene failed to start");
     });
 
     return () => {
@@ -339,10 +439,6 @@ export function HeroBackground() {
       <div ref={hostRef} className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto" />
       <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
       <div className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#0E1020]/90 via-[#0E1020]/35 to-transparent" />
-      {/* Shown only while running `npm run dev`; delete once the Earth loads fine */}
-      {process.env.NODE_ENV !== "production" && status ? (
-        <div className="absolute left-3 top-3 rounded bg-black/40 px-2 py-1 text-[10px] text-white/60">{status}</div>
-      ) : null}
     </div>
   );
 }

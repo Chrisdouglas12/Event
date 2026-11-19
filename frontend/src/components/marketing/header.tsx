@@ -136,7 +136,7 @@ export function Header() {
 
       {/* Bottom Floating Social Bar (Hidden on scroll down, reveals on scroll up) */}
       <div
-        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
+        className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
           showSocialBar ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
         }`}
       >
