@@ -105,3 +105,116 @@ h1, h2, h3, h4, h5, h6 {
   background: #94A3B8;
 }
 
+/* ============ HERO ANIMATIONS ============ */
+
+@keyframes hero-word-in {
+  from {
+    transform: translateY(115%) rotateX(-45deg);
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    transform: none;
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes hero-shimmer {
+  to {
+    background-position: -200% center;
+  }
+}
+
+.hero-word {
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: hero-word-in 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.hero-fade {
+  opacity: 0;
+  animation: hero-fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* light sweep across the highlighted word */
+.hero-shimmer {
+  background-image: linear-gradient(100deg, #ffffff 0%, #ffffff 35%, #8ee3d6 50%, #ffffff 65%, #ffffff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation:
+    hero-word-in 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+    hero-shimmer 5s linear 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-word,
+  .hero-fade,
+  .hero-shimmer {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* ============ MARQUEE - ONE CONTINUOUS SENTENCE ============ */
+/* INTERNATIONAL HOLINESS • GENERAL CONFERENCE 2026 • ... */
+
+@keyframes hero-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.hero-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: hero-marquee 30s linear infinite;
+  will-change: transform;
+}
+
+.hero-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Fade both edges so text glides in and out */
+.hero-marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* Outlined text - for GENERAL CONFERENCE 2026 */
+.hero-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #8ee3d6;
+}
+
+/* Screen-reader heading */
+.hero-marquee-fallback {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-marquee-track {
+    animation: none;
+  }
+}

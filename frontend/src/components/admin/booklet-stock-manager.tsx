@@ -16,6 +16,9 @@ function remaining(stock: BookletAllocation) {
   return stock.allocatedQuantity - stock.issuedCount - stock.returnedCount;
 }
 
+// 👇 Added API_BASE for Express backend
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+
 export function BookletStockManager({ initialStock }: { initialStock: BookletAllocation[] }) {
   const [stockRows, setStockRows] = useState(initialStock);
   const [standId, setStandId] = useState("");
@@ -32,13 +35,16 @@ export function BookletStockManager({ initialStock }: { initialStock: BookletAll
     setBusy(true);
     setNotice(null);
     try {
-      const response = await fetch("/api/admin/booklet-stock", {
+      // 👇 FIXED: Point to Express API
+      const response = await fetch(`${API_BASE}/api/admin/booklet-stock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Send cookies for auth
         body: JSON.stringify({ standId, allocatedDate, allocatedQuantity: Number(allocatedQuantity) }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.stock) throw new Error(payload?.error || "Stock allocation could not be saved.");
+      
       setStockRows((current) => [payload.stock, ...current.filter((item) => item.id !== payload.stock.id)]
         .sort((left, right) => left.allocatedDate.localeCompare(right.allocatedDate) || left.standId.localeCompare(right.standId)));
       setNotice({ type: "success", message: "Stand allocation saved and added to the audit log." });
@@ -55,13 +61,16 @@ export function BookletStockManager({ initialStock }: { initialStock: BookletAll
     setBusy(true);
     setNotice(null);
     try {
-      const response = await fetch("/api/admin/booklet-stock", {
+      // 👇 FIXED: Point to Express API
+      const response = await fetch(`${API_BASE}/api/admin/booklet-stock`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ id: item.id, quantity: Number(returnQuantity), reason: returnReason }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.stock) throw new Error(payload?.error || "Booklet return could not be recorded.");
+      
       setStockRows((current) => current.map((row) => row.id === payload.stock.id ? payload.stock : row));
       setReturningId(null);
       setReturnQuantity("");

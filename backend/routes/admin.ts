@@ -3,11 +3,8 @@ import type { Request, Response } from 'express';
 import crypto from 'crypto';
 
 import { Order, ManualPayment } from '../schema/orders.ts';
-import { Attendee, Group, TicketType } from '../schema/attendees.ts';
-import { NotificationJob } from '../schema/jobs.ts';
-import { ScanEvent, BookletStock } from '../schema/scans.ts';
-import { AuditLog } from '../schema/auth.ts';
-import { EventSettings, ProviderRoute } from '../schema/settings.ts';
+import { Attendee, Group } from '../schema/attendees.ts';
+import { BookletStock, ScanEvent } from '../schema/scans.ts'; 
 import { authenticateStaff, requireRole } from './auth.ts';
 
 const router = express.Router();
@@ -137,7 +134,6 @@ router.get(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/admin/tickets/:reference
-// Fetch all data needed to render the ticket page (Admin View)
 // ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/admin/tickets/:reference',
@@ -154,7 +150,6 @@ router.get(
       const attendees = await Attendee.find({ orderId: order._id, deletedAt: null }).lean();
       const group = order.isGroup ? await Group.findOne({ orderId: order._id }).lean() : null;
 
-      // Format attendees with QR tokens
       const formattedAttendees = attendees.map((att: any) => ({
         id: att._id.toString(),
         refCode: att.refCode,
@@ -189,235 +184,283 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MANUAL PAYMENT APPROVALS
+// GET /api/admin/approvals
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/approvals', authenticateStaff, requireRole('admin', 'finance'), async (_req: Request, res: Response) => {
-  try {
-    const manuals = await ManualPayment.find({ status: 'pending' }).sort({ createdAt: -1 }).lean();
-    const orders = await Order.find({ _id: { $in: manuals.map((manual: any) => manual.orderId) } }).lean();
-    const orderMap = new Map(orders.map((order: any) => [String(order._id), order]));
-    const pendingManuals = manuals.map((manual: any) => {
-      const order: any = orderMap.get(String(manual.orderId));
-      return order ? { manual: { ...manual, id: String(manual._id) }, order: { ...order, id: String(order._id) } } : null;
-    }).filter(Boolean);
-    return res.json({ pendingManuals });
-  } catch (err) {
-    console.error('[GET /admin/approvals] error:', err);
-    return res.status(500).json({ error: 'Failed to load manual payment approvals' });
-  }
-});
+router.get(
+  '/admin/approvals',
+  authenticateStaff,
+  requireRole('admin', 'supervisor', 'finance'),
+  async (_req: Request, res: Response) => {
+    try {
+      const manuals = await ManualPayment.find({ status: 'pending' })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean();
 
-router.post('/admin/approvals/verify', authenticateStaff, requireRole('admin', 'finance'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const { manualPaymentId, action } = req.body || {};
-    if (!manualPaymentId || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'manualPaymentId and a valid action are required' });
-    const manual: any = await ManualPayment.findById(manualPaymentId);
-    if (!manual) return res.status(404).json({ error: 'Manual payment not found' });
-    if (manual.status !== 'pending') return res.status(409).json({ error: 'This submission has already been reviewed' });
-    const order: any = await Order.findById(manual.orderId);
-    if (!order) return res.status(404).json({ error: 'Order not found' });
+      const orderIds = manuals.map((m: any) => m.orderId);
+      const orders = await Order.find({ _id: { $in: orderIds } }).lean();
+      const orderMap = new Map(orders.map((o: any) => [o._id.toString(), o]));
 
-    if (action === 'approve') {
-      if (manual.amountMinor !== order.totalMinor) return res.status(400).json({ error: 'Transfer amount does not match the order' });
-      if (order.expiresAt && order.expiresAt < new Date()) return res.status(400).json({ error: 'Expired orders cannot be approved' });
-      manual.status = 'approved';
-      order.status = 'paid';
-      order.paidAt = new Date();
-      await Promise.all([manual.save(), order.save()]);
-    } else {
-      manual.status = 'rejected';
-      await manual.save();
+      const pendingManuals = manuals.map((m: any) => {
+        const order = orderMap.get(m.orderId.toString()) as any;
+        return {
+          manual: {
+            id: m._id.toString(),
+            amountMinor: m.amountMinor,
+            bankName: m.bankName,
+            accountName: m.accountName,
+            referenceOrTellerId: m.referenceOrTellerId,
+            createdAt: m.createdAt,
+            status: m.status,
+          },
+          order: order ? {
+            id: order._id.toString(),
+            reference: order.reference,
+            groupName: order.groupName,
+            payerName: order.payerName,
+            payerPhoneE164: order.payerPhoneE164,
+            totalMinor: order.totalMinor,
+            currency: order.currency,
+            expiresAt: order.expiresAt,
+          } : null,
+        };
+      }).filter((item: any) => item.order !== null);
+
+      return res.json({ pendingManuals });
+    } catch (err) {
+      console.error('[GET /admin/approvals] error:', err);
+      return res.status(500).json({ error: 'Failed to load approvals' });
     }
-    manual.reviewedByStaffId = req.staff?._id || null;
-    await manual.save();
-    await AuditLog.create({ staffId: req.staff?._id || null, action: `manual_payment_${manual.status}`, entityType: 'ManualPayment', entityId: String(manual._id), oldState: { status: 'pending' }, newState: { status: manual.status, orderId: String(order._id) }, ipAddress: req.ip, userAgent: req.get('user-agent') });
-    return res.json({ ok: true, status: manual.status });
-  } catch (err) {
-    console.error('[POST /admin/approvals/verify] error:', err);
-    return res.status(500).json({ error: 'Failed to review manual payment' });
   }
-});
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BOOKLET STOCK
+// POST /api/admin/approvals/verify
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/booklet-stock', authenticateStaff, requireRole('admin', 'supervisor', 'attendant'), async (_req: Request, res: Response) => {
-  try {
-    const [allocations, issuedCount] = await Promise.all([
-      BookletStock.find().sort({ allocatedDate: 1, standId: 1 }).lean(),
-      Attendee.countDocuments({ bookletIssuedAt: { $ne: null }, deletedAt: null }),
-    ]);
-    return res.json({ issuedCount, allocations: allocations.map((row: any) => ({ ...row, id: String(row._id) })) });
-  } catch (err) {
-    console.error('[GET /admin/booklet-stock] error:', err);
-    return res.status(500).json({ error: 'Failed to load booklet stock' });
-  }
-});
-
-router.post('/admin/booklet-stock', authenticateStaff, requireRole('admin', 'supervisor'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const { standId, allocatedDate, allocatedQuantity } = req.body || {};
-    if (!standId || !/^\d{4}-\d{2}-\d{2}$/.test(allocatedDate) || !Number.isInteger(allocatedQuantity) || allocatedQuantity < 0) return res.status(400).json({ error: 'Valid standId, allocatedDate and allocatedQuantity are required' });
-    const stock: any = await BookletStock.findOneAndUpdate({ standId: String(standId).trim(), allocatedDate }, { $set: { standId: String(standId).trim(), allocatedDate, allocatedQuantity } }, { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true });
-    await AuditLog.create({ staffId: req.staff?._id || null, action: 'booklet_stock_allocate', entityType: 'BookletStock', entityId: String(stock._id), newState: stock.toObject(), ipAddress: req.ip, userAgent: req.get('user-agent') });
-    return res.json({ ok: true, stock: { ...stock.toObject(), id: String(stock._id) } });
-  } catch (err) {
-    console.error('[POST /admin/booklet-stock] error:', err);
-    return res.status(500).json({ error: 'Failed to save booklet stock allocation' });
-  }
-});
-
-router.patch('/admin/booklet-stock', authenticateStaff, requireRole('admin', 'supervisor'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const { id, quantity, reason } = req.body || {};
-    const stock: any = await BookletStock.findById(id);
-    if (!stock) return res.status(404).json({ error: 'Stock allocation not found' });
-    const remaining = stock.allocatedQuantity - stock.issuedCount - stock.returnedCount;
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > remaining) return res.status(400).json({ error: 'Return quantity is outside the remaining stock' });
-    const oldState = stock.toObject();
-    stock.returnedCount += quantity;
-    await stock.save();
-    await AuditLog.create({ staffId: req.staff?._id || null, action: 'booklet_stock_return', entityType: 'BookletStock', entityId: String(stock._id), oldState, newState: { ...stock.toObject(), reason }, ipAddress: req.ip, userAgent: req.get('user-agent') });
-    return res.json({ ok: true, stock: { ...stock.toObject(), id: String(stock._id) } });
-  } catch (err) {
-    console.error('[PATCH /admin/booklet-stock] error:', err);
-    return res.status(500).json({ error: 'Failed to record booklet return' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// OFFLINE SYNC CONFLICTS
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/conflicts', authenticateStaff, requireRole('admin', 'supervisor', 'attendant'), async (_req: Request, res: Response) => {
-  try {
-    const scans = await ScanEvent.find({ result: { $in: ['conflict', 'already_checked_in', 'invalid_signature', 'forged'] } }).sort({ serverTimestamp: -1 }).limit(500).lean();
-    return res.json({ conflicts: scans.map((scan: any) => ({ ...scan, id: String(scan._id) })) });
-  } catch (err) {
-    console.error('[GET /admin/conflicts] error:', err);
-    return res.status(500).json({ error: 'Failed to load sync conflicts' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MESSAGING QUEUE
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/messaging', authenticateStaff, requireRole('admin', 'supervisor'), async (_req: Request, res: Response) => {
-  try {
-    const jobs = await NotificationJob.find({ status: 'failed' }).sort({ createdAt: -1 }).limit(100).lean();
-    const [attendees, orders] = await Promise.all([
-      Attendee.find({ _id: { $in: jobs.map((job: any) => job.attendeeId) } }).lean(),
-      Order.find({ _id: { $in: jobs.map((job: any) => job.orderId) } }).lean(),
-    ]);
-    const attendeeMap = new Map(attendees.map((attendee: any) => [String(attendee._id), attendee.name]));
-    const orderMap = new Map(orders.map((order: any) => [String(order._id), order.reference]));
-    return res.json({ deadJobs: jobs.map((job: any) => ({
-      id: String(job._id), channel: job.channel, attempts: job.attempts, lastError: job.lastError,
-      createdAt: job.createdAt, attendeeName: attendeeMap.get(String(job.attendeeId)) || 'Unknown attendee',
-      reference: orderMap.get(String(job.orderId)) || 'Unknown order',
-    })) });
-  } catch (err) {
-    console.error('[GET /admin/messaging] error:', err);
-    return res.status(500).json({ error: 'Failed to load messaging queue' });
-  }
-});
-
-router.post('/admin/notifications/:id/retry', authenticateStaff, requireRole('admin', 'supervisor'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const job: any = await NotificationJob.findById(req.params.id);
-    if (!job) return res.status(404).json({ error: 'Notification job not found' });
-    job.status = 'queued';
-    job.availableAt = new Date();
-    job.lockedAt = null;
-    job.lastError = undefined;
-    await job.save();
-    await AuditLog.create({ staffId: req.staff?._id || null, action: 'notification_retry', entityType: 'NotificationJob', entityId: String(job._id), ipAddress: req.ip, userAgent: req.get('user-agent') });
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('[POST /admin/notifications/retry] error:', err);
-    return res.status(500).json({ error: 'Failed to retry notification' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ROSTER AND CSV EXPORT
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/roster', authenticateStaff, requireRole('admin', 'supervisor', 'attendant'), async (_req: Request, res: Response) => {
-  try {
-    const paidOrders = await Order.find({ status: 'paid' }).select('_id').lean();
-    const paidOrderIds = new Set(paidOrders.map((order: any) => String(order._id)));
-    const attendees = await Attendee.find({ deletedAt: null }).sort({ state: 1, name: 1 }).lean();
-    const confirmedAttendees = attendees.filter((attendee: any) => paidOrderIds.has(String(attendee.orderId))).map((attendee: any) => ({
-      id: String(attendee._id), refCode: attendee.refCode, name: attendee.name, phoneE164: attendee.phoneE164,
-      state: attendee.state || 'FCT Abuja', country: attendee.country, parish: attendee.parish,
-      isMinor: attendee.isMinor, guardianName: attendee.guardianName, status: attendee.status,
-      checkedInAt: attendee.checkedInAt, bookletIssuedAt: attendee.bookletIssuedAt,
-    }));
-    return res.json({ confirmedAttendees });
-  } catch (err) {
-    console.error('[GET /admin/roster] error:', err);
-    return res.status(500).json({ error: 'Failed to load roster' });
-  }
-});
-
-router.get('/admin/export', authenticateStaff, requireRole('admin', 'supervisor', 'finance'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const attendees = await Attendee.find({ deletedAt: null }).sort({ name: 1 }).lean();
-    const headers = ['Reference','Name','Phone','State','Country','Parish','Status','Checked In','Booklet Issued','Minor','Guardian'];
-    const rows = attendees.map((attendee: any) => [attendee.refCode, attendee.name, attendee.phoneE164, attendee.state || '', attendee.country || '', attendee.parish || '', attendee.status, attendee.checkedInAt ? 'yes' : 'no', attendee.bookletIssuedAt ? 'yes' : 'no', attendee.isMinor ? 'yes' : 'no', attendee.guardianName || '']);
-    const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const csv = [headers, ...rows].map((row) => row.map(escape).join(',')).join('\r\n');
-    await AuditLog.create({ staffId: req.staff?._id || null, action: 'attendee_csv_export', entityType: 'Attendee', entityId: 'all', ipAddress: req.ip, userAgent: req.get('user-agent') });
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="attendee-roster.csv"');
-    return res.send(`\uFEFF${csv}`);
-  } catch (err) {
-    console.error('[GET /admin/export] error:', err);
-    return res.status(500).json({ error: 'Failed to export attendee roster' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN SETTINGS
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/admin/settings', authenticateStaff, requireRole('admin', 'supervisor'), async (_req: Request, res: Response) => {
-  try {
-    const [settings, routes, ticketTypes] = await Promise.all([
-      EventSettings.findOne({ singleton: 'event' }).lean(),
-      ProviderRoute.find().sort({ currency: 1 }).lean(),
-      TicketType.find({ isActive: true }).lean(),
-    ]);
-    const prices = ticketTypes.flatMap((ticket: any) => (ticket.prices || []).map((price: any) => ({ currency: price.currency, amountMinor: price.amountMinor })));
-    return res.json({
-      settings: settings || {},
-      routes: routes.map((route: any) => ({ currency: route.currency, primaryProvider: route.primaryProvider, isEnabled: route.isEnabled, feePolicy: route.feePolicy })),
-      prices,
-    });
-  } catch (err) {
-    console.error('[GET /admin/settings] error:', err);
-    return res.status(500).json({ error: 'Failed to load settings' });
-  }
-});
-
-router.put('/admin/settings', authenticateStaff, requireRole('admin'), async (req: Request & { staff?: any }, res: Response) => {
-  try {
-    const { settings = {}, routes = [], prices = [] } = req.body || {};
-    const updated = await EventSettings.findOneAndUpdate({ singleton: 'event' }, { $set: { singleton: 'event', ...settings } }, { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true });
-    for (const route of routes) {
-      await ProviderRoute.findOneAndUpdate({ currency: route.currency }, { $set: route }, { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true });
-    }
-    if (Array.isArray(prices) && prices.length) {
-      const ticket = await TicketType.findOne({ isActive: true }).sort({ createdAt: 1 });
-      if (ticket) {
-        ticket.prices = prices.map((price: any) => ({ currency: price.currency, amountMinor: Number(price.amountMinor) }));
-        await ticket.save();
+router.post(
+  '/admin/approvals/verify',
+  authenticateStaff,
+  requireRole('admin', 'finance'),
+  async (req: Request, res: Response) => {
+    try {
+      const { manualPaymentId, action } = req.body;
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action' });
       }
+
+      const manual = await ManualPayment.findById(manualPaymentId);
+      if (!manual) return res.status(404).json({ error: 'Manual payment not found' });
+
+      if (action === 'approve') {
+        manual.status = 'approved';
+        manual.reviewedByStaffId = (req as any).staff._id;
+        await manual.save();
+
+        await Order.updateOne(
+          { _id: manual.orderId },
+          { $set: { status: 'paid', paidAt: new Date() } }
+        );
+      } else {
+        manual.status = 'rejected';
+        manual.reviewedByStaffId = (req as any).staff._id;
+        await manual.save();
+      }
+
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('[POST /admin/approvals/verify] error:', err);
+      return res.status(500).json({ error: 'Failed to verify payment' });
     }
-    await AuditLog.create({ staffId: req.staff?._id || null, action: 'settings_updated', entityType: 'EventSettings', entityId: 'event', newState: settings, ipAddress: req.ip, userAgent: req.get('user-agent') });
-    return res.json({ ok: true, settings: updated });
-  } catch (err) {
-    console.error('[PUT /admin/settings] error:', err);
-    return res.status(500).json({ error: 'Failed to save settings' });
   }
-});
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/booklet-stock
+// ─────────────────────────────────────────────────────────────────────────────
+router.get(
+  '/admin/booklet-stock',
+  authenticateStaff,
+  requireRole('admin', 'supervisor', 'attendant'),
+  async (_req: Request, res: Response) => {
+    try {
+      const currentIssued = await Attendee.countDocuments({
+        bookletIssuedAt: { $ne: null },
+        deletedAt: null,
+      });
+
+      const stock = await BookletStock.find({})
+        .sort({ allocatedDate: 1, standId: 1 })
+        .lean();
+
+      const allocations = stock.map((row: any) => ({
+        id: row._id.toString(),
+        standId: row.standId,
+        allocatedDate: row.allocatedDate,
+        allocatedQuantity: row.allocatedQuantity,
+        issuedCount: row.issuedCount,
+        returnedCount: row.returnedCount,
+      }));
+
+      return res.json({ currentIssued, allocations });
+    } catch (err) {
+      console.error('[GET /admin/booklet-stock] error:', err);
+      return res.status(500).json({ error: 'Failed to load booklet stock' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/admin/booklet-stock
+// ─────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/admin/booklet-stock',
+  authenticateStaff,
+  requireRole('admin', 'supervisor'),
+  async (req: Request, res: Response) => {
+    try {
+      const { standId, allocatedDate, allocatedQuantity } = req.body;
+
+      if (!standId || !allocatedDate || typeof allocatedQuantity !== 'number') {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const stock = await BookletStock.findOneAndUpdate(
+        { standId, allocatedDate },
+        {
+          $set: {
+            allocatedQuantity,
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      return res.json({ stock });
+    } catch (err) {
+      console.error('[POST /admin/booklet-stock] error:', err);
+      return res.status(500).json({ error: 'Failed to update stock' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/admin/booklet-stock (Record Returns)
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch(
+  '/admin/booklet-stock',
+  authenticateStaff,
+  requireRole('admin', 'supervisor'),
+  async (req: Request, res: Response) => {
+    try {
+      const { id, quantity, reason } = req.body;
+
+      if (!id || typeof quantity !== 'number' || quantity <= 0) {
+        return res.status(400).json({ error: 'Invalid return payload' });
+      }
+
+      const stock = await BookletStock.findById(id);
+      if (!stock) return res.status(404).json({ error: 'Stock record not found' });
+
+      const available = stock.allocatedQuantity - stock.issuedCount - stock.returnedCount;
+      if (quantity > available) {
+        return res.status(400).json({ error: `Cannot return ${quantity}. Only ${available} available.` });
+      }
+
+      stock.returnedCount += quantity;
+      await stock.save();
+
+      return res.json({ stock });
+    } catch (err) {
+      console.error('[PATCH /admin/booklet-stock] error:', err);
+      return res.status(500).json({ error: 'Failed to record return' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/admin/scan (QR Scanner)
+// ─────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/admin/scan',
+  authenticateStaff,
+  requireRole('admin', 'supervisor', 'attendant'),
+  async (req: Request, res: Response) => {
+    try {
+      const { qrToken, action, standId } = req.body;
+      const staffId = (req as any).staff._id;
+
+      if (!qrToken || !standId) {
+        return res.status(400).json({ error: 'Missing QR token or Stand ID' });
+      }
+
+      // 1. Find the attendee by their QR hash
+      const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
+      const attendee = await Attendee.findOne({ qrTokenHash: tokenHash, deletedAt: null });
+
+      if (!attendee) {
+        await ScanEvent.create({
+          scanType: action || 'arrival',
+          staffId,
+          standId,
+          clientTimestamp: new Date(),
+          idempotencyKey: crypto.randomUUID(),
+          result: 'invalid_signature',
+          notes: 'Invalid QR Token',
+        });
+        return res.status(404).json({ error: 'Invalid or forged ticket.' });
+      }
+
+      // 2. Prevent duplicate check-ins
+      if (action === 'arrival' && attendee.checkedInAt) {
+        return res.status(409).json({ 
+          error: `Already checked in on ${new Date(attendee.checkedInAt).toLocaleTimeString()}`,
+          attendee: { name: attendee.name, refCode: attendee.refCode }
+        });
+      }
+
+      if (action === 'booklet' && attendee.bookletIssuedAt) {
+        return res.status(409).json({ 
+          error: 'Booklet already issued.',
+          attendee: { name: attendee.name, refCode: attendee.refCode }
+        });
+      }
+
+      // 3. Perform the action
+      if (action === 'arrival') {
+        attendee.checkedInAt = new Date();
+        attendee.status = 'checked_in';
+      } else if (action === 'booklet') {
+        attendee.bookletIssuedAt = new Date();
+        attendee.status = 'booklet_issued';
+      }
+      await attendee.save();
+
+      // 4. Log the success
+      await ScanEvent.create({
+        attendeeId: attendee._id,
+        scanType: action || 'arrival',
+        staffId,
+        standId,
+        clientTimestamp: new Date(),
+        idempotencyKey: crypto.randomUUID(),
+        result: 'valid',
+      });
+
+      return res.json({
+        success: true,
+        message: action === 'arrival' ? 'Checked in successfully' : 'Booklet issued successfully',
+        attendee: {
+          name: attendee.name,
+          refCode: attendee.refCode,
+          parish: attendee.parish,
+        }
+      });
+
+    } catch (err) {
+      console.error('[POST /admin/scan] error:', err);
+      return res.status(500).json({ error: 'Scan processing failed' });
+    }
+  }
+);
 
 export default router;

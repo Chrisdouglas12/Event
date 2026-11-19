@@ -40,7 +40,7 @@ export default function StaffLoginPage() {
         return;
       }
 
-      // 👇 Set the cookie so Next.js Server Components can read it
+      
       if (data.session?.token) {
         document.cookie = `staff_token=${data.session.token}; path=/; max-age=43200; SameSite=Lax`;
       }

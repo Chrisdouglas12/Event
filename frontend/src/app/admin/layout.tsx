@@ -14,6 +14,7 @@ import {
   BookOpen,
   AlertTriangle,
   MessageSquare,
+  ScanLine,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 
@@ -22,7 +23,6 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 👇 MAKE SURE this function hits your Express backend /api/auth/me
   const user = await requireRole("admin");
   if (!user) {
     redirect("/staff/login");
@@ -30,8 +30,9 @@ export default async function AdminLayout({
 
   const navItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Live Scanner", href: "/admin/scanner", icon: ScanLine },
     { label: "Orders", href: "/admin/orders", icon: Receipt },
-    { label: "Attendees", href: "/admin/attendees", icon: Users },
+    { label: "Attendees", href: "/admin/attendees", icon: Users }, // 👈 Fixed typo
     { label: "Approvals", href: "/admin/approvals", icon: CheckCircle2 },
     { label: "Booklet Stock", href: "/admin/booklet-stock", icon: BookOpen },
     { label: "Conflicts", href: "/admin/conflicts", icon: AlertTriangle },

@@ -12,6 +12,16 @@ interface TimeLeft {
   isEnded: boolean;
 }
 
+// Start with zeros to match the server-rendered HTML
+const INITIAL_STATE: TimeLeft = {
+  days: 0,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  isLive: false,
+  isEnded: false,
+};
+
 function calculateTime(): TimeLeft {
   const targetTime = new Date(SITE_CONFIG.startsAt).getTime();
   const endTime = new Date(SITE_CONFIG.endsAt).getTime();
@@ -36,16 +46,50 @@ function calculateTime(): TimeLeft {
 }
 
 export function Countdown() {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTime);
+  const [mounted, setMounted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>(INITIAL_STATE);
 
   useEffect(() => {
+    // Mark as mounted so we know we're on the client
+    setMounted(true);
+    
+    // Calculate the real time immediately
     setTimeLeft(calculateTime());
+
+    // Update every second
     const interval = setInterval(() => {
       setTimeLeft(calculateTime());
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // Render a stable "empty" state on the server to prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-3 sm:gap-6 text-white py-2 opacity-50">
+        <div className="text-center min-w-[50px] sm:min-w-[60px]">
+          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">00</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1">Days</div>
+        </div>
+        <span className="text-2xl text-gray-400/80 font-light -mt-3">:</span>
+        <div className="text-center min-w-[50px] sm:min-w-[60px]">
+          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">00</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1">Hours</div>
+        </div>
+        <span className="text-2xl text-gray-400/80 font-light -mt-3">:</span>
+        <div className="text-center min-w-[50px] sm:min-w-[60px]">
+          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">00</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1">Minutes</div>
+        </div>
+        <span className="text-2xl text-gray-400/80 font-light -mt-3">:</span>
+        <div className="text-center min-w-[50px] sm:min-w-[60px]">
+          <div className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums">00</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1">Seconds</div>
+        </div>
+      </div>
+    );
+  }
 
   if (timeLeft.isEnded) {
     return (
@@ -104,4 +148,3 @@ export function Countdown() {
     </div>
   );
 }
-
