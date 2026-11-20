@@ -9,6 +9,7 @@ import { ATTENDANCE_MODES, ORDER_STATUSES, CURRENCIES } from '../constants/enums
 import { TicketType } from '../schema/participants.ts';
 import { Participant } from '../schema/participants.ts';
 import { Group, GroupSeat } from '../schema/participants.ts';
+import { toE164 } from '../lib/phone.ts';
 
 const router = express.Router();
 
@@ -91,15 +92,6 @@ async function loadTickets(order: any) {
         }
       : null,
   };
-}
-
-function toE164(phone: unknown): string | null {
-  if (!phone || typeof phone !== 'string') return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('234') && digits.length === 13) return `+${digits}`;
-  if (digits.startsWith('0') && digits.length === 11) return `+234${digits.slice(1)}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return null;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -753,19 +745,21 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     const payerName = typeof payer?.name === 'string' ? payer.name.trim() : '';
     if (!payerName) return res.status(400).json({ error: 'Name is required' });
 
-    const payerPhone = toE164(payer?.phoneE164);
-    if (!payerPhone) return res.status(400).json({ error: 'Phone number is invalid' });
+    // Accept both the current `phoneE164` key and the legacy `phone` key so
+    // older clients do not fail on a valid number.
+    const payerPhone = toE164(payer?.phoneE164 ?? payer?.phone);
+    if (!payerPhone) {
+      return res.status(400).json({
+        error: 'Phone number is invalid. Use a format like +234 801 234 5678 or 08012345678.',
+      });
+    }
 
     const payerEmail =
       typeof payer?.email === 'string' && payer.email.trim() ? payer.email.trim().toLowerCase() : null;
-    if (payerEmail && !EMAIL_RE.test(payerEmail)) {
-      return res.status(400).json({ error: 'Email address is invalid' });
-    }
-    if (currency !== 'NGN' && !payerEmail) {
-      return res.status(400).json({ error: 'An email address is required for this currency' });
-    }
-    if (currency === 'NGN' && !payerEmail && !process.env.PAYSTACK_FALLBACK_EMAIL_DOMAIN) {
-      return res.status(400).json({ error: 'An email address is required for card payments' });
+    if (!payerEmail || !EMAIL_RE.test(payerEmail)) {
+      return res.status(400).json({
+        error: 'A valid email address is required to process your payment with Paystack.',
+      });
     }
 
     const country = typeof body.country === 'string' && body.country.trim() ? body.country.trim() : 'Nigeria';
@@ -799,7 +793,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       const online = Number(rawCounts?.online);
       const notSure = Number(rawCounts?.not_sure);
       if (![physically, online, notSure].every((n) => Number.isInteger(n) && n >= 0) || physically + online + notSure !== seats) {
-        return res.status(400).json({ error: `Group attendance counts must be whole numbers that add up to ${seats} seats.` });
+        return res.status(400).json({ error: `Group attendance counts must be whole numbers that add up to ${seats} participants.` });
       }
       attendanceCounts = { physically, online, not_sure: notSure };
     }
@@ -812,7 +806,14 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     if (!price || !Number.isInteger(price.amountMinor)) {
       return res.status(400).json({ error: `No price is set for ${currency}` });
     }
-    const totalMinor = price.amountMinor * seats;
+    let totalMinor = price.amountMinor * seats;
+    if (currency === 'NGN' && body.customAmountMinor !== undefined) {
+      const customAmountMinor = Number(body.customAmountMinor);
+      if (!Number.isInteger(customAmountMinor) || customAmountMinor < 200_000) {
+        return res.status(400).json({ error: 'Please enter a valid contribution amount.' });
+      }
+      totalMinor = customAmountMinor;
+    }
 
     const remaining = MAX_TICKETS - (await countTicketsTaken(tt._id));
     if (remaining <= 0) {

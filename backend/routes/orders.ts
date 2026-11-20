@@ -10,6 +10,7 @@ import { Payment } from '../schema/orders.ts';
 import { MANUAL_PAYMENT_STATUSES } from '../constants/enums.ts';
 import { Participant, Group, GroupSeat, TicketType } from '../schema/participants.ts';
 import { AuditLog } from '../schema/auth.ts';
+import { toE164 } from '../lib/phone.ts';
 
 import { authenticateStaff, requireRole } from './auth.ts';
 
@@ -39,15 +40,6 @@ function generateReference(): string {
   const bytes = crypto.randomBytes(6);
   for (let i = 0; i < 6; i++) out += REF_ALPHABET[bytes[i] % REF_ALPHABET.length];
   return `HGC-${out}`;
-}
-
-function toE164(phone: unknown): string | null {
-  if (!phone || typeof phone !== 'string') return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('234') && digits.length === 13) return `+${digits}`;
-  if (digits.startsWith('0') && digits.length === 11) return `+234${digits.slice(1)}`;
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return null;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

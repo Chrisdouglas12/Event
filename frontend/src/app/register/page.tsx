@@ -13,6 +13,22 @@ import { HeroBackground } from "@/components/marketing/hero-background";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 const CURRENCY_LIST: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Mirrors the backend normaliser so users get a clear error before checkout.
+// Accepts 08012345678, 8012345678, 2348012345678, +234 (0) 801 234 5678,
+// 00234 801 234 5678 and normal international numbers.
+function toE164Phone(phone: string): string | null {
+  let digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (/^2340\d{10}$/.test(digits)) digits = `234${digits.slice(4)}`;
+  if (/^234\d{10}$/.test(digits)) return `+${digits}`;
+  if (/^0\d{10}$/.test(digits)) return `+234${digits.slice(1)}`;
+  if (/^\d{10}$/.test(digits)) return `+234${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,13 +52,16 @@ export default function RegisterPage() {
   const [state, setState] = useState("");
   const [chapterZone, setChapterZone] = useState("");
   const [groupName, setGroupName] = useState("");
-  const [seatsCount, setSeatsCount] = useState(5);
+  // Kept as a string so clearing the field to type "50" does not snap to 2.
+  const [seatsInput, setSeatsInput] = useState("5");
+  const seatsCount = Math.max(2, Number.parseInt(seatsInput, 10) || 2);
   const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
   const [isMinor, setIsMinor] = useState(false);
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [customNairaAmount, setCustomNairaAmount] = useState("5000");
   
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const checkoutAttempt = useRef<{ payload: string; key: string } | null>(null);
@@ -127,6 +146,7 @@ export default function RegisterPage() {
           setAttendanceMode(parsed.attendanceMode);
         }
         if (parsed.groupAttendance) setGroupAttendance(parsed.groupAttendance);
+        if (typeof parsed.customNairaAmount === "string") setCustomNairaAmount(parsed.customNairaAmount);
       }
     } catch (_) {}
   }, []);
@@ -140,7 +160,15 @@ export default function RegisterPage() {
 
   const effectiveSeats = isGroup ? seatsCount : 1;
   const unitMinor = pricesMinor[currency];
-  const totalMinor = typeof unitMinor === "number" ? effectiveSeats * unitMinor : null;
+  const customNairaMajor = Number(customNairaAmount);
+  const customNairaMinor = currency === "NGN" && Number.isFinite(customNairaMajor)
+    ? Math.round(customNairaMajor * 100)
+    : null;
+  const totalMinor = currency === "NGN"
+    ? customNairaMinor
+    : typeof unitMinor === "number"
+      ? effectiveSeats * unitMinor
+      : null;
   const formattedTotal = totalMinor !== null ? formatMoneyMinor(totalMinor, currency) : "—";
   const checkoutProvider = providerByCurrency[currency] === "paystack" ? "Paystack" : "PayPal";
 
@@ -149,17 +177,30 @@ export default function RegisterPage() {
     setError(null);
 
     if (!consent) return setError("Please accept the terms and consent checkbox to proceed.");
-    if (currency !== "NGN" && (!payerEmail || !payerEmail.includes("@"))) {
-      return setError("A valid email address is required for international currency payments via PayPal.");
+
+    const payerPhoneE164 = toE164Phone(payerPhone);
+    if (!payerPhoneE164) {
+      return setError("Please enter a valid phone number, e.g. +234 801 234 5678 or 08012345678.");
     }
+
+    if (!EMAIL_RE.test(payerEmail.trim())) {
+      return setError("A valid email address is required because payments are processed by Paystack.");
+    }
+
     if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !turnstileToken) {
       return setError("Please complete the verification check below.");
     }
 
     if (isGroup) {
-      const countedSeats = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
-      if (countedSeats !== seatsCount) {
-        return setError(`The three attendance counts must add up to ${seatsCount} seats.`);
+      const countedParticipants = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
+      if (countedParticipants !== seatsCount) {
+        return setError(`The three attendance counts must add up to ${seatsCount} participants.`);
+      }
+    }
+
+    if (currency === "NGN") {
+      if (!Number.isInteger(customNairaMajor) || customNairaMinor === null || customNairaMinor < 200_000) {
+        return setError("Please enter a valid contribution amount.");
       }
     }
 
@@ -173,8 +214,10 @@ export default function RegisterPage() {
         isGroup,
         payer: {
           name: payerName.trim(),
+          phoneE164: payerPhoneE164,
+          // Legacy key kept for older API versions.
           phone: payerPhone.trim(),
-          email: payerEmail.trim() || undefined,
+          email: payerEmail.trim().toLowerCase(),
         },
         country,
         state: country === "Nigeria" ? state : undefined,
@@ -186,6 +229,7 @@ export default function RegisterPage() {
         group: isGroup ? { name: groupName, totalSeats: seatsCount } : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
+        customAmountMinor: currency === "NGN" ? customNairaMinor : undefined,
         groupAttendance: isGroup ? groupAttendance : undefined,
       };
 
@@ -250,7 +294,7 @@ export default function RegisterPage() {
               Register For The 2026 General Conference
             </h1>
             <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-lg">
-              Secure your 4-day all-access participant badge and printed conference booklet. Register as an individual or purchase seats for your chapter/zone.
+              Secure your 4-day all-access participant badge and printed conference booklet. Register as an individual or register a group from your chapter/zone.
             </p>
             <div className="pt-2 flex items-center gap-6 text-xs text-gray-400">
               <div>• 8 – 11 Dec 2026</div>
@@ -357,15 +401,19 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-[#111320]">
-                      Number of Participants (Seats) *
+                      Number of Participants *
                     </label>
                     <input
                       type="number"
                       min={2}
                       max={500}
                       required
-                      value={seatsCount}
-                      onChange={(e) => setSeatsCount(parseInt(e.target.value) || 2)}
+                      value={seatsInput}
+                      onChange={(e) => setSeatsInput(e.target.value)}
+                      onBlur={() => {
+                        const parsed = Number.parseInt(seatsInput, 10);
+                        setSeatsInput(String(Math.min(500, Math.max(2, Number.isFinite(parsed) ? parsed : 2))));
+                      }}
                       className="w-full px-3.5 py-2.5 rounded-[8px] bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#8EE3D6]"
                     />
                   </div>
@@ -413,13 +461,11 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#111320]">
-                    Email Address {currency === "NGN" ? "(Optional)" : "(Required) *"}
-                  </label>
+                  <label className="text-xs font-semibold text-[#111320]">Email Address *</label>
                   <input
                     type="email"
-                    required={currency !== "NGN"}
-                    placeholder={currency === "NGN" ? "Optional for SMS-only tickets" : "name@example.com"}
+                    required
+                    placeholder="name@example.com"
                     value={payerEmail}
                     onChange={(e) => {
                       setPayerEmail(e.target.value);
@@ -514,6 +560,27 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* NGN Contribution Amount */}
+            {currency === "NGN" && (
+              <div className="space-y-1 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <label className="text-xs font-semibold text-[#111320]">
+                  Contribution Amount (₦) *
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  required
+                  value={customNairaAmount}
+                  onChange={(e) => {
+                    setCustomNairaAmount(e.target.value);
+                    updateDraft("customNairaAmount", e.target.value);
+                  }}
+                  className="mt-1 w-full px-3.5 py-2.5 rounded-[8px] bg-white border border-gray-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#8EE3D6]"
+                />
+              </div>
+            )}
+
             {/* Attendance Mode */}
             {isGroup ? (
               <div className="space-y-3">
@@ -522,7 +589,7 @@ export default function RegisterPage() {
                     How will the group attend? *
                   </div>
                   <p className="mt-1 text-[11px] text-gray-500">
-                    Enter a count for each mode. The counts must equal all {seatsCount} purchased seats.
+                    Enter a count for each mode. The counts must add up to all {seatsCount} participants.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -622,7 +689,7 @@ export default function RegisterPage() {
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">
-                  {effectiveSeats} {effectiveSeats === 1 ? "Participant Pass" : "Participant Seats"} ({currency}):
+                  {effectiveSeats} {effectiveSeats === 1 ? "Participant Pass" : "Participant Passes"} ({currency}):
                 </span>
                 <span className="text-2xl font-black text-[#111320] tracking-tight">{formattedTotal}</span>
               </div>
