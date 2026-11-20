@@ -27,8 +27,8 @@ export function proxy(request: NextRequest) {
   const nonce = btoa(Array.from(random, (byte) => String.fromCharCode(byte)).join(""));
   const scriptSource =
     process.env.NODE_ENV === "production"
-      ? `'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com`
-      : `'self' 'nonce-${nonce}' 'unsafe-eval' https://challenges.cloudflare.com`;
+      ? `'self' 'nonce-${nonce}' 'unsafe-inline' https://challenges.cloudflare.com`
+      : `'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com`;
   const connectSource = [
     "'self'",
     apiOrigin(),
@@ -41,11 +41,13 @@ export function proxy(request: NextRequest) {
   const policy = [
     "default-src 'self'",
     `script-src ${scriptSource}`,
+    `script-src-elem ${scriptSource}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://cdn.jsdelivr.net https://unpkg.com",
     "font-src 'self' data:",
     `connect-src ${connectSource}`,
     "frame-src https://challenges.cloudflare.com https://www.google.com",
+    "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self' https://checkout.paystack.com https://www.paypal.com https://www.sandbox.paypal.com",
