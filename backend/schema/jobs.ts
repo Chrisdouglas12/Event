@@ -100,4 +100,4 @@ notificationJobSchema.index({ status: 1, lockedAt: 1 });
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const NotificationJob = mongoose.models.NotificationJob || mongoose.model('NotificationJob', notificationJobSchema);;
+export const NotificationJob = (mongoose.models.NotificationJob || mongoose.model('NotificationJob', notificationJobSchema)) as mongoose.Model<any>;

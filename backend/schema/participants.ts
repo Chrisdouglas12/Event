@@ -312,7 +312,7 @@ groupSeatSchema.index({ participantId: 1 });
 
 // EXPORTS
 
-export const TicketType = mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema);
-export const Group = mongoose.models.Group      || mongoose.model('Group',      groupSchema);
-export const Participant = mongoose.models.Participant   || mongoose.model('Participant',   participantSchema);
-export const GroupSeat = mongoose.models.GroupSeat  || mongoose.model('GroupSeat',  groupSeatSchema);
+export const TicketType = (mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema)) as mongoose.Model<any>;
+export const Group = (mongoose.models.Group      || mongoose.model('Group',      groupSchema)) as mongoose.Model<any>;
+export const Participant = (mongoose.models.Participant   || mongoose.model('Participant',   participantSchema)) as mongoose.Model<any>;
+export const GroupSeat = (mongoose.models.GroupSeat  || mongoose.model('GroupSeat',  groupSeatSchema)) as mongoose.Model<any>;

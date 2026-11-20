@@ -182,6 +182,6 @@ auditLogSchema.index({ createdAt: -1 });
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const StaffUser = mongoose.models.StaffUser || mongoose.model('StaffUser', staffUserSchema);
-export const Session = mongoose.models.Session   || mongoose.model('Session',   sessionSchema);
-export const AuditLog = mongoose.models.AuditLog  || mongoose.model('AuditLog',  auditLogSchema);
+export const StaffUser = (mongoose.models.StaffUser || mongoose.model('StaffUser', staffUserSchema)) as mongoose.Model<any>;
+export const Session = (mongoose.models.Session   || mongoose.model('Session',   sessionSchema)) as mongoose.Model<any>;
+export const AuditLog = (mongoose.models.AuditLog  || mongoose.model('AuditLog',  auditLogSchema)) as mongoose.Model<any>;

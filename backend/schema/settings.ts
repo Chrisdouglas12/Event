@@ -293,7 +293,7 @@ programmeItemSchema.index({ eventDate: 1, startTime: 1, sortOrder: 1 });
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const EventSettings = mongoose.models.EventSettings || mongoose.model('EventSettings', eventSettingsSchema);
-export const ProviderRoute = mongoose.models.ProviderRoute || mongoose.model('ProviderRoute', providerRouteSchema);
-export const Minister = mongoose.models.Minister      || mongoose.model('Minister',      ministerSchema);
-export const ProgrammeItem = mongoose.models.ProgrammeItem || mongoose.model('ProgrammeItem', programmeItemSchema);
+export const EventSettings = (mongoose.models.EventSettings || mongoose.model('EventSettings', eventSettingsSchema)) as mongoose.Model<any>;
+export const ProviderRoute = (mongoose.models.ProviderRoute || mongoose.model('ProviderRoute', providerRouteSchema)) as mongoose.Model<any>;
+export const Minister = (mongoose.models.Minister      || mongoose.model('Minister',      ministerSchema)) as mongoose.Model<any>;
+export const ProgrammeItem = (mongoose.models.ProgrammeItem || mongoose.model('ProgrammeItem', programmeItemSchema)) as mongoose.Model<any>;

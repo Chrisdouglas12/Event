@@ -183,6 +183,6 @@ bookletStockSchema.index(
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const Device = mongoose.models.Device       || mongoose.model('Device',       deviceSchema);
-export const ScanEvent = mongoose.models.ScanEvent    || mongoose.model('ScanEvent',    scanEventSchema);
-export const BookletStock = mongoose.models.BookletStock || mongoose.model('BookletStock', bookletStockSchema);
+export const Device = (mongoose.models.Device       || mongoose.model('Device',       deviceSchema)) as mongoose.Model<any>;
+export const ScanEvent = (mongoose.models.ScanEvent    || mongoose.model('ScanEvent',    scanEventSchema)) as mongoose.Model<any>;
+export const BookletStock = (mongoose.models.BookletStock || mongoose.model('BookletStock', bookletStockSchema)) as mongoose.Model<any>;

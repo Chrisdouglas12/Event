@@ -29,7 +29,7 @@ const StaffUserSchema = new Schema({
   totpSecret: { type: String, select: false },
 }, { collection: 'staff_users', timestamps: true });
 
-const StaffUser = mongoose.models.StaffUser || mongoose.model('StaffUser', StaffUserSchema);
+const StaffUser = (mongoose.models.StaffUser || mongoose.model('StaffUser', StaffUserSchema)) as mongoose.Model<any>;
 // ───────────────────────────────────────────────────────────────────────────
 
 async function createAdmin() {

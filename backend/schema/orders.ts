@@ -337,7 +337,7 @@ manualPaymentSchema.index({ status: 1 });
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const Order = mongoose.models.Order          || mongoose.model('Order',          orderSchema);
-export const Payment = mongoose.models.Payment        || mongoose.model('Payment',        paymentSchema);
-export const WebhookEvent = mongoose.models.WebhookEvent   || mongoose.model('WebhookEvent',   webhookEventSchema);
-export const ManualPayment = mongoose.models.ManualPayment  || mongoose.model('ManualPayment',  manualPaymentSchema);
+export const Order = (mongoose.models.Order          || mongoose.model('Order',          orderSchema)) as mongoose.Model<any>;
+export const Payment = (mongoose.models.Payment        || mongoose.model('Payment',        paymentSchema)) as mongoose.Model<any>;
+export const WebhookEvent = (mongoose.models.WebhookEvent   || mongoose.model('WebhookEvent',   webhookEventSchema)) as mongoose.Model<any>;
+export const ManualPayment = (mongoose.models.ManualPayment  || mongoose.model('ManualPayment',  manualPaymentSchema)) as mongoose.Model<any>;
