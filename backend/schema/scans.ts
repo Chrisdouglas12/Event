@@ -43,9 +43,9 @@ const deviceSchema = new mongoose.Schema(
 
 const scanEventSchema = new mongoose.Schema(
   {
-    attendeeId: {
+    participantId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Attendee',
+      ref: 'Participant',
       required: true,
     },
     scanType: {
@@ -165,7 +165,7 @@ deviceSchema.index({ isRevoked: 1 });
 
 // Scan events
 // idempotencyKey already unique via field-level `unique: true`
-scanEventSchema.index({ attendeeId: 1 });
+scanEventSchema.index({ participantId: 1 });
 scanEventSchema.index({ standId: 1 });
 scanEventSchema.index({ clientTimestamp: 1 });
 scanEventSchema.index({ result: 1 });

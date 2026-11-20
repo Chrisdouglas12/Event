@@ -1,7 +1,7 @@
-import { scannerDb, type CachedAttendee, type PendingScan } from "@/lib/offline/dexie-db";
+import { scannerDb, type CachedParticipant, type PendingScan } from "@/lib/offline/dexie-db";
 
 type ScanType = "arrival" | "booklet";
-type ScannerStatus = CachedAttendee["status"];
+type ScannerStatus = CachedParticipant["status"];
 type RecordScanResponse = {
   outcome: "checked_in" | "already_checked_in" | "issued" | "already_issued";
   status: ScannerStatus;
@@ -12,16 +12,16 @@ type RecordScanResponse = {
 
 export type ArrivalCheckInResult = {
   outcome: "checked_in" | "already_checked_in" | "queued";
-  attendee: CachedAttendee;
+  participant: CachedParticipant;
 };
 
 export type BookletIssueResult = {
   outcome: "issued" | "already_issued" | "queued";
-  attendee: CachedAttendee;
+  participant: CachedParticipant;
 };
 
 async function queueForSync(
-  attendee: CachedAttendee,
+  participant: CachedParticipant,
   scanType: ScanType,
   standId: string,
   clientTimestamp: string,
@@ -29,7 +29,7 @@ async function queueForSync(
   proof: { ticketToken?: string; groupOrderToken?: string },
 ): Promise<void> {
   const scan: PendingScan = {
-    attendeeId: attendee.attendeeId,
+    participantId: participant.participantId,
     scanType,
     standId,
     clientTimestamp,
@@ -38,8 +38,8 @@ async function queueForSync(
     synced: false,
   };
 
-  await scannerDb.transaction("rw", scannerDb.cachedAttendees, scannerDb.pendingScans, async () => {
-    await scannerDb.cachedAttendees.put(attendee);
+  await scannerDb.transaction("rw", scannerDb.cachedParticipants, scannerDb.pendingScans, async () => {
+    await scannerDb.cachedParticipants.put(participant);
     await scannerDb.pendingScans.add(scan);
   });
 
@@ -54,21 +54,21 @@ async function queueForSync(
   }
 }
 
-function offlineAttendee(attendee: CachedAttendee, scanType: ScanType, standId: string, timestamp: string): CachedAttendee {
+function offlineParticipant(participant: CachedParticipant, scanType: ScanType, standId: string, timestamp: string): CachedParticipant {
   if (scanType === "arrival") {
     return {
-      ...attendee,
-      status: attendee.bookletIssuedAt ? "booklet_issued" : "checked_in",
+      ...participant,
+      status: participant.bookletIssuedAt ? "booklet_issued" : "checked_in",
       checkedInAt: timestamp,
       checkedInStand: standId,
     };
   }
-  return { ...attendee, status: "booklet_issued", bookletIssuedAt: timestamp };
+  return { ...participant, status: "booklet_issued", bookletIssuedAt: timestamp };
 }
 
-function onlineAttendee(attendee: CachedAttendee, response: RecordScanResponse): CachedAttendee {
+function onlineParticipant(participant: CachedParticipant, response: RecordScanResponse): CachedParticipant {
   return {
-    ...attendee,
+    ...participant,
     status: response.status,
     checkedInAt: response.checkedInAt,
     bookletIssuedAt: response.bookletIssuedAt,
@@ -76,14 +76,14 @@ function onlineAttendee(attendee: CachedAttendee, response: RecordScanResponse):
   };
 }
 
-async function recordScan(attendee: CachedAttendee, scanType: ScanType, standId: string, ticketToken: string) {
+async function recordScan(participant: CachedParticipant, scanType: ScanType, standId: string, ticketToken: string) {
   const clientTimestamp = new Date().toISOString();
   const idempotencyKey = crypto.randomUUID();
 
   if (typeof navigator === "undefined" || !navigator.onLine) {
-    const updated = offlineAttendee(attendee, scanType, standId, clientTimestamp);
+    const updated = offlineParticipant(participant, scanType, standId, clientTimestamp);
     await queueForSync(updated, scanType, standId, clientTimestamp, idempotencyKey, { ticketToken });
-    return { outcome: "queued" as const, attendee: updated };
+    return { outcome: "queued" as const, participant: updated };
   }
 
   let response: Response;
@@ -95,46 +95,46 @@ async function recordScan(attendee: CachedAttendee, scanType: ScanType, standId:
     });
   } catch {
     // Reuse the same idempotency key if the server committed but the response was lost.
-    const updated = offlineAttendee(attendee, scanType, standId, clientTimestamp);
+    const updated = offlineParticipant(participant, scanType, standId, clientTimestamp);
     await queueForSync(updated, scanType, standId, clientTimestamp, idempotencyKey, { ticketToken });
-    return { outcome: "queued" as const, attendee: updated };
+    return { outcome: "queued" as const, participant: updated };
   }
 
   const payload = await response.json().catch(() => null) as (RecordScanResponse & { error?: string }) | null;
   if (!response.ok || !payload?.outcome || !payload.status) {
     throw new Error(payload?.error || "The scan could not be confirmed. Retry the scan or sync this device.");
   }
-  const updated = onlineAttendee(attendee, payload);
-  await scannerDb.cachedAttendees.put(updated);
-  return { outcome: payload.outcome, attendee: updated };
+  const updated = onlineParticipant(participant, payload);
+  await scannerDb.cachedParticipants.put(updated);
+  return { outcome: payload.outcome, participant: updated };
 }
 
 /** Online arrivals use the server's row lock and conditional update. Offline arrivals are queued locally. */
-export async function recordArrivalCheckIn(attendee: CachedAttendee, standId: string, ticketToken: string): Promise<ArrivalCheckInResult> {
-  const result = await recordScan(attendee, "arrival", standId, ticketToken);
+export async function recordArrivalCheckIn(participant: CachedParticipant, standId: string, ticketToken: string): Promise<ArrivalCheckInResult> {
+  const result = await recordScan(participant, "arrival", standId, ticketToken);
   if (result.outcome === "queued") return result;
-  return { outcome: result.outcome as "checked_in" | "already_checked_in", attendee: result.attendee };
+  return { outcome: result.outcome as "checked_in" | "already_checked_in", participant: result.participant };
 }
 
 /** Booklet issue requires a recorded arrival online; offline issue remains queued for server validation. */
-export async function issueConferenceBooklet(attendee: CachedAttendee, standId: string, ticketToken: string): Promise<BookletIssueResult> {
-  const result = await recordScan(attendee, "booklet", standId, ticketToken);
+export async function issueConferenceBooklet(participant: CachedParticipant, standId: string, ticketToken: string): Promise<BookletIssueResult> {
+  const result = await recordScan(participant, "booklet", standId, ticketToken);
   if (result.outcome === "queued") return result;
-  return { outcome: result.outcome as "issued" | "already_issued", attendee: result.attendee };
+  return { outcome: result.outcome as "issued" | "already_issued", participant: result.participant };
 }
 
 /** Applies an offline group action as one IndexedDB transaction and queues each seat for idempotent sync. */
-export async function recordGroupArrivalCheckIn(attendees: CachedAttendee[], standId: string, groupOrderToken: string): Promise<CachedAttendee[]> {
+export async function recordGroupArrivalCheckIn(participants: CachedParticipant[], standId: string, groupOrderToken: string): Promise<CachedParticipant[]> {
   const clientTimestamp = new Date().toISOString();
-  const eligibleIds = new Set(attendees.filter((attendee) => attendee.status === "confirmed").map((attendee) => attendee.attendeeId));
-  const updated = attendees.map((attendee) => eligibleIds.has(attendee.attendeeId)
-    ? { ...attendee, status: "checked_in" as const, checkedInAt: clientTimestamp, checkedInStand: standId }
-    : attendee
+  const eligibleIds = new Set(participants.filter((participant) => participant.status === "confirmed").map((participant) => participant.participantId));
+  const updated = participants.map((participant) => eligibleIds.has(participant.participantId)
+    ? { ...participant, status: "checked_in" as const, checkedInAt: clientTimestamp, checkedInStand: standId }
+    : participant
   );
-  const pending: PendingScan[] = attendees
-    .filter((attendee) => eligibleIds.has(attendee.attendeeId))
-    .map((attendee) => ({
-      attendeeId: attendee.attendeeId,
+  const pending: PendingScan[] = participants
+    .filter((participant) => eligibleIds.has(participant.participantId))
+    .map((participant) => ({
+      participantId: participant.participantId,
       scanType: "arrival",
       standId,
       clientTimestamp,
@@ -143,8 +143,8 @@ export async function recordGroupArrivalCheckIn(attendees: CachedAttendee[], sta
       synced: false,
     }));
 
-  await scannerDb.transaction("rw", scannerDb.cachedAttendees, scannerDb.pendingScans, async () => {
-    await scannerDb.cachedAttendees.bulkPut(updated);
+  await scannerDb.transaction("rw", scannerDb.cachedParticipants, scannerDb.pendingScans, async () => {
+    await scannerDb.cachedParticipants.bulkPut(updated);
     if (pending.length) await scannerDb.pendingScans.bulkAdd(pending);
   });
   return updated;

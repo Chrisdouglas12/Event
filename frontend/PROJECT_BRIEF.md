@@ -6,7 +6,7 @@
 - This brief is long. Do NOT build everything in one pass. First produce an implementation plan (architecture, folder structure, DB schema, page list, risks, open questions) and WAIT for my approval. Then build phase by phase (section 15), stopping at the end of each phase for review.
 - Never invent content. Wherever copy, a photo, a name, a price or a date is missing, render a clearly labelled placeholder (e.g. a grey box: "PHOTO NEEDED: hero, 1920x1080, people worshipping") and log it in CONTENT_REQUESTS.md (page, slot, type, dimensions). No lorem ipsum, no filler copy, no stock-looking people. At the start of each phase, give me the batch of content you need for that phase.
 - Reference screenshots are in /design-reference (KILO seminar site). They are the visual source of truth for layout and styling.
-- This is a real church event with real money and about 10,000 attendees. Favour correctness, security and resilience over cleverness.
+- This is a real church event with real money and about 10,000 participants. Favour correctness, security and resilience over cleverness.
 - Today is 8 Nov 2026. The event starts 8 Dec 2026. Follow the phased plan so registration goes live as early as possible.
 
 ## 1. PROJECT FACTS (CONFIRMED)
@@ -18,11 +18,11 @@
 - Venue: Holiness Campground, behind FGC, Kwali, Abuja, Nigeria. [Map pin and directions: TBD]
 - Contact phone: +234 701 566 8452 (render as tel: link and a WhatsApp link). Contact email: NONE YET (design every place an email appears so it can be added later via settings; never hard-code).
 - Featured ministers: Pastor Paul Rika; Evang. Linda Paul Rika. More ministers TBD. Photos and bios TBD.
-- Registration price (flat, every attendee, no category differences): NGN 5,000 | USD 20 | EUR 20 | GBP 20.
+- Registration price (flat, every participant, no category differences): NGN 5,000 | USD 20 | EUR 20 | GBP 20.
 - Registration deadline: 11 December 2026 (closes automatically 23:59 WAT; admin can extend).
-- Accommodation and meals: NOT included. Do not build accommodation/meal fields. Add a "Camp Info / What to bring" page and FAQ entries stating attendees arrange their own accommodation and food.
+- Accommodation and meals: NOT included. Do not build accommodation/meal fields. Add a "Camp Info / What to bring" page and FAQ entries stating participants arrange their own accommodation and food.
 - Expected attendance: about 10,000, may be higher or lower. Treat 10,000 as a planning figure, NOT a hard cap.
-- Registration mix: about 30 to 50% group (church/parish) orders, rest individuals.
+- Registration mix: about 30 to 50% group (chapter/zone) orders, rest individuals.
 - Programme: not available yet. The programme booklet arrives on 8 Dec 2026.
 - Logo: will be supplied. Use a placeholder lockup until then.
 - Network at camp is unreliable; scanner must work offline. Registrants on mobile data may have slow or dropping connections.
@@ -32,8 +32,8 @@
 ## 2. ENGINEERING PRINCIPLES (NON-NEGOTIABLE)
 1. Server is the source of truth for money, capacity and ticket state. Never trust the client.
 2. Every retryable write (create order, webhook, check-in sync) is idempotent.
-3. Separate WHO PAYS from WHO ATTENDS: Order (payer) -> many Attendees (each with own QR).
-4. An individual is just an order with one attendee. One flow, not two.
+3. Separate WHO PAYS from WHO ATTENDS: Order (payer) -> many Participants (each with own QR).
+4. An individual is just an order with one participant. One flow, not two.
 5. Model state as explicit state machines, not scattered booleans.
 6. Boring architecture: one well-structured monolith, managed services, no microservices, no Kubernetes.
 7. Everything configurable (prices, currencies, provider routing, capacity, fee policy, dates, deadline, contact details, programme, ministers) lives in DB/settings, not code.
@@ -94,7 +94,7 @@ Goal: looks hand-designed by a good studio, NOT AI-generated. Replicate the KILO
 Public: Home; About Horemow; The Conference (theme, what to expect); Programme (day tabs 8, 9, 10, 11 Dec, see 5.1); Ministers; Register (individual or group); Group registration landing; Camp Info / What to Bring; FAQ; Contact; Privacy Policy; Terms and Refund Policy (draft, see 5.2).
 Utility: Payment status page (polling); My Ticket (QR, download PNG/PDF); Resend My Ticket; Group Leader Dashboard; Group Member Invite page; branded 404/500.
 Staff: Login; Scanner (PWA); Walk-in registration; Lookup.
-Admin: Dashboard; Orders; Attendees; Groups; Manual payment approvals; Staff and roles; Devices; Booklet stock; Messaging; Reports/exports; Conflicts; Audit log; Settings (event, prices per currency, provider routing, optional capacity and alert thresholds, fee policy, deadline, contact details, ministers, programme).
+Admin: Dashboard; Orders; Participants; Groups; Manual payment approvals; Staff and roles; Devices; Booklet stock; Messaging; Reports/exports; Conflicts; Audit log; Settings (event, prices per currency, provider routing, optional capacity and alert thresholds, fee policy, deadline, contact details, ministers, programme).
 
 ### 5.1 Ministers and Programme content rules
 - Ministers page: admin-editable list (name, title, photo, bio, socials, order). Initial entries: Pastor Paul Rika; Evang. Linda Paul Rika (photos/bios placeholders). Include a designed "More ministers to be announced" card.
@@ -108,15 +108,15 @@ Admin: Dashboard; Orders; Attendees; Groups; Manual payment approvals; Staff and
 
 ## 6. USER FLOWS
 ### 6.1 Individual
-1. Select currency (default NGN for Nigerian users/+234 numbers; always switchable) -> short form: full name, phone (international input, default +234, E.164), country, state (Nigeria only), parish/church (optional), guardian name and phone if under 18, email (OPTIONAL but encouraged; required only when paying with PayPal), consent checkbox, Turnstile.
-2. Server creates Order(pending_payment) + Attendee(unconfirmed), computes the amount from the price table, initialises the provider for that currency, redirects to hosted checkout. If an optional capacity is configured, also create a capacity reservation (10 to 15 min expiry); if capacity is unset, skip reservations.
+1. Select currency (default NGN for Nigerian users/+234 numbers; always switchable) -> short form: full name, phone (international input, default +234, E.164), country, state (Nigeria only), chapter/zone (optional), guardian name and phone if under 18, email (OPTIONAL but encouraged; required only when paying with PayPal), consent checkbox, Turnstile.
+2. Server creates Order(pending_payment) + Participant(unconfirmed), computes the amount from the price table, initialises the provider for that currency, redirects to hosted checkout. If an optional capacity is configured, also create a capacity reservation (10 to 15 min expiry); if capacity is unset, skip reservations.
 3. On return, show the Payment Status page which polls OUR API (never trust redirect params). Confirmation only via verified webhook or server-side verification.
 4. On success show the ticket with QR, download button, ref code (`HGC-XXXXXX`), and queue SMS (and email if provided). Showing the QR on screen is the primary delivery.
 
 ### 6.2 Group
-1. Leader picks "Group registration", enters church/parish name, leader contact, number of attendees (single currency per order).
-2. Leader either (a) enters every attendee's details, or (b) pays for N seats and shares an invite link; each member fills their own details to claim a seat. Partial completion supported.
-3. One payment, one receipt. Each attendee gets own QR; the order also gets an ORDER QR for group express check-in.
+1. Leader picks "Group registration", enters chapter/zone name, leader contact, number of participants (single currency per order).
+2. Leader either (a) enters every participant's details, or (b) pays for N seats and shares an invite link; each member fills their own details to claim a seat. Partial completion supported.
+3. One payment, one receipt. Each participant gets own QR; the order also gets an ORDER QR for group express check-in.
 4. Leader dashboard: seats, completion status, resend links, download all tickets as ZIP/PDF.
 5. Substitution deadline configurable; all changes logged.
 
@@ -128,11 +128,11 @@ Admin: Dashboard; Orders; Attendees; Groups; Manual payment approvals; Staff and
 - Manual bank transfer (NGN only, and as foreign-currency fallback if PayPal is disabled; owner will supply account details): order stays pending, admin approves against the bank statement only (never from screenshots), audit-logged.
 
 ## 7. DATA MODEL (adjust sensibly, keep these concepts)
-events; ticket_types; ticket_prices (ticket_type_id, currency, amount_minor) so any ticket type has a price per currency; provider_routes (currency -> provider, preferred flag, enabled); orders (status, payer, currency, total_minor, fee_minor, reference, expires_at); payments (provider, provider_ref/capture_id, status, currency, raw_payload_hash); webhook_events (id, provider, signature_valid, processed_at, idempotency); attendees (order_id, ticket_type_id, name, phone_e164, email nullable, country, state, parish, guardian fields, status, qr_token_hash, ref_code); groups; group_seats/invites; scan_events (attendee_id, type: arrival|booklet|daily_attendance|custom, staff_id, device_id, stand_id, client_timestamp, server_timestamp, idempotency_key, result); staff_users (attendant|supervisor|finance|admin); devices; booklet_stock (per stand/day); manual_payments; messages_log; audit_log (append-only); exports_log; reservations; ministers; programme_items; settings.
+events; ticket_types; ticket_prices (ticket_type_id, currency, amount_minor) so any ticket type has a price per currency; provider_routes (currency -> provider, preferred flag, enabled); orders (status, payer, currency, total_minor, fee_minor, reference, expires_at); payments (provider, provider_ref/capture_id, status, currency, raw_payload_hash); webhook_events (id, provider, signature_valid, processed_at, idempotency); participants (order_id, ticket_type_id, name, phone_e164, email nullable, country, state, chapterZone, guardian fields, status, qr_token_hash, ref_code); groups; group_seats/invites; scan_events (participant_id, type: arrival|booklet|daily_attendance|custom, staff_id, device_id, stand_id, client_timestamp, server_timestamp, idempotency_key, result); staff_users (attendant|supervisor|finance|admin); devices; booklet_stock (per stand/day); manual_payments; messages_log; audit_log (append-only); exports_log; reservations; ministers; programme_items; settings.
 - Scan types are generic so meals/accommodation/daily attendance can be added later without schema redesign.
 - Soft deletes. Indexes on ref_code, phone_e164, email, qr_token_hash, order status, expires_at.
 - Order states: draft -> pending_payment -> paid | expired | failed -> refunded | partially_refunded (plus disputed flag).
-- Attendee states: unconfirmed -> confirmed -> checked_in -> booklet_issued (booklet separate from check-in).
+- Participant states: unconfirmed -> confirmed -> checked_in -> booklet_issued (booklet separate from check-in).
 
 ## 8. PAYMENTS AND WEBHOOKS
 ### 8.1 Providers (CONFIRMED: Paystack + PayPal; no Flutterwave)
@@ -159,14 +159,14 @@ events; ticket_types; ticket_prices (ticket_type_id, currency, amount_minor) so 
 - Scanner devices hold ONLY the public key (a stolen device cannot forge tickets). The offline cache holds token hashes and minimal display data (name, category, group, booklet status), never full phone/email.
 - Short ref code on every ticket for manual lookup.
 - Ticket page/PDF: branded, high-contrast large QR, name, dates, venue, ref code, "Show this at the registration stand."
-- Group ORDER QR opens a checklist of all attendees for one-transaction check-in.
+- Group ORDER QR opens a checklist of all participants for one-transaction check-in.
 
 ## 10. STAFF SCANNER PWA (OFFLINE-FIRST)
 - Installable PWA, camera-based, large touch targets, one-handed, sunlight-readable, screen kept awake.
-- Pre-event sync of the attendee list into IndexedDB; delta-sync every few minutes when online. Clear online/offline/sync-pending indicator with queue size.
+- Pre-event sync of the participant list into IndexedDB; delta-sync every few minutes when online. Clear online/offline/sync-pending indicator with queue size.
 - Result screens: full-screen GREEN (valid: name, group, booklet status), RED (invalid/forged), AMBER (already checked in: when, by whom, which stand). Distinct sound and vibration. Result in about 1 second.
 - Actions: Check in; Issue booklet (separate confirmed step); Undo (supervisor only, logged).
-- Offline check-ins queue locally with client idempotency key and timestamp, then sync. On conflict (same attendee at two stands offline) first timestamp wins; the other is flagged in the admin Conflicts screen. Never silently drop.
+- Offline check-ins queue locally with client idempotency key and timestamp, then sync. On conflict (same participant at two stands offline) first timestamp wins; the other is flagged in the admin Conflicts screen. Never silently drop.
 - Online path atomic: `UPDATE ... WHERE id = X AND checked_in_at IS NULL`.
 - Fallback lookup by name, phone or ref code; manual check-in needs supervisor PIN, reason, audit entry.
 - Per-staff login, short sessions, PIN quick-unlock, instant device/account revoke. Optional stand slices (alphabet/group) to reduce offline overlap.
@@ -174,7 +174,7 @@ events; ticket_types; ticket_prices (ticket_type_id, currency, amount_minor) so 
 
 ## 11. ADMIN DASHBOARD
 - Live counts: registered, paid, pending, checked in, booklets issued vs remaining (per stand/day), revenue PER CURRENCY, attendance vs configurable alert thresholds (e.g. 8,000 / 9,000 / 10,000). Charts: registrations over time, check-ins per hour.
-- Orders/attendees tables: search, filters, pagination, bulk actions, resend ticket, edit attendee (logged), substitution flow.
+- Orders/participants tables: search, filters, pagination, bulk actions, resend ticket, edit participant (logged), substitution flow.
 - Manual payment approvals; walk-in registration (cash NGN, POS, or gateway link) that issues a ticket AND checks in in one flow.
 - Conflict review; staff and roles with enforced 2FA for admin/finance; role-restricted, logged CSV exports; searchable append-only audit log.
 - Settings: prices per currency, provider routing, optional capacity, fee policy, dates, deadline, contact details, messaging templates, ministers, programme.
@@ -209,10 +209,10 @@ events; ticket_types; ticket_prices (ticket_type_id, currency, amount_minor) so 
 
 ## 15. DELIVERY PHASES (event starts 8 Dec 2026)
 - Phase 0 (days 1 to 2): plan, repo, CI, design tokens, fonts, DB schema, environments, content manifest.
-- Phase 1 (days 3 to 10) GO LIVE ASAP: marketing site (Home, About, Conference, Programme empty state, Ministers, Camp Info, FAQ, Contact), Register (individual + group, multi-currency), Paystack + PayPal integrations with webhooks and reconciliation, ticket page + SMS (email optional), payment recovery flows, basic admin (orders/attendees/export), audit log, backups, monitoring, LAUNCH GATE (live test payment per provider).
+- Phase 1 (days 3 to 10) GO LIVE ASAP: marketing site (Home, About, Conference, Programme empty state, Ministers, Camp Info, FAQ, Contact), Register (individual + group, multi-currency), Paystack + PayPal integrations with webhooks and reconciliation, ticket page + SMS (email optional), payment recovery flows, basic admin (orders/participants/export), audit log, backups, monitoring, LAUNCH GATE (live test payment per provider).
 - Phase 2 (days 11 to 20): staff auth, scanner PWA with offline queue, atomic check-in, booklet issuance, group express lane, walk-in registration, manual payment approvals, full admin dashboard, booklet stock.
 - Phase 3 (days 21 to 26): security review, load tests, offline/sync chaos tests, mock check-in with about 10 volunteers and 300 fake tickets (duplicates, forged QR, dead phone, no internet), restore test, accessibility audit, pixel-level polish.
-- Phase 4 (days 27 to 30): freeze, final rehearsal, printed "Plan B" attendee list and procedure sheet, on-site checklist.
+- Phase 4 (days 27 to 30): freeze, final rehearsal, printed "Plan B" participant list and procedure sheet, on-site checklist.
 - DEFERRED (do NOT build unless asked): waitlist, name-transfer self-service, WhatsApp delivery, local venue hub, wallet passes, Flutterwave.
 
 ## 16. DEFINITION OF DONE (per phase)

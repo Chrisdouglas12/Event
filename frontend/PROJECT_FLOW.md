@@ -6,13 +6,13 @@ This document separates flows already implemented in the repository from operati
 
 ```mermaid
 flowchart TD
-  A[Attendee opens registration] --> B[Registration config reads active prices, deadline and providers]
+  A[Participant opens registration] --> B[Registration config reads active prices, deadline and providers]
   B --> C[Server validates consent, contact data, price, capacity and idempotency]
-  C --> D[Order, attendees and payment record are stored in Supabase]
+  C --> D[Order, participants and payment record are stored in Supabase]
   D --> E[Paystack or PayPal hosted checkout]
   E --> F[Signed provider webhook or status reconciliation]
   F --> G[Server re-fetches provider transaction and matches order, amount and currency]
-  G --> H[One database transaction confirms attendees and queues ticket messages]
+  G --> H[One database transaction confirms participants and queues ticket messages]
   H --> I[Ticket page shows the QR and short reference]
   H --> J[Maintenance cron delivers SMS/email with retry and dead-letter state]
   J --> K[Admin can review/retry; ticket recovery queues a resend]
@@ -25,13 +25,13 @@ Registration settings are loaded from the server, and the browser does not set t
 ```mermaid
 flowchart TD
   A[Staff signs in] --> B[Scanner page requires attendant role]
-  B --> C[Sync paid attendee roster into IndexedDB]
+  B --> C[Sync paid participant roster into IndexedDB]
   C --> D[Camera, photo QR or manual ticket reference]
   D --> E[Verify signed ticket or group QR locally against cached roster]
   E --> F{Network available?}
   F -->|Yes| G[Send signed proof; server verifies signature and database token hash]
-  G --> H[Atomic server check-in writes attendee state and scan event]
-  H --> I[Refresh local attendee state; show result sheet]
+  G --> H[Atomic server check-in writes participant state and scan event]
+  H --> I[Refresh local participant state; show result sheet]
   F -->|No| J[IndexedDB updates local roster and queues signed proof with idempotency key]
   J --> K[Reconnect/manual sync sends queued scans]
   K --> L[Server verifies proof, applies timestamp ordering and records conflicts]
@@ -46,14 +46,14 @@ The scanner provides online check-in, offline queuing, signed group-order check-
 
 ```mermaid
 flowchart LR
-  A[Admin configures bank account and NGN route] --> B[Attendee starts registration]
+  A[Admin configures bank account and NGN route] --> B[Participant starts registration]
   B --> C[Server creates a pending order and 24-hour manual payment record]
-  C --> D[Attendee sees bank details and server-calculated amount]
-  D --> E[Attendee submits sender bank/name and transfer reference]
+  C --> D[Participant sees bank details and server-calculated amount]
+  D --> E[Participant submits sender bank/name and transfer reference]
   E --> F[Order remains pending; no receipt image is accepted]
   F --> G[Finance compares the claim with the bank statement]
   G -->|Approved| H[Order is paid and ticket messages are queued]
-  G -->|Rejected| I[Claim is audited; attendee may resolve or resubmit]
+  G -->|Rejected| I[Claim is audited; participant may resolve or resubmit]
 ```
 
 The bank account information must be supplied and configured by the organizer. Submitting transfer details never confirms payment.
@@ -67,7 +67,7 @@ flowchart LR
   C --> D[Run low-value Paystack and PayPal payments through settlement]
   D --> E[Run security, accessibility, load, offline-sync and restore checks]
   E --> F[Rehearse with 10 staff and 300 test tickets]
-  F --> G[Freeze configuration and print protected Plan B attendee list]
+  F --> G[Freeze configuration and print protected Plan B participant list]
   G --> H[Open public registration with monitoring and support process]
   H --> I[Conference-day check-in, booklet issue, walk-ins and finance reconciliation]
   I --> J[Archive/retain data under owner-approved policy and close out event]

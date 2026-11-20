@@ -5,10 +5,10 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 
 import { Order, Payment } from '../schema/orders.ts';
-import { ORDER_STATUSES, CURRENCIES } from '../constants/enums.ts';
-import { TicketType } from '../schema/attendees.ts'; 
-import { Attendee } from '../schema/attendees.ts';
-import { Group, GroupSeat } from '../schema/attendees.ts';
+import { ATTENDANCE_MODES, ORDER_STATUSES, CURRENCIES } from '../constants/enums.ts';
+import { TicketType } from '../schema/participants.ts';
+import { Participant } from '../schema/participants.ts';
+import { Group, GroupSeat } from '../schema/participants.ts';
 
 const router = express.Router();
 
@@ -32,12 +32,12 @@ function hashQrToken(rawToken: string): string {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
 }
 
-function qrTokenFor(attendeeId: unknown): string {
+function qrTokenFor(participantId: unknown): string {
   const secret = process.env.QR_TOKEN_SECRET;
   if (!secret || secret.length < 16) throw new Error('QR_TOKEN_SECRET is not set (min 16 chars)');
   return crypto
     .createHmac('sha256', secret)
-    .update(`attendee:${String(attendeeId)}`)
+    .update(`participant:${String(participantId)}`)
     .digest('base64url')
     .slice(0, 32);
 }
@@ -65,7 +65,7 @@ function phonesMatch(a: unknown, b: unknown): boolean {
 }
 
 async function loadTickets(order: any) {
-  const attendees: any[] = await Attendee.find({ orderId: order._id, deletedAt: null }).lean();
+  const participants: any[] = await Participant.find({ orderId: order._id, deletedAt: null }).lean();
   const grp: any = await Group.findOne({ orderId: order._id }).lean();
 
   return {
@@ -76,7 +76,7 @@ async function loadTickets(order: any) {
       isGroup: !!order.isGroup,
       groupName: order.groupName || null,
     },
-    attendees: attendees.map((at) => ({
+    participants: participants.map((at) => ({
       id: String(at._id),
       refCode: at.refCode,
       name: at.name,
@@ -104,22 +104,28 @@ function toE164(phone: unknown): string | null {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function validateAttendee(a: any): { ok: true; value: any } | { ok: false; error: string } {
-  if (!a || typeof a !== 'object') return { ok: false, error: 'Attendee must be an object' };
+function attendanceModeOrFallback(value: unknown): string {
+  return typeof value === 'string' && (ATTENDANCE_MODES as readonly string[]).includes(value)
+    ? value
+    : 'not_sure';
+}
+
+function validateParticipant(a: any): { ok: true; value: any } | { ok: false; error: string } {
+  if (!a || typeof a !== 'object') return { ok: false, error: 'Participant must be an object' };
 
   if (!a.name || typeof a.name !== 'string' || !a.name.trim())
-    return { ok: false, error: 'Attendee name is required' };
+    return { ok: false, error: 'Participant name is required' };
 
   const phoneE164 = toE164(a.phoneE164);
-  if (!phoneE164) return { ok: false, error: 'Attendee phone is invalid' };
+  if (!phoneE164) return { ok: false, error: 'Participant phone is invalid' };
 
   if (a.email && !EMAIL_RE.test(a.email))
-    return { ok: false, error: 'Attendee email is invalid' };
+    return { ok: false, error: 'Participant email is invalid' };
 
   const country = (a.country || 'Nigeria').trim();
 
   if (country === 'Nigeria' && !a.state)
-    return { ok: false, error: 'State is required for Nigerian attendees' };
+    return { ok: false, error: 'State is required for Nigeria participants' };
 
   const isMinor = !!a.isMinor;
   if (isMinor) {
@@ -130,7 +136,7 @@ function validateAttendee(a: any): { ok: true; value: any } | { ok: false; error
   }
 
   if (!a.ticketTypeId || !mongoose.isValidObjectId(a.ticketTypeId))
-    return { ok: false, error: 'Attendee ticketTypeId is invalid' };
+    return { ok: false, error: 'Participant ticketTypeId is invalid' };
 
   return {
     ok: true,
@@ -141,7 +147,8 @@ function validateAttendee(a: any): { ok: true; value: any } | { ok: false; error
       email: a.email ? a.email.trim().toLowerCase() : null,
       country,
       state: a.state ? a.state.trim() : null,
-      parish: a.parish ? a.parish.trim() : null,
+      chapterZone: a.chapterZone ? a.chapterZone.trim() : null,
+      attendanceMode: attendanceModeOrFallback(a.attendanceMode),
       isMinor,
       guardianName: isMinor ? a.guardianName.trim() : null,
       guardianPhoneE164: isMinor ? toE164(a.guardianPhoneE164) : null,
@@ -208,7 +215,7 @@ async function ensureStandardTicketType(): Promise<any | null> {
   if (!ensuringTicketType) {
     ensuringTicketType = (async () => {
       try {
-        const name = (process.env.TICKET_NAME || '').trim() || 'Attendee Pass';
+        const name = (process.env.TICKET_NAME || '').trim() || 'Participant Pass';
         const doc: any = await TicketType.findOneAndUpdate(
           { name },
           { $setOnInsert: { isActive: true, prices } },
@@ -584,7 +591,9 @@ async function createPendingOrder(input: {
   ticketTypeId: any;
   payer: { name: string; phoneE164: string; email: string | null };
   seats: number;
-  attendee: any;
+  attendanceMode: string;
+  attendanceCounts: { physically: number; online: number; not_sure: number } | null;
+  participant: any;
   group: { name: string; totalSeats: number } | null;
 }) {
   const session = await mongoose.startSession();
@@ -606,6 +615,7 @@ async function createPendingOrder(input: {
             payerEmail: input.payer.email,
             isGroup: !!input.group,
             groupName: input.group?.name || null,
+            attendanceMode: input.attendanceMode,
             seats: input.seats,
             ticketTypeId: input.ticketTypeId,
             expiresAt: new Date(Date.now() + 1000 * 60 * 30),
@@ -620,11 +630,12 @@ async function createPendingOrder(input: {
           [
             {
               orderId: order._id,
-              churchOrParishName: input.group.name,
+              chapterZoneName: input.group.name,
               leaderName: input.payer.name,
               leaderPhoneE164: input.payer.phoneE164,
               leaderEmail: input.payer.email,
               totalSeats: input.group.totalSeats,
+              attendanceCounts: input.attendanceCounts,
               claimedSeats: 1,
               managementToken: generateToken(32),
             },
@@ -633,22 +644,23 @@ async function createPendingOrder(input: {
         );
       }
 
-      const [attendee] = await Attendee.create(
+      const [participant] = await Participant.create(
         [
           {
             orderId: order._id,
             groupId: createdGroup ? createdGroup._id : null,
             ticketTypeId: input.ticketTypeId,
             refCode: generateRefCode(),
-            name: input.attendee.name,
-            phoneE164: input.attendee.phoneE164,
-            email: input.attendee.email,
-            country: input.attendee.country,
-            state: input.attendee.state,
-            parish: input.attendee.parish,
-            isMinor: input.attendee.isMinor,
-            guardianName: input.attendee.guardianName,
-            guardianPhoneE164: input.attendee.guardianPhoneE164,
+            name: input.participant.name,
+            phoneE164: input.participant.phoneE164,
+            email: input.participant.email,
+            country: input.participant.country,
+            state: input.participant.state,
+            chapterZone: input.participant.chapterZone,
+            attendanceMode: input.participant.attendanceMode,
+            isMinor: input.participant.isMinor,
+            guardianName: input.participant.guardianName,
+            guardianPhoneE164: input.participant.guardianPhoneE164,
             status: 'unconfirmed',
             qrTokenHash: hashQrToken(generateToken(24)),
           },
@@ -661,7 +673,7 @@ async function createPendingOrder(input: {
           {
             groupId: createdGroup._id,
             inviteCode: generateToken(12),
-            attendeeId: attendee._id,
+            participantId: participant._id,
             isClaimed: true,
             claimedAt: new Date(),
           },
@@ -670,7 +682,7 @@ async function createPendingOrder(input: {
           seats.push({
             groupId: createdGroup._id,
             inviteCode: generateToken(12),
-            attendeeId: null,
+            participantId: null,
             isClaimed: false,
           });
         }
@@ -708,7 +720,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Verification failed. Please try again.' });
     }
 
-    const { currency, payer, parish, group } = body;
+    const { currency, payer, chapterZone, group } = body;
     const isGroup = !!body.isGroup;
 
     if (!currency || !(CURRENCIES as readonly string[]).includes(currency)) {
@@ -716,6 +728,13 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     }
     if (body.consent !== true) {
       return res.status(400).json({ error: 'Consent is required' });
+    }
+
+    const attendanceMode = typeof body.attendanceMode === 'string' && (ATTENDANCE_MODES as readonly string[]).includes(body.attendanceMode)
+      ? body.attendanceMode
+      : null;
+    if (!attendanceMode) {
+      return res.status(400).json({ error: 'Please select how you will attend: physically, online, or not sure.' });
     }
 
     const provider = providerFor(currency);
@@ -767,14 +786,22 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
 
     let seats = 1;
     let groupInput: { name: string; totalSeats: number } | null = null;
+    let attendanceCounts: { physically: number; online: number; not_sure: number } | null = null;
     if (isGroup) {
       const name = typeof group?.name === 'string' ? group.name.trim() : '';
-      if (!name) return res.status(400).json({ error: 'Church / parish name is required' });
+      if (!name) return res.status(400).json({ error: 'Chapter / Zone name is required' });
       if (!Number.isInteger(group?.totalSeats) || group.totalSeats < 2 || group.totalSeats > 500) {
         return res.status(400).json({ error: 'totalSeats must be a whole number between 2 and 500' });
       }
       seats = group.totalSeats;
-      groupInput = { name, totalSeats: seats };
+      const rawCounts = body.groupAttendance;
+      const physically = Number(rawCounts?.physically);
+      const online = Number(rawCounts?.online);
+      const notSure = Number(rawCounts?.not_sure);
+      if (![physically, online, notSure].every((n) => Number.isInteger(n) && n >= 0) || physically + online + notSure !== seats) {
+        return res.status(400).json({ error: `Group attendance counts must be whole numbers that add up to ${seats} seats.` });
+      }
+      attendanceCounts = { physically, online, not_sure: notSure };
     }
 
     const tt = await getStandardTicketType();
@@ -804,13 +831,16 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
         ticketTypeId: tt._id,
         payer: { name: payerName, phoneE164: payerPhone, email: payerEmail },
         seats,
-        attendee: {
+        attendanceMode,
+        attendanceCounts,
+        participant: {
           name: payerName,
           phoneE164: payerPhone,
           email: payerEmail,
           country,
           state: country === 'Nigeria' ? state : null,
-          parish: typeof parish === 'string' && parish.trim() ? parish.trim() : null,
+          chapterZone: typeof chapterZone === 'string' && chapterZone.trim() ? chapterZone.trim() : null,
+          attendanceMode,
           isMinor,
           guardianName,
           guardianPhoneE164,
@@ -857,8 +887,8 @@ async function markOrderPaid(order: any): Promise<void> {
         { session }
       );
 
-      const attendees: any[] = await Attendee.find({ orderId: order._id }).session(session);
-      for (const at of attendees) {
+      const participants: any[] = await Participant.find({ orderId: order._id }).session(session);
+      for (const at of participants) {
         at.qrTokenHash = hashQrToken(qrTokenFor(at._id));
         at.status = 'confirmed';
         await at.save({ session });
@@ -909,32 +939,32 @@ router.post('/register', async (req: Request, res: Response) => {
   session.startTransaction();
 
   try {
-    const { currency, buyer, attendees, group } = req.body || {};
+    const { currency, buyer, participants, group } = req.body || {};
 
     // 👇 FIXED TYPESCRIPT ERROR HERE
     if (!currency || !(CURRENCIES as readonly string[]).includes(currency)) {
       return await abortWith(session, res, 400, `currency must be one of: ${CURRENCIES.join(', ')}`);
     }
 
-    if (!Array.isArray(attendees) || attendees.length === 0) {
-      return await abortWith(session, res, 400, 'At least one attendee is required');
+    if (!Array.isArray(participants) || participants.length === 0) {
+      return await abortWith(session, res, 400, 'At least one participant is required');
     }
 
-    if (attendees.length > 100) {
-      return await abortWith(session, res, 400, 'Max 100 attendees per order');
+    if (participants.length > 100) {
+      return await abortWith(session, res, 400, 'Max 100 participants per order');
     }
 
     const validated = [];
-    for (let i = 0; i < attendees.length; i++) {
-      const v = validateAttendee(attendees[i]);
-      if (!v.ok) return await abortWith(session, res, 400, `Attendees[${i}]: ${v.error}`);
+    for (let i = 0; i < participants.length; i++) {
+      const v = validateParticipant(participants[i]);
+      if (v.ok === false) return await abortWith(session, res, 400, `Participants[${i}]: ${v.error}`);
       validated.push(v.value);
     }
 
     let validLeaderPhone = null;
     if (group) {
-      if (!group.churchOrParishName || !group.leaderName || !group.leaderPhoneE164) {
-        return await abortWith(session, res, 400, 'group requires churchOrParishName, leaderName, leaderPhoneE164');
+      if (!group.chapterZoneName || !group.leaderName || !group.leaderPhoneE164) {
+        return await abortWith(session, res, 400, 'group requires chapterZoneName, leaderName, leaderPhoneE164');
       }
 
       validLeaderPhone = toE164(group.leaderPhoneE164);
@@ -943,11 +973,11 @@ router.post('/register', async (req: Request, res: Response) => {
       }
 
       if (!Number.isInteger(group.totalSeats) || group.totalSeats < validated.length) {
-        return await abortWith(session, res, 400, 'group.totalSeats must be >= number of attendees');
+        return await abortWith(session, res, 400, 'group.totalSeats must be >= number of participants');
       }
 
       if (group.totalSeats !== validated.length) {
-        return await abortWith(session, res, 400, 'group.totalSeats must equal attendees.length in this version');
+        return await abortWith(session, res, 400, 'group.totalSeats must equal participants.length in this version');
       }
     }
 
@@ -989,7 +1019,8 @@ router.post('/register', async (req: Request, res: Response) => {
           payerPhoneE164: buyer?.phone ? toE164(buyer.phone) : validated[0].phoneE164,
           payerEmail: buyer?.email ? String(buyer.email).trim().toLowerCase() : null,
           isGroup: !!group,
-          groupName: group?.churchOrParishName || null,
+          groupName: group?.chapterZoneName || null,
+          attendanceMode: validated[0].attendanceMode,
           expiresAt: new Date(Date.now() + 1000 * 60 * 30),
         },
       ],
@@ -1004,11 +1035,12 @@ router.post('/register', async (req: Request, res: Response) => {
         [
           {
             orderId: order._id,
-            churchOrParishName: group.churchOrParishName.trim(),
+            chapterZoneName: group.chapterZoneName.trim(),
             leaderName: group.leaderName.trim(),
             leaderPhoneE164: validLeaderPhone,
             leaderEmail: group.leaderEmail ? String(group.leaderEmail).trim().toLowerCase() : null,
             totalSeats: group.totalSeats,
+            attendanceCounts: group.attendanceCounts,
             claimedSeats: 0,
             managementToken,
           },
@@ -1019,7 +1051,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const usedRefCodes = new Set();
     const usedQrHashes = new Set();
-    const attendeeDocs = [];
+    const participantDocs = [];
     const rawQrTokens = [];
 
     for (const a of validated) {
@@ -1049,7 +1081,7 @@ router.post('/register', async (req: Request, res: Response) => {
       usedQrHashes.add(qrHash);
       rawQrTokens.push(rawQr);
 
-      attendeeDocs.push({
+      participantDocs.push({
         orderId: order._id,
         groupId: createdGroup ? createdGroup._id : null,
         ticketTypeId: a.ticketTypeId,
@@ -1059,7 +1091,8 @@ router.post('/register', async (req: Request, res: Response) => {
         email: a.email,
         country: a.country,
         state: a.state,
-        parish: a.parish,
+        chapterZone: a.chapterZone,
+        attendanceMode: a.attendanceMode,
         isMinor: a.isMinor,
         guardianName: a.guardianName,
         guardianPhoneE164: a.guardianPhoneE164,
@@ -1068,20 +1101,20 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    const createdAttendees = await Attendee.insertMany(attendeeDocs, { session, ordered: true });
+    const createdParticipants = await Participant.insertMany(participantDocs, { session, ordered: true });
 
     if (createdGroup) {
-      const seats = createdAttendees.map((at) => ({
+      const seats = createdParticipants.map((at) => ({
         groupId: createdGroup!._id,
         inviteCode: generateToken(12),
-        attendeeId: at._id,
+        participantId: at._id,
         isClaimed: true,
         claimedAt: new Date(),
       }));
 
       await GroupSeat.insertMany(seats, { session, ordered: true });
 
-      createdGroup.claimedSeats = createdAttendees.length;
+      createdGroup.claimedSeats = createdParticipants.length;
       await createdGroup.save({ session });
     }
 
@@ -1103,7 +1136,7 @@ router.post('/register', async (req: Request, res: Response) => {
             totalSeats: createdGroup.totalSeats,
           }
         : null,
-      attendees: createdAttendees.map((at, i) => ({
+      participants: createdParticipants.map((at, i) => ({
         id: at._id,
         refCode: at.refCode,
         qrToken: rawQrTokens[i],

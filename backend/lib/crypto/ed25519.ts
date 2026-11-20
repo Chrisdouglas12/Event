@@ -7,7 +7,7 @@ export interface SignedTicketPayload {
 
 export interface LegacySignedTicketPayload {
   version: 1;
-  attendeeId: string;
+  participantId: string;
   nonce: string;
 }
 
@@ -23,7 +23,7 @@ export interface SignedGroupOrderPayload {
   version: 1;
   purpose: "group-order-checkin";
   orderId: string;
-  attendeeCount: number;
+  participantCount: number;
   nonce: string;
 }
 
@@ -69,7 +69,7 @@ export async function sha256Hex(data: string): Promise<string> {
 let cachedHmacKeyHex: string | null = null;
 let cachedHmacKey: Promise<CryptoKey> | null = null;
 
-export async function deriveTicketId(attendeeId: string, privateKeyHex = getTicketSigningKey()): Promise<string> {
+export async function deriveTicketId(participantId: string, privateKeyHex = getTicketSigningKey()): Promise<string> {
   if (cachedHmacKeyHex !== privateKeyHex || !cachedHmacKey) {
     cachedHmacKeyHex = privateKeyHex;
     const keyMaterial = hexToBytes(privateKeyHex);
@@ -83,19 +83,19 @@ export async function deriveTicketId(attendeeId: string, privateKeyHex = getTick
     );
   }
   const key = await cachedHmacKey;
-  const message = new TextEncoder().encode(`IHGC-ticket-v2:${attendeeId}`);
+  const message = new TextEncoder().encode(`IHGC-ticket-v2:${participantId}`);
   const messageBuffer = message.buffer.slice(message.byteOffset, message.byteOffset + message.byteLength) as ArrayBuffer;
   const digest = await crypto.subtle.sign("HMAC", key, messageBuffer);
   return bytesToBase64Url(new Uint8Array(digest).slice(0, 16));
 }
 
 export async function createTicketToken(
-  attendeeId: string,
+  participantId: string,
   privateKeyHex: string
 ): Promise<{ tokenString: string; tokenHash: string }> {
   const payload: SignedTicketPayload = {
     version: 2,
-    ticketId: await deriveTicketId(attendeeId, privateKeyHex),
+    ticketId: await deriveTicketId(participantId, privateKeyHex),
   };
   const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
   const signature = await signAsync(payloadBytes, hexToBytes(privateKeyHex));
@@ -131,17 +131,17 @@ export async function verifyOrderAccessToken(
 
 export async function createGroupOrderToken(
   orderId: string,
-  attendeeCount: number,
+  participantCount: number,
   privateKeyHex = getTicketSigningKey()
 ): Promise<string> {
-  if (!Number.isSafeInteger(attendeeCount) || attendeeCount < 1 || attendeeCount > 500) {
-    throw new Error("A group order token requires between 1 and 500 attendees.");
+  if (!Number.isSafeInteger(participantCount) || participantCount < 1 || participantCount > 500) {
+    throw new Error("A group order token requires between 1 and 500 participants.");
   }
   const payload: SignedGroupOrderPayload = {
     version: 1,
     purpose: "group-order-checkin",
     orderId,
-    attendeeCount,
+    participantCount,
     nonce: bytesToBase64Url(crypto.getRandomValues(new Uint8Array(16))),
   };
   const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
@@ -167,7 +167,7 @@ export async function verifyGroupOrderToken(
       payload?.purpose !== "group-order-checkin" ||
       typeof payload.orderId !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.orderId) ||
-      !Number.isSafeInteger(payload.attendeeCount) || payload.attendeeCount < 1 || payload.attendeeCount > 500 ||
+      !Number.isSafeInteger(payload.participantCount) || payload.participantCount < 1 || payload.participantCount > 500 ||
       typeof payload.nonce !== "string" || payload.nonce.length < 20 || payload.nonce.length > 24
     ) return { isValid: false };
     return { isValid: true, payload: payload as SignedGroupOrderPayload };
@@ -192,7 +192,7 @@ export async function verifyTicketToken(
 
     const payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(payloadBytes));
     const validLegacy = payload?.version === 1 &&
-      typeof payload.attendeeId === "string" &&
+      typeof payload.participantId === "string" &&
       typeof payload.nonce === "string";
     const validOpaque = payload?.version === 2 &&
       typeof payload.ticketId === "string" &&

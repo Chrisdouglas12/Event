@@ -1,12 +1,12 @@
 // frontend/src/lib/offline/dexie-db.ts
-export interface CachedAttendee {
-  attendeeId: string;
+export interface CachedParticipant {
+  participantId: string;
   name: string;
   refCode: string;
   status: string;
   checkedInAt?: string | null;
   bookletIssuedAt?: string | null;
   checkedInStand?: string | null;
-  parish?: string | null;
+  chapterZone?: string | null;
   orderId?: string;
 }

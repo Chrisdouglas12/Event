@@ -9,6 +9,7 @@ import { Footer } from "@/components/marketing/footer";
 import { Lock, Users, User, AlertCircle } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 import { formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
+import { HeroBackground } from "@/components/marketing/hero-background";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 const CURRENCY_LIST: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
@@ -33,9 +34,10 @@ export default function RegisterPage() {
   const [payerEmail, setPayerEmail] = useState("");
   const [country, setCountry] = useState("Nigeria");
   const [state, setState] = useState("");
-  const [parish, setParish] = useState("");
+  const [chapterZone, setChapterZone] = useState("");
   const [groupName, setGroupName] = useState("");
   const [seatsCount, setSeatsCount] = useState(5);
+  const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
   const [isMinor, setIsMinor] = useState(false);
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
@@ -44,6 +46,9 @@ export default function RegisterPage() {
   
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const checkoutAttempt = useRef<{ payload: string; key: string } | null>(null);
+
+  // Group attendance state
+  const [groupAttendance, setGroupAttendance] = useState({ physically: 0, online: 0, not_sure: 0 });
 
   // 1. Fetch config from Express
   useEffect(() => {
@@ -117,7 +122,11 @@ export default function RegisterPage() {
         if (parsed.payerEmail) setPayerEmail(parsed.payerEmail);
         if (parsed.country) setCountry(parsed.country);
         if (parsed.state) setState(parsed.state);
-        if (parsed.parish) setParish(parsed.parish);
+        if (parsed.chapterZone) setChapterZone(parsed.chapterZone);
+        if (["physically", "online", "not_sure"].includes(parsed.attendanceMode)) {
+          setAttendanceMode(parsed.attendanceMode);
+        }
+        if (parsed.groupAttendance) setGroupAttendance(parsed.groupAttendance);
       }
     } catch (_) {}
   }, []);
@@ -147,6 +156,13 @@ export default function RegisterPage() {
       return setError("Please complete the verification check below.");
     }
 
+    if (isGroup) {
+      const countedSeats = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
+      if (countedSeats !== seatsCount) {
+        return setError(`The three attendance counts must add up to ${seatsCount} seats.`);
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -157,18 +173,20 @@ export default function RegisterPage() {
         isGroup,
         payer: {
           name: payerName.trim(),
-          phoneE164: payerPhone.trim(),
+          phone: payerPhone.trim(),
           email: payerEmail.trim() || undefined,
         },
         country,
         state: country === "Nigeria" ? state : undefined,
-        parish: parish || undefined,
+        chapterZone: chapterZone || undefined,
+        attendanceMode,
         isMinor: minor,
         guardianName: minor ? guardianName : undefined,
         guardianPhone: minor ? guardianPhone : undefined,
         group: isGroup ? { name: groupName, totalSeats: seatsCount } : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
+        groupAttendance: isGroup ? groupAttendance : undefined,
       };
 
       const { turnstileToken: _t, ...fingerprintSource } = checkoutPayload;
@@ -219,16 +237,8 @@ export default function RegisterPage() {
       {/* Hero with Overlapping Registration Card */}
       <section className="relative w-full bg-[#0E1020] text-white pt-14 pb-28 lg:pb-36 px-6 sm:px-8 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/conference_flyer.png"
-            alt=""
-            fill
-            className="object-cover object-[center_35%] opacity-20 mix-blend-overlay"
-            preload
-            quality={95}
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E1020]/90 via-[#0E1020]/80 to-[#0E1020]" />
+          <HeroBackground align="right" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0E1020] via-[#0E1020]/85 to-[#0E1020]/25 pointer-events-none" />
         </div>
 
         <div className="relative z-10 max-w-[1240px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -240,7 +250,7 @@ export default function RegisterPage() {
               Register For The 2026 General Conference
             </h1>
             <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-lg">
-              Secure your 4-day all-access attendee badge and printed conference booklet. Register as an individual or purchase seats for your church parish.
+              Secure your 4-day all-access participant badge and printed conference booklet. Register as an individual or purchase seats for your chapter/zone.
             </p>
             <div className="pt-2 flex items-center gap-6 text-xs text-gray-400">
               <div>• 8 – 11 Dec 2026</div>
@@ -264,6 +274,7 @@ export default function RegisterPage() {
                 width={120}
                 height={38}
                 className="h-8 w-auto object-contain"
+                style={{ width: "auto" }}
               />
               <div className="h-6 w-px bg-gray-200" />
               <div className="text-xs font-bold text-[#111320] uppercase tracking-wider">
@@ -309,7 +320,7 @@ export default function RegisterPage() {
                 }`}
               >
                 <User className="w-4 h-4" />
-                <span>Individual Attendee</span>
+                <span>Individual Participant</span>
               </button>
 
               <button
@@ -320,7 +331,7 @@ export default function RegisterPage() {
                 }`}
               >
                 <Users className="w-4 h-4" />
-                <span>Group / Parish Pass</span>
+                <span>Group Participant</span>
               </button>
             </div>
 
@@ -333,7 +344,7 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-[#111320]">
-                      Church / Parish Name *
+                      Chapter / Zone Name *
                     </label>
                     <input
                       type="text"
@@ -346,7 +357,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-[#111320]">
-                      Number of Attendees (Seats) *
+                      Number of Participants (Seats) *
                     </label>
                     <input
                       type="number"
@@ -451,14 +462,14 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-[#111320]">Local Parish (Optional)</label>
+                    <label className="text-xs font-semibold text-[#111320]">Chapter/Zone (Optional)</label>
                     <input
                       type="text"
                       placeholder="e.g. Horemow Kwali Chapter"
-                      value={parish}
+                      value={chapterZone}
                       onChange={(e) => {
-                        setParish(e.target.value);
-                        updateDraft("parish", e.target.value);
+                        setChapterZone(e.target.value);
+                        updateDraft("chapterZone", e.target.value);
                       }}
                       className="w-full px-3.5 py-2.5 rounded-[6px] bg-[#F3F4F6] border border-transparent focus:border-gray-300 focus:bg-white text-sm focus:outline-none"
                     />
@@ -477,7 +488,7 @@ export default function RegisterPage() {
                     onChange={(e) => setIsMinor(e.target.checked)}
                     className="rounded border-gray-300 text-[#0E1020] focus:ring-[#8EE3D6]"
                   />
-                  <span>Attendee is under 18 years of age</span>
+                  <span>Participant is under 18 years of age</span>
                 </label>
 
                 {isMinor && (
@@ -500,6 +511,76 @@ export default function RegisterPage() {
                     />
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Attendance Mode */}
+            {isGroup ? (
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    How will the group attend? *
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Enter a count for each mode. The counts must equal all {seatsCount} purchased seats.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {([
+                    ["physically", "Physically"],
+                    ["online", "Online"],
+                    ["not_sure", "Not Sure"],
+                  ] as const).map(([key, label]) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-xs font-semibold text-[#111320]">{label}</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={seatsCount}
+                        required
+                        value={groupAttendance[key]}
+                        onChange={(e) => {
+                          const next = { ...groupAttendance, [key]: Math.max(0, Math.min(seatsCount, parseInt(e.target.value) || 0)) };
+                          setGroupAttendance(next);
+                          updateDraft("groupAttendance", next);
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-[8px] bg-[#F3F4F6] border border-transparent text-sm font-bold focus:border-[#8EE3D6] focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Counted: <strong className="text-[#111320]">{groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure}</strong> / {seatsCount}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                  How will you attend? *
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    ["physically", "Physically"],
+                    ["online", "Online"],
+                    ["not_sure", "Not Sure"],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setAttendanceMode(value);
+                        updateDraft("attendanceMode", value);
+                      }}
+                      className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        attendanceMode === value
+                          ? "bg-[#EAF9F7] border-[#1FA396] text-[#0E7A6E] shadow-sm"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -541,7 +622,7 @@ export default function RegisterPage() {
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">
-                  {effectiveSeats} {effectiveSeats === 1 ? "Attendee Pass" : "Attendee Seats"} ({currency}):
+                  {effectiveSeats} {effectiveSeats === 1 ? "Participant Pass" : "Participant Seats"} ({currency}):
                 </span>
                 <span className="text-2xl font-black text-[#111320] tracking-tight">{formattedTotal}</span>
               </div>

@@ -53,7 +53,7 @@ export function DetailsCard() {
                 Theme: <strong className="font-semibold text-[#111320]">&ldquo;{SITE_CONFIG.theme}&rdquo;</strong>
               </p>
               <p className="pt-1 text-xs text-gray-500">
-                Registration: <strong className="text-[#111320]">₦5,000 / $20 / €20 / £20</strong> per attendee
+                Registration: <strong className="text-[#111320]">₦5,000 / $20 / €20 / £20</strong> per participant
               </p>
             </div>
 

@@ -11,7 +11,7 @@
 ## 1. Overview & Campground Network Reality
 
 Holiness Campground in Kwali, Abuja experiences fluctuating cellular coverage and occasional regional grid outages. The registration and gate system is architected **offline-first**:
-- Scanners store the entire attendee database locally on the device (IndexedDB).
+- Scanners store the entire participant database locally on the device (IndexedDB).
 - Tickets are verified cryptographically via **Ed25519 asymmetric signatures** without contacting any server.
 - Arrival and booklet records queue on the phone and sync automatically whenever cellular or Wi-Fi data connects.
 
@@ -30,7 +30,7 @@ Every gate staff member must complete this 5-minute pre-flight routine on their 
    - Tap Close. The stand ID is now saved permanently on your device.
 3. **Pre-Event Roster Sync:**
    - While connected to campground Wi-Fi or mobile data, tap the **"Sync Roster"** button.
-   - Verify that the status banner shows: `~10,000 attendees cached for offline lookup`.
+   - Verify that the status banner shows: `~10,000 participants cached for offline lookup`.
 4. **Offline Test:**
    - Switch your device to **Airplane Mode**.
    - Tap **"Start Scanning"**. Verify that the camera viewfinder activates and the status shows `Offline · Kwali Campground`.
@@ -41,41 +41,41 @@ Every gate staff member must complete this 5-minute pre-flight routine on their 
 ## 3. Standard Gate Operations Workflows
 
 ### 3.1 Scenario A: Standard Ticket Scan
-1. Attendee presents their QR ticket on their phone screen or printed A4 slip.
+1. Participant presents their QR ticket on their phone screen or printed A4 slip.
 2. Hold the camera 15–25 cm from the QR code inside the green bracket reticle.
 3. The system decodes the Ed25519 token instantly:
-   - **GREEN BORDER & HIGH CHIME:** **Entry Confirmed**. The attendee’s name, reference code, and gate stand are recorded.
+   - **GREEN BORDER & HIGH CHIME:** **Entry Confirmed**. The participant’s name, reference code, and gate stand are recorded.
    - Allow entry through the gate turnstile/rope.
 
 ### 3.2 Scenario B: Conference Booklet Distribution
-- **Rule:** A conference booklet can only be issued to an attendee who has already checked in.
+- **Rule:** A conference booklet can only be issued to a participant who has already checked in.
 - In the scan confirmation card, tap **"Issue Conference Booklet"**.
 - The system records booklet distribution and deducts one unit from the stand's daily allocation.
-- Hand one physical conference booklet to the attendee.
-- If an attendee attempts to collect a second booklet at another gate stand, the scanner displays **AMBER: Booklet issue was already recorded** and blocks duplicate issue.
+- Hand one physical conference booklet to the participant.
+- If a participant attempts to collect a second booklet at another gate stand, the scanner displays **AMBER: Booklet issue was already recorded** and blocks duplicate issue.
 
-### 3.3 Scenario C: Group Express Lane (Bus / Parish Groups)
+### 3.3 Scenario C: Group Express Lane (Bus / Chapter/Zone Groups)
 1. Group Leader arrives with a church bus or delegation and presents the **Group Order QR**.
-2. Scan the group QR: the scanner overlay displays: `Group pass · X Paid Attendees`.
+2. Scan the group QR: the scanner overlay displays: `Group pass · X Paid Participants`.
 3. Verify the group count matches the arriving delegation.
-4. Tap **"Check in X Attendees"**.
+4. Tap **"Check in X Participants"**.
 5. All members of the group are checked in atomically with one tap.
 
 ### 3.4 Scenario D: Cracked Screen / Unreadable QR
-1. If the attendee’s phone screen is cracked or the camera cannot decode the QR:
-2. Ask the attendee for their 10-character reference code (e.g., `HGC-7K9M2P`), found on their SMS confirmation or email.
+1. If the participant’s phone screen is cracked or the camera cannot decode the QR:
+2. Ask the participant for their 10-character reference code (e.g., `HGC-7K9M2P`), found on their SMS confirmation or email.
 3. Type the reference code into the **"Enter ticket ref"** field at the bottom.
 4. Tap **"Verify"**. The system checks the offline database and confirms entry.
 
 ---
 
 ### 3.5 Scenario E: Walk-In Gate Registration (Cash or POS)
-1. If an attendee arrives without prior online registration:
+1. If a participant arrives without prior online registration:
 2. Tap the **"Walk-in Gate Sale"** shortcut button (or navigate to `/staff/walk-in`).
 3. Fill in:
    - Full Name
    - Phone Number
-   - State of Residence / Parish
+   - State of Residence / Chapter/Zone
    - Payment Method: **Cash (₦5,000)** or **POS Terminal**
 4. Collect the flat registration fee (₦5,000).
 5. Tap **"Complete Walk-in Registration"**.
@@ -87,9 +87,9 @@ Every gate staff member must complete this 5-minute pre-flight routine on their 
 
 | Scanner State | Meaning | Action Required |
 |---|---|---|
-| **RED: Invalid Signature (Forged)** | QR was tampered with or generated by an unauthorized party. | **Do not admit.** Direct attendee to the Supervisor tent for investigation. |
-| **AMBER: Already Checked In** | Ticket was previously scanned at this or another stand. Card shows previous scan time and stand. | If the attendee claims someone else scanned their pass, escort them to the **Supervisor Lookup** station to verify photo ID or national NIN against order details. |
-| **AMBER: Valid Signature but Not in Local Cache** | Attendee registered very recently (e.g. this morning) and the scanner hasn't synced since then. | Enter the reference code into **Supervisor Lookup** (`/staff/lookup`) or check the **Physical Plan B Master Roster Binder**. |
+| **RED: Invalid Signature (Forged)** | QR was tampered with or generated by an unauthorized party. | **Do not admit.** Direct participant to the Supervisor tent for investigation. |
+| **AMBER: Already Checked In** | Ticket was previously scanned at this or another stand. Card shows previous scan time and stand. | If the participant claims someone else scanned their pass, escort them to the **Supervisor Lookup** station to verify photo ID or national NIN against order details. |
+| **AMBER: Valid Signature but Not in Local Cache** | Participant registered very recently (e.g. this morning) and the scanner hasn't synced since then. | Enter the reference code into **Supervisor Lookup** (`/staff/lookup`) or check the **Physical Plan B Master Roster Binder**. |
 
 ---
 
@@ -99,10 +99,10 @@ If all cellular networks fail, phone batteries deplete, or generator power is in
 
 1. **Activate the Physical Gate Binders:**
    - Every main gate table has a pre-printed, ring-bound **Physical Plan B Master Roster** (exported from `/admin/roster-print`).
-   - The directory is alphabetized by State and Attendee Surname.
+   - The directory is alphabetized by State and Participant Surname.
 2. **Manual Check-In:**
-   - Ask the attendee for their Surname and State.
-   - Locate the attendee row.
+   - Ask the participant for their Surname and State.
+   - Locate the participant row.
    - Verify their `HGC-XXXXXX` ref code or SMS notification on their phone.
    - Mark a physical checkmark in the **[✓] ARRIVED** box.
    - Mark a physical checkmark in the **[✓] BOOKLET** box upon issuing their programme book.

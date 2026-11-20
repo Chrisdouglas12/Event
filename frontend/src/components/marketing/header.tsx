@@ -64,6 +64,7 @@ export function Header() {
                 width={SITE_CONFIG.logo.width}
                 height={SITE_CONFIG.logo.height}
                 className="h-8 sm:h-9 w-auto object-contain"
+                style={{ width: "auto" }}
                 priority
               />
               {/* Always visible now, on mobile and desktop */}

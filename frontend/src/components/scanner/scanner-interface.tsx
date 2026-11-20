@@ -109,7 +109,7 @@ export function ScannerInterface() {
           {/* Scanner Guidance Pill */}
           <div className="absolute inset-x-0 top-[22%] z-10 px-6 text-center" aria-hidden="true">
             <span className="inline-flex rounded-full border border-white/15 bg-black/35 px-4 py-1.5 font-heading text-[10px] font-bold uppercase tracking-[0.12em] text-[#8EE3D6] shadow-sm backdrop-blur-md">
-              {session.cameraActive ? "Align ticket QR inside the frame" : "Scan Attendee Pass"}
+              {session.cameraActive ? "Align ticket QR inside the frame" : "Scan Participant Pass"}
             </span>
           </div>
 
@@ -318,7 +318,7 @@ export function ScannerInterface() {
               className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white font-heading text-[10px] font-bold text-[#111320] transition hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E7A6E]"
             >
               <Search className="h-3.5 w-3.5 text-[#0E7A6E]" />
-              <span>Lookup Attendee</span>
+              <span>Lookup Participant</span>
             </Link>
           </nav>
         </section>
@@ -333,8 +333,8 @@ export function ScannerInterface() {
           busy={session.busy}
           issuingBooklet={session.issuingBooklet}
           onDismiss={session.dismissResult}
-          onIssueBooklet={(attendee, ticketToken) => void session.handleIssueBooklet(attendee, ticketToken)}
-          onCheckInGroup={(attendees, token) => void session.handleGroupCheckIn(attendees, token)}
+          onIssueBooklet={(participant, ticketToken) => void session.handleIssueBooklet(participant, ticketToken)}
+          onCheckInGroup={(participants, token) => void session.handleGroupCheckIn(participants, token)}
         />
       </div>
     </main>

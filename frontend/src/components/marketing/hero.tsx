@@ -3,11 +3,8 @@ import Image from "next/image";
 import { Calendar } from "lucide-react";
 import { Countdown } from "@/components/ui/countdown";
 import { HeroBackground } from "@/components/marketing/hero-background";
-import { AnimatedHeading } from "@/components/marketing/animated-heading";
 import { ParallaxLayer } from "@/components/marketing/parallax-layer";
 import { SITE_CONFIG } from "@/config/site";
-
-const TITLE = "International Holiness General Conference 2026";
 
 export function Hero() {
   return (
@@ -36,12 +33,7 @@ export function Hero() {
           {/* Layer 3: stacked boxes + logo triangle */}
           <ParallaxLayer speed={0.1} className="w-full">
             <div className="relative w-full flex flex-row items-stretch">
-              
-              {/* Left Side: The Text Boxes.
-                  Width = full width minus the 5px gap, so boxes + gap + triangle
-                  fill the whole row and the side spacing is equal on both sides. */}
-              <div className="w-[calc(100%-5px)] flex flex-col relative z-10">
-                
+              <div className="w-full flex flex-col relative z-10">
                 {/* TOP BOX (White) */}
                 <div className="w-full mb-1 sm:mb-1.5">
                   <div 
@@ -58,13 +50,6 @@ export function Hero() {
                     </h2>
                   </div>
                 </div>
-
-                {/* Desktop: word-by-word heading */}
-                <AnimatedHeading
-                  text={TITLE}
-                  highlight="2026"
-                  className="hidden lg:block text-[54px] font-extrabold text-white leading-[1.08] tracking-[-0.03em] max-w-2xl"
-                />
 
                 {/* BOTTOM BOX (Mint) - Theme Marquee */}
                 <div 
@@ -93,32 +78,26 @@ export function Hero() {
                 </div>
               </div>
 
-              {/* Right Side: The Filled Triangle with the Logo.
-                  Tip sits 5px after the boxes' notch (85% of the box width).
-                  left  = 85% of (100% - 5px) + 5px  = 85% + 0.75px
-                  width = 15% of (100% - 5px)        = 15% - 0.75px
-                  It ends exactly at the right edge, matching the left spacing. */}
+              {/* Right-side logo triangle, aligned to the shared 85% box notch. */}
               <div 
-                className="absolute top-0 bottom-0 z-20 flex items-center justify-center left-[calc(85%+0.75px)] w-[calc(15%-0.75px)]"
+                className="absolute top-0 bottom-0 z-20 flex items-center justify-center left-[85%] w-[15%]"
+                style={{ filter: 'drop-shadow(0 0 1.5px rgba(255,255,255,0.95))' }}
               >
                 <div 
                   className="w-full h-full bg-[#8EE3D6] relative flex items-center justify-center"
-                  style={{
-                    clipPath: 'polygon(100% 0, 100% 100%, 0 50%)',
-                  }}
+                  style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 50%)' }}
                 >
-                  <div className="ml-2 sm:ml-3">
+                  <div className="ml-2 sm:ml-3 relative h-7 w-7 sm:h-12 sm:w-12">
                     <Image
                       src={SITE_CONFIG.logo.src}
                       alt={SITE_CONFIG.logo.alt}
-                      width={SITE_CONFIG.logo.width}
-                      height={SITE_CONFIG.logo.height}
-                      className="w-7 h-7 sm:w-12 sm:h-12 object-contain drop-shadow-md"
+                      fill
+                      sizes="(max-width: 639px) 28px, 48px"
+                      className="object-contain drop-shadow-md"
                     />
                   </div>
                 </div>
               </div>
-
             </div>
           </ParallaxLayer>
 

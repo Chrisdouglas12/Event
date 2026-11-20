@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-import { CURRENCIES, ORDER_STATUSES, PAYMENT_PROVIDERS, PAYMENT_STATUSES, MANUAL_PAYMENT_STATUSES, } from '../constants/enums.ts';
+import { ATTENDANCE_MODES, CURRENCIES, ORDER_STATUSES, PAYMENT_PROVIDERS, PAYMENT_STATUSES, MANUAL_PAYMENT_STATUSES, } from '../constants/enums.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER
@@ -76,6 +76,20 @@ const orderSchema = new mongoose.Schema(
       type: String,
       maxlength: 255,
       trim: true,
+    },
+    attendanceCounts: {
+      physically: { type: Number, min: 0, default: 0 },
+      online: { type: Number, min: 0, default: 0 },
+      not_sure: { type: Number, min: 0, default: 0 },
+    },
+    attendanceMode: {
+      type: String,
+      enum: {
+        values: ATTENDANCE_MODES,
+        message: 'Attendance mode must be one of: physically, online, not_sure',
+      },
+      required: true,
+      default: 'not_sure',
     },
     // Number of seats this order holds; powers the per-ticket-type cap.
     seats: {

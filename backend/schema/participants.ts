@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-import {  CURRENCIES, ATTENDEE_STATUSES  } from '../constants/enums.ts';
+import {  ATTENDANCE_MODES, CURRENCIES, PARTICIPANT_STATUSES  } from '../constants/enums.ts';
 
 
 // TICKET TYPE
@@ -78,7 +78,7 @@ const groupSchema = new mongoose.Schema(
       ref: 'Order',
       required: true,
     },
-    churchOrParishName: {
+    chapterZoneName: {
       type: String,
       required: true,
       maxlength: 255,
@@ -107,6 +107,11 @@ const groupSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    attendanceCounts: {
+      physically: { type: Number, min: 0, default: 0 },
+      online: { type: Number, min: 0, default: 0 },
+      not_sure: { type: Number, min: 0, default: 0 },
+    },
     claimedSeats: {
       type: Number,
       required: true,
@@ -131,9 +136,9 @@ groupSchema.pre('save', function () {
 });
 
 
-// ATTENDEE
+// PARTICIPANT
 
-const attendeeSchema = new mongoose.Schema(
+const participantSchema = new mongoose.Schema(
   {
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -187,10 +192,19 @@ const attendeeSchema = new mongoose.Schema(
       maxlength: 64,
       trim: true,
     },
-    parish: {
+    chapterZone: {
       type: String,
       maxlength: 255,
       trim: true,
+    },
+    attendanceMode: {
+      type: String,
+      enum: {
+        values: ATTENDANCE_MODES,
+        message: 'Attendance mode must be one of: physically, online, not_sure',
+      },
+      required: true,
+      default: 'not_sure',
     },
     isMinor: {
       type: Boolean,
@@ -210,7 +224,7 @@ const attendeeSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ATTENDEE_STATUSES,
+        values: PARTICIPANT_STATUSES,
         message: 'Status must be one of: unconfirmed, confirmed, checked_in, booklet_issued',
       },
       required: true,
@@ -229,10 +243,10 @@ const attendeeSchema = new mongoose.Schema(
     updatedAt:        { type: Date, default: Date.now },
     deletedAt:        { type: Date, default: null }, 
   },
-  { collection: 'attendees' }
+  { collection: 'participants' }
 );
 
-attendeeSchema.pre('save', function () {
+participantSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
@@ -253,9 +267,9 @@ const groupSeatSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    attendeeId: {
+    participantId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Attendee',
+      ref: 'Participant',
       default: null,
     },
     isClaimed: {
@@ -279,26 +293,26 @@ ticketTypeSchema.index({ 'prices.currency': 1 });
 // Groups
 groupSchema.index({ orderId: 1 });
 
-// Attendees
-attendeeSchema.index({ phoneE164: 1 });
-attendeeSchema.index({ email: 1 });
-attendeeSchema.index({ orderId: 1 });
-attendeeSchema.index({ groupId: 1 });
-attendeeSchema.index({ status: 1 });
+// Participants
+participantSchema.index({ phoneE164: 1 });
+participantSchema.index({ email: 1 });
+participantSchema.index({ orderId: 1 });
+participantSchema.index({ groupId: 1 });
+participantSchema.index({ status: 1 });
 
-attendeeSchema.index(
+participantSchema.index(
   { deletedAt: 1 },
   { partialFilterExpression: { deletedAt: { $type: 'date' } } }
 );
 
 // Group seats
 groupSeatSchema.index({ groupId: 1 });
-groupSeatSchema.index({ attendeeId: 1 });
+groupSeatSchema.index({ participantId: 1 });
 
 
 // EXPORTS
 
 export const TicketType = mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema);
 export const Group = mongoose.models.Group      || mongoose.model('Group',      groupSchema);
-export const Attendee = mongoose.models.Attendee   || mongoose.model('Attendee',   attendeeSchema);
+export const Participant = mongoose.models.Participant   || mongoose.model('Participant',   participantSchema);
 export const GroupSeat = mongoose.models.GroupSeat  || mongoose.model('GroupSeat',  groupSeatSchema);

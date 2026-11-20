@@ -1,21 +1,11 @@
 import Link from "next/link";
-import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth/session";
+
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { LogoutButton } from "@/components/ui/logout-button";
-import {
-  LayoutDashboard,
-  Receipt,
-  Users,
-  Download,
-  ShieldCheck,
-  Settings,
-  CheckCircle2,
-  BookOpen,
-  AlertTriangle,
-  MessageSquare,
-  ScanLine,
-} from "lucide-react";
+import { requireRole } from "@/lib/auth/session";
 import { SITE_CONFIG } from "@/config/site";
 
 export default async function AdminLayout({
@@ -27,19 +17,6 @@ export default async function AdminLayout({
   if (!user) {
     redirect("/staff/login");
   }
-
-  const navItems = [
-    { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { label: "Live Scanner", href: "/admin/scanner", icon: ScanLine },
-    { label: "Orders", href: "/admin/orders", icon: Receipt },
-    { label: "Attendees", href: "/admin/attendees", icon: Users }, // 👈 Fixed typo
-    { label: "Approvals", href: "/admin/approvals", icon: CheckCircle2 },
-    { label: "Booklet Stock", href: "/admin/booklet-stock", icon: BookOpen },
-    { label: "Conflicts", href: "/admin/conflicts", icon: AlertTriangle },
-    { label: "Messaging Queue", href: "/admin/messaging", icon: MessageSquare },
-    { label: "Reports & Export", href: "/admin/export", icon: Download },
-    { label: "Settings", href: "/admin/settings", icon: Settings },
-  ];
 
   return (
     <div className="min-h-screen flex bg-[#F4F5F7] text-[#111320]">
@@ -60,18 +37,7 @@ export default async function AdminLayout({
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-              >
-                <item.icon className="w-4 h-4 text-gray-400" />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
+          <AdminNav variant="sidebar" />
         </div>
 
         {/* Footer in Sidebar */}
@@ -91,19 +57,37 @@ export default async function AdminLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Operational Bar */}
-        <header className="h-14 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0">
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            {SITE_CONFIG.eventTitle} • Management Console
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <AdminMobileNav user={{ fullName: user.fullName, role: user.role }} />
+            <div className="min-w-0">
+              <div className="truncate text-[11px] font-black uppercase tracking-wider text-[#0E1020] sm:text-xs">
+                {SITE_CONFIG.eventTitle}
+              </div>
+              <div className="hidden text-[11px] font-semibold text-gray-500 sm:block">
+                Management Console
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 sm:inline-flex">
               Operations Console
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF9F7] px-2.5 py-1 text-[10px] font-bold text-[#0E7A6E] sm:hidden">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#1FA396]" />
+              Live
             </span>
           </div>
         </header>
 
+        {/* Mobile quick-access navigation */}
+        <div className="sticky top-14 z-20 border-b border-gray-200 bg-white/95 px-3 py-2 backdrop-blur md:hidden">
+          <AdminNav variant="strip" />
+        </div>
+
         {/* Page Content */}
-        <main className="flex-1 p-6 sm:p-8 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

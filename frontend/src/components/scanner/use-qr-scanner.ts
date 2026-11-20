@@ -209,7 +209,7 @@ export function useQrScanner(onDecoded: ScanHandler, onError?: (message: string)
   const scanImageFile = useCallback(async (file: File) => {
     setCameraError(null);
     if (!file.type.startsWith("image/")) {
-      setCameraError("Choose an image file containing the attendee QR code.");
+      setCameraError("Choose an image file containing the participant QR code.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {

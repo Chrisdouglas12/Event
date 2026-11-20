@@ -16,7 +16,7 @@ export default function GroupClaimPage() {
     phone: "",
     email: "",
     state: "",
-    parish: "",
+    chapterZone: "",
     isMinor: false,
     guardianName: "",
     guardianPhone: "",
@@ -40,7 +40,7 @@ export default function GroupClaimPage() {
           phone: form.phone,
           email: form.email || undefined,
           state: form.state || undefined,
-          parish: form.parish || undefined,
+          chapterZone: form.chapterZone || undefined,
           isMinor: form.isMinor,
           guardianName: form.isMinor ? form.guardianName : undefined,
           guardianPhone: form.isMinor ? form.guardianPhone : undefined,
@@ -110,8 +110,8 @@ export default function GroupClaimPage() {
                   <input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className={inputCls} placeholder="e.g. FCT" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#111320]">Parish</label>
-                  <input value={form.parish} onChange={(e) => setForm({ ...form, parish: e.target.value })} className={inputCls} placeholder="Optional" />
+                  <label className="text-xs font-semibold text-[#111320]">Chapter/Zone</label>
+                  <input value={form.chapterZone} onChange={(e) => setForm({ ...form, chapterZone: e.target.value })} className={inputCls} placeholder="Optional" />
                 </div>
               </div>
 

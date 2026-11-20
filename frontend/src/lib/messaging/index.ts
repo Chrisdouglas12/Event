@@ -5,7 +5,7 @@
  */
 
 export interface TicketDeliveryPayload {
-  attendeeName: string;
+  participantName: string;
   refCode: string;
   phoneE164: string;
   email?: string | null;
@@ -89,11 +89,11 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 
 export async function deliverTicket(payload: TicketDeliveryPayload): Promise<void> {
   const ticketUrl = payload.ticketUrl;
-  const safeName = escapeHtml(payload.attendeeName);
+  const safeName = escapeHtml(payload.participantName);
   const safeRefCode = escapeHtml(payload.refCode);
   const safeTicketUrl = escapeHtml(ticketUrl);
 
-  const smsMessage = `Horemow IHGC 2026: Your ticket for ${payload.attendeeName} is confirmed. Ref: ${payload.refCode}. Show your QR at the gate: ${ticketUrl}`;
+  const smsMessage = `Horemow IHGC 2026: Your ticket for ${payload.participantName} is confirmed. Ref: ${payload.refCode}. Show your QR at the gate: ${ticketUrl}`;
 
   // SMS is primary delivery channel (email optional per brief 6.1)
   await sendSms(payload.phoneE164, smsMessage);
@@ -120,10 +120,10 @@ export async function deliverTicketChannel(
 ): Promise<boolean> {
   if (channel === "sms") {
     if (!payload.phoneE164) return false;
-    const message = `Horemow IHGC 2026: Your ticket for ${payload.attendeeName} is confirmed. Ref: ${payload.refCode}. Show your QR at the gate: ${payload.ticketUrl}`;
+    const message = `Horemow IHGC 2026: Your ticket for ${payload.participantName} is confirmed. Ref: ${payload.refCode}. Show your QR at the gate: ${payload.ticketUrl}`;
     return sendSms(payload.phoneE164, message);
   }
   if (!payload.email) return false;
-  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111320"><h2 style="color:#0E1020">Your IHGC 2026 Ticket is Confirmed</h2><p>Dear ${escapeHtml(payload.attendeeName)},</p><p>Your registration for the <strong>International Holiness General Conference 2026</strong> is confirmed.</p><p><strong>Reference Code:</strong> <code>${escapeHtml(payload.refCode)}</code></p><p><a href="${escapeHtml(payload.ticketUrl)}">View Your Ticket &amp; QR Code</a></p><p>Show this ticket at the registration stand on arrival. Keep your reference code handy.</p></div>`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111320"><h2 style="color:#0E1020">Your IHGC 2026 Ticket is Confirmed</h2><p>Dear ${escapeHtml(payload.participantName)},</p><p>Your registration for the <strong>International Holiness General Conference 2026</strong> is confirmed.</p><p><strong>Reference Code:</strong> <code>${escapeHtml(payload.refCode)}</code></p><p><a href="${escapeHtml(payload.ticketUrl)}">View Your Ticket &amp; QR Code</a></p><p>Show this ticket at the registration stand on arrival. Keep your reference code handy.</p></div>`;
   return sendEmail(payload.email, `IHGC 2026 Ticket Confirmed - ${payload.refCode}`, html);
 }

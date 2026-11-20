@@ -12,6 +12,7 @@ type PendingManual = {
     bankName: string;
     accountName: string;
     referenceOrTellerId: string;
+    status?: "pending" | "approved" | "rejected";
     createdAt: string | Date;
   };
   order: {
@@ -66,7 +67,7 @@ export default async function AdminApprovalsPage() {
 
       <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-        <span><strong>Finance policy:</strong> approve only after matching the transfer on the official bank statement. Never approve from screenshots or an attendee-submitted receipt alone.</span>
+        <span><strong>Finance policy:</strong> approve only after matching the transfer on the official bank statement. Never approve from screenshots or a participant-submitted receipt alone.</span>
       </div>
 
       <div className="overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-2xs">

@@ -7,7 +7,7 @@ import { ArrowLeft, Search, ShieldAlert, CheckCircle2, BookOpen, RotateCcw, Aler
 export default function StaffLookupPage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [attendee, setAttendee] = useState<any | null>(null);
+  const [participant, setParticipant] = useState<any | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   // Supervisor Override Modal
@@ -24,14 +24,14 @@ export default function StaffLookupPage() {
 
     setSearching(true);
     setNotFound(false);
-    setAttendee(null);
+    setParticipant(null);
     setOverrideSuccess(null);
 
     try {
       const res = await fetch(`/api/scanner/lookup?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
-      if (data.attendee) {
-        setAttendee(data.attendee);
+      if (data.participant) {
+        setParticipant(data.participant);
       } else {
         setNotFound(true);
       }
@@ -44,7 +44,7 @@ export default function StaffLookupPage() {
 
   const handleExecuteOverride = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!overrideAction || !attendee) return;
+    if (!overrideAction || !participant) return;
 
     setSubmittingOverride(true);
     setOverrideError(null);
@@ -54,7 +54,7 @@ export default function StaffLookupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          attendeeId: attendee.id,
+          participantId: participant.id,
           action: overrideAction,
           supervisorPin,
           reason: overrideReason,
@@ -68,10 +68,10 @@ export default function StaffLookupPage() {
       }
 
       setOverrideSuccess(`Successfully performed ${overrideAction.replace(/_/g, " ")}.`);
-      setAttendee({
-        ...attendee,
+      setParticipant({
+        ...participant,
         status: data.status,
-        bookletIssuedAt: overrideAction === "issue_booklet" ? new Date().toISOString() : attendee.bookletIssuedAt,
+        bookletIssuedAt: overrideAction === "issue_booklet" ? new Date().toISOString() : participant.bookletIssuedAt,
       });
       setOverrideAction(null);
       setSupervisorPin("");
@@ -102,10 +102,10 @@ export default function StaffLookupPage() {
         <div className="bg-white rounded-[20px] border border-gray-200 p-6 shadow-2xs space-y-4">
           <div className="space-y-1">
             <h1 className="text-base font-heading font-extrabold text-[#111320]">
-              Manual Attendee Lookup
+              Manual Participant Lookup
             </h1>
             <p className="text-xs text-gray-500">
-              Lookup by reference code (HGC-XXXXXX), phone number, or attendee name.
+              Lookup by reference code (HGC-XXXXXX), phone number, or participant name.
             </p>
           </div>
 
@@ -130,7 +130,7 @@ export default function StaffLookupPage() {
 
         {notFound && (
           <div className="p-6 bg-white rounded-[20px] border border-gray-200 text-center text-xs text-gray-500">
-            No matching registered attendee found for &ldquo;{query}&rdquo;.
+            No matching registered participant found for &ldquo;{query}&rdquo;.
           </div>
         )}
 
@@ -141,21 +141,21 @@ export default function StaffLookupPage() {
           </div>
         )}
 
-        {/* Found Attendee Card */}
-        {attendee && (
+        {/* Found Participant Card */}
+        {participant && (
           <div className="bg-white rounded-[24px] border border-gray-200 p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
             <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  Attendee File
+                  Participant File
                 </span>
-                <h2 className="text-xl font-bold text-[#111320]">{attendee.name}</h2>
-                <div className="text-xs text-gray-500 font-mono mt-0.5">{attendee.phoneE164}</div>
+                <h2 className="text-xl font-bold text-[#111320]">{participant.name}</h2>
+                <div className="text-xs text-gray-500 font-mono mt-0.5">{participant.phoneE164}</div>
               </div>
               <div className="text-right">
-                <div className="text-xs font-mono font-bold text-[#0E7A6E]">{attendee.refCode}</div>
+                <div className="text-xs font-mono font-bold text-[#0E7A6E]">{participant.refCode}</div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                  {attendee.status}
+                  {participant.status}
                 </span>
               </div>
             </div>
@@ -163,22 +163,22 @@ export default function StaffLookupPage() {
             <div className="grid grid-cols-2 gap-4 text-xs font-mono">
               <div className="p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 block text-[10px]">Location:</span>
-                <span className="font-bold">{attendee.state || attendee.country}</span>
+                <span className="font-bold">{participant.state || participant.country}</span>
               </div>
               <div className="p-3 bg-gray-50 rounded-xl">
-                <span className="text-gray-400 block text-[10px]">Parish:</span>
-                <span className="font-bold">{attendee.parish || "General"}</span>
+                <span className="text-gray-400 block text-[10px]">Chapter/Zone:</span>
+                <span className="font-bold">{participant.chapterZone || "General"}</span>
               </div>
               <div className="p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 block text-[10px]">Checked In:</span>
                 <span className="font-bold">
-                  {attendee.checkedInAt ? new Date(attendee.checkedInAt).toLocaleTimeString() : "No"}
+                  {participant.checkedInAt ? new Date(participant.checkedInAt).toLocaleTimeString() : "No"}
                 </span>
               </div>
               <div className="p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 block text-[10px]">Booklet:</span>
                 <span className="font-bold">
-                  {attendee.bookletIssuedAt ? "Issued" : "Pending"}
+                  {participant.bookletIssuedAt ? "Issued" : "Pending"}
                 </span>
               </div>
             </div>

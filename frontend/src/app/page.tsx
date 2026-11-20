@@ -125,7 +125,7 @@ export default function HomePage() {
                   Spread the Word — Share the Flyer
                 </h2>
                 <p className="text-sm text-[#6B7280] leading-relaxed">
-                  Download the official International Holiness General Conference 2026 flyer and share it with your parish, cell groups, and social media. Registration is open now at ₦5,000 / $20 / €20 / £20.
+                  Download the official International Holiness General Conference 2026 flyer and share it with your chapter/zone, cell groups, and social media. Registration is open now at ₦5,000 / $20 / €20 / £20.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 pt-2">
                   <a

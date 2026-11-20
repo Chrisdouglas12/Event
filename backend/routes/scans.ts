@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 
-import { Attendee } from '../schema/attendees.ts';
+import { Participant } from '../schema/participants.ts';
 import { Device } from '../schema/scans.ts';
 import { ScanEvent } from '../schema/scans.ts';
 import { BookletStock } from '../schema/scans.ts';
@@ -49,7 +49,7 @@ function hashQrToken(raw: string): string {
 }
 
 /**
- * Translate the outcome of an attendee state transition into the SCAN_RESULTS
+ * Translate the outcome of a participant state transition into the SCAN_RESULTS
  * enum. Kept small and pure so it's easy to test.
  */
 function resultForState(
@@ -111,16 +111,16 @@ router.post(
       }).lean();
       
       if (existing) {
-        const attendee = await Attendee.findById(existing.attendeeId).lean();
+        const participant = await Participant.findById(existing.participantId).lean();
         return res.status(200).json({
           result: existing.result,
           scanEvent: existing,
-          attendee: attendee
+          participant: participant
             ? {
-                id: attendee._id,
-                name: attendee.name,
-                refCode: attendee.refCode,
-                status: attendee.status,
+                id: participant._id,
+                name: participant.name,
+                refCode: participant.refCode,
+                status: participant.status,
               }
             : null,
         });
@@ -135,7 +135,7 @@ router.post(
         
         if (device && device.isRevoked) {
           await ScanEvent.create({
-            attendeeId: new mongoose.Types.ObjectId(), // ⚠️ See note below
+            participantId: new mongoose.Types.ObjectId(), // ⚠️ See note below
             scanType: body.scanType,
             staffId: req.staff!._id,
             deviceId: device._id,
@@ -153,16 +153,16 @@ router.post(
         }
       }
 
-      // ── Look up attendee ───────────────────────────────────────────────
+      // ── Look up participant ───────────────────────────────────────────────
       const qrTokenHash = hashQrToken(body.qrToken.trim());
-      const attendee = await Attendee.findOne({
+      const participant = await Participant.findOne({
         qrTokenHash,
         deletedAt: null,
       });
 
-      if (!attendee) {
+      if (!participant) {
         const event = await ScanEvent.create({
-          attendeeId: new mongoose.Types.ObjectId(), // ⚠️ See note below
+          participantId: new mongoose.Types.ObjectId(), // ⚠️ See note below
           scanType: body.scanType,
           staffId: req.staff!._id,
           deviceId: device?._id ?? null,
@@ -179,7 +179,7 @@ router.post(
       }
 
       // ── State transition ───────────────────────────────────────────────
-      const previousStatus = attendee.status;
+      const previousStatus = participant.status;
       const rejection = resultForState(previousStatus, body.scanType);
 
       const session = await mongoose.startSession();
@@ -190,7 +190,7 @@ router.post(
         const [scanEvent] = await ScanEvent.create(
           [
             {
-              attendeeId: attendee._id,
+              participantId: participant._id,
               scanType: body.scanType,
               staffId: req.staff!._id,
               deviceId: device?._id ?? null,
@@ -206,12 +206,12 @@ router.post(
 
         if (!rejection) {
           if (body.scanType === 'arrival' && previousStatus !== 'checked_in') {
-            attendee.status = 'checked_in';
-            attendee.checkedInAt = new Date();
+            participant.status = 'checked_in';
+            participant.checkedInAt = new Date();
           }
           if (body.scanType === 'booklet' && previousStatus !== 'booklet_issued') {
-            attendee.status = 'booklet_issued';
-            attendee.bookletIssuedAt = new Date();
+            participant.status = 'booklet_issued';
+            participant.bookletIssuedAt = new Date();
 
             const allocatedDate = new Date().toISOString().slice(0, 10);
             await BookletStock.updateOne(
@@ -220,20 +220,20 @@ router.post(
               { session }
             );
           }
-          await attendee.save({ session });
+          await participant.save({ session });
         }
 
         await session.commitTransaction();
 
         return res.status(200).json({
           result: scanEvent.result,
-          attendee: {
-            id: attendee._id,
-            name: attendee.name,
-            refCode: attendee.refCode,
-            status: attendee.status,
-            checkedInAt: attendee.checkedInAt,
-            bookletIssuedAt: attendee.bookletIssuedAt,
+          participant: {
+            id: participant._id,
+            name: participant.name,
+            refCode: participant.refCode,
+            status: participant.status,
+            checkedInAt: participant.checkedInAt,
+            bookletIssuedAt: participant.bookletIssuedAt,
           },
           scanEvent,
         });
@@ -248,7 +248,7 @@ router.post(
             return res.status(200).json({
               result: winner.result,
               scanEvent: winner,
-              attendee: null,
+              participant: null,
             });
           }
         }
@@ -264,25 +264,25 @@ router.post(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/scans/attendee/:id
+// GET /api/scans/participant/:id
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get(
-  '/scans/attendee/:id',
+  '/scans/participant/:id',
   authenticateStaff,
   requireRole('supervisor', 'admin'),
   async (req: AuthRequest, res: Response) => {
     try {
       if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid attendee id' });
+        return res.status(400).json({ error: 'Invalid participant id' });
       }
-      const scans = await ScanEvent.find({ attendeeId: req.params.id })
+      const scans = await ScanEvent.find({ participantId: req.params.id })
         .sort({ clientTimestamp: -1 })
         .limit(50)
         .lean();
       return res.json({ scans });
     } catch (err) {
-      console.error('[GET /scans/attendee/:id]', err);
+      console.error('[GET /scans/participant/:id]', err);
       return res.status(500).json({ error: 'Failed to load scans' });
     }
   }
@@ -313,6 +313,40 @@ router.get(
     } catch (err) {
       console.error('[GET /scans/stand/:standId/today]', err);
       return res.status(500).json({ error: 'Failed to load scans' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/scans/conflicts — quarantined scan events for admin review
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get(
+  '/scans/conflicts',
+  authenticateStaff,
+  requireRole('supervisor', 'admin'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const conflicts = await ScanEvent.find({
+        result: { $in: ['conflict', 'already_checked_in', 'invalid_signature', 'forged'] },
+      })
+        .sort({ serverTimestamp: -1 })
+        .limit(100)
+        .lean();
+
+      return res.json({
+        conflicts: conflicts.map((event: any) => ({
+          id: String(event._id),
+          result: event.result,
+          standId: event.standId,
+          clientTimestamp: event.clientTimestamp,
+          serverTimestamp: event.serverTimestamp,
+          notes: event.notes || null,
+        })),
+      });
+    } catch (err) {
+      console.error('[GET /scans/conflicts]', err);
+      return res.status(500).json({ error: 'Failed to load scan conflicts' });
     }
   }
 );

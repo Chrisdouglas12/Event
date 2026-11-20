@@ -14,7 +14,7 @@ import { useEffect, useRef } from "react";
  * - A 3D campground photo sits far behind everything as a depth backdrop:
  *   navy-graded, vignetted, slowly drifting and parallaxing with the pointer
  */
-export function HeroBackground() {
+export function HeroBackground({ align = "left" }: { align?: "left" | "right" }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -280,9 +280,15 @@ export function HeroBackground() {
         const FIT = 6.2;
 
         if (w >= 1024) {
-          const s = Math.min((vh * 0.95) / FIT, (vw * 0.52) / FIT);
-          world.scale.setScalar(s);
-          world.position.set(-vw * 0.24, 0, 0);
+          if (w >= 1440) {
+            const s = Math.min((vh * 0.88) / FIT, (vw * 0.24) / FIT);
+            world.scale.setScalar(s);
+            world.position.set((align === "right" ? 1 : -1) * vw * 0.30, vh * 0.055, 0);
+          } else {
+            const s = Math.min((vh * 0.86) / FIT, (vw * 0.26) / FIT);
+            world.scale.setScalar(s);
+            world.position.set((align === "right" ? 1 : -1) * vw * 0.28, vh * 0.055, 0);
+          }
         } else {
           const s = Math.min((vw * 0.98) / FIT, (vh * 0.98) / FIT);
           world.scale.setScalar(s);
@@ -338,17 +344,19 @@ export function HeroBackground() {
       window.addEventListener("pointermove", onPointer, { passive: true });
 
       // ---------- Loop ----------
-      const clock = new THREE.Clock();
+      const timer = new THREE.Timer();
+      timer.connect(document);
       let raf = 0;
       let inView = true;
       let tabVisible = !document.hidden;
       const motion = reduceMotion ? 0.2 : 1;
 
-      const frame = () => {
+      const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
-        const dt = Math.min(clock.getDelta(), 0.05) * motion;
-        const t = clock.getElapsedTime();
+        timer.update(timestamp);
+        const dt = Math.min(timer.getDelta(), 0.05) * motion;
+        const t = timer.getElapsed();
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
@@ -388,7 +396,7 @@ export function HeroBackground() {
       const io = new IntersectionObserver(([entry]) => {
         inView = entry.isIntersecting;
         if (inView) {
-          clock.getDelta();
+          timer.reset();
           schedule();
         }
       });
@@ -397,7 +405,7 @@ export function HeroBackground() {
       const onVis = () => {
         tabVisible = !document.hidden;
         if (tabVisible) {
-          clock.getDelta();
+          timer.reset();
           schedule();
         }
       };
@@ -407,6 +415,7 @@ export function HeroBackground() {
 
       cleanup = () => {
         cancelAnimationFrame(raf);
+        timer.dispose();
         ro.disconnect();
         io.disconnect();
         window.removeEventListener("pointermove", onPointer);

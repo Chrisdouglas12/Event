@@ -66,7 +66,7 @@ Add the one-time URI or setup key to the administrator’s authenticator immedia
 
 1. Enable and verify Supabase’s scheduled backups/PITR for the production project and record retention and recovery-point objectives with the project owner.
 2. Before launch, restore a recent backup into a separate staging project using Supabase’s recovery workflow. Apply any migrations newer than the restored point.
-3. Verify that orders, attendees, payment references, ticket signing keys, admin sessions, and a sample ticket are consistent. Never send test messages or live refunds from the restore environment.
+3. Verify that orders, participants, payment references, ticket signing keys, admin sessions, and a sample ticket are consistent. Never send test messages or live refunds from the restore environment.
 4. Record the restore time, recovery point, validation results, and operator. Repeat after material schema changes and on a regular schedule.
 
 No production backup or restore has been performed from this repository. Treat a restore drill as a launch gate.

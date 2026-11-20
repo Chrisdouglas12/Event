@@ -7,10 +7,10 @@ import { Download, Check } from "lucide-react";
 interface QrViewProps {
   value: string;
   refCode: string;
-  attendeeName: string;
+  participantName: string;
 }
 
-export function QrView({ value, refCode, attendeeName }: QrViewProps) {
+export function QrView({ value, refCode, participantName }: QrViewProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
 
@@ -46,7 +46,7 @@ export function QrView({ value, refCode, attendeeName }: QrViewProps) {
         {dataUrl ? (
           <img
             src={dataUrl}
-            alt={`Cryptographic ticket QR code for ${attendeeName}`}
+            alt={`Cryptographic ticket QR code for ${participantName}`}
             className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-[8px]"
           />
         ) : (

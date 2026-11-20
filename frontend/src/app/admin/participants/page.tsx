@@ -5,14 +5,14 @@ export const dynamic = "force-dynamic";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
-export default async function AdminAttendeesPage() {
-  let allAttendees: any[] = [];
+export default async function AdminParticipantsPage() {
+  let allParticipants: any[] = [];
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("staff_token")?.value;
 
-    const res = await fetch(`${API_BASE}/api/admin/attendees`, {
+    const res = await fetch(`${API_BASE}/api/admin/participants`, {
       cache: "no-store",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -21,26 +21,26 @@ export default async function AdminAttendeesPage() {
 
     if (res.ok) {
       const data = await res.json();
-      allAttendees = data.attendees || [];
+      allParticipants = data.participants || [];
     } else {
-      console.error("[admin/attendees] API failed with status:", res.status);
+      console.error("[admin/participants] API failed with status:", res.status);
     }
   } catch (err) {
-    console.error("[admin/attendees] Failed to fetch:", err);
+    console.error("[admin/participants] Failed to fetch:", err);
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[#111320] tracking-tight">Attendees</h1>
+          <h1 className="text-2xl font-black text-[#111320] tracking-tight">Participants</h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Confirmed and registered attendees with admission reference codes and check-in statuses.
+            Confirmed and registered participants with admission reference codes and check-in statuses.
           </p>
         </div>
       </div>
 
-      {/* Attendees Table */}
+      {/* Participants Table */}
       <div className="bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gray-600">
@@ -49,21 +49,22 @@ export default async function AdminAttendeesPage() {
                 <th className="px-5 py-3.5">Ref Code</th>
                 <th className="px-5 py-3.5">Full Name</th>
                 <th className="px-5 py-3.5">Phone</th>
-                <th className="px-5 py-3.5">Location / Parish</th>
+                <th className="px-5 py-3.5">Location / Chapter/Zone</th>
                 <th className="px-5 py-3.5">Status</th>
                 <th className="px-5 py-3.5">Booklet</th>
                 <th className="px-5 py-3.5">Date</th>
+                <th className="px-5 py-3.5">Attendance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {allAttendees.length === 0 ? (
+              {allParticipants.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
-                    No attendees registered yet.
+                  <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
+                    No participants registered yet.
                   </td>
                 </tr>
               ) : (
-                allAttendees.map((att) => (
+                allParticipants.map((att) => (
                   <tr key={att.id} className="hover:bg-gray-50/80 transition-colors">
                     <td className="px-5 py-3.5 font-mono font-bold text-[#0E7A6E]">
                       {att.refCode}
@@ -79,7 +80,7 @@ export default async function AdminAttendeesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-gray-500 text-[11px]">
                       <div>{att.state || att.country}</div>
-                      {att.parish && <div className="text-[10px] text-gray-400">{att.parish}</div>}
+                      {att.chapterZone && <div className="text-[10px] text-gray-400">{att.chapterZone}</div>}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
@@ -107,6 +108,11 @@ export default async function AdminAttendeesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-gray-400 text-[11px]">
                       {new Date(att.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF9F7] text-[#0E7A6E]">
+                        {att.attendanceMode === "physically" ? "Physically" : att.attendanceMode === "online" ? "Online" : "Not Sure"}
+                      </span>
                     </td>
                   </tr>
                 ))

@@ -5,10 +5,10 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 
 import { Order } from '../schema/orders.ts';
-import { CURRENCIES, ORDER_STATUSES, PAYMENT_PROVIDERS } from '../constants/enums.ts';
+import { ATTENDANCE_MODES, CURRENCIES, ORDER_STATUSES, PAYMENT_PROVIDERS } from '../constants/enums.ts';
 import { Payment } from '../schema/orders.ts';
 import { MANUAL_PAYMENT_STATUSES } from '../constants/enums.ts';
-import { Attendee, Group, GroupSeat, TicketType } from '../schema/attendees.ts';
+import { Participant, Group, GroupSeat, TicketType } from '../schema/participants.ts';
 import { AuditLog } from '../schema/auth.ts';
 
 import { authenticateStaff, requireRole } from './auth.ts';
@@ -93,6 +93,7 @@ function shapeOrder(order: any) {
     feeMinor: order.feeMinor,
     isGroup: order.isGroup,
     groupName: order.groupName || null,
+    attendanceMode: order.attendanceMode || 'not_sure',
     expiresAt: order.expiresAt || null,
     createdAt: order.createdAt,
     items: order.items || [],
@@ -221,6 +222,9 @@ router.post('/orders', async (req: Request, res: Response) => {
             : null,
           isGroup: !!body.group?.name,
           groupName: body.group?.name ? String(body.group.name).trim() : null,
+          attendanceMode: (ATTENDANCE_MODES as readonly string[]).includes(body.attendanceMode)
+            ? body.attendanceMode
+            : 'not_sure',
           idempotencyKey: body.idempotencyKey,
           expiresAt,
           items, // Ensure `items` is defined in your schema/orders.ts
@@ -262,18 +266,18 @@ router.get('/orders/:reference', async (req: Request, res: Response) => {
     }).lean();
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    const attendeeCount = await Attendee.countDocuments({ orderId: order._id });
+    const participantCount = await Participant.countDocuments({ orderId: order._id });
     const group = order.isGroup
       ? await Group.findOne({ orderId: order._id }).lean()
       : null;
 
     return res.json({
       order: shapeOrder(order),
-      attendeeCount,
+      participantCount,
       group: group
         ? {
             id: group._id,
-            churchOrParishName: group.churchOrParishName,
+            chapterZoneName: group.chapterZoneName,
             totalSeats: group.totalSeats,
             claimedSeats: group.claimedSeats,
           }
@@ -496,7 +500,7 @@ router.post(
       order.status = 'paid';
       await order.save({ session });
 
-      await Attendee.updateMany(
+      await Participant.updateMany(
         { orderId: order._id, status: 'unconfirmed' },
         { $set: { status: 'confirmed' } },
         { session }

@@ -12,7 +12,7 @@ const TEST_PRIVATE_KEY = "11".repeat(32);
 describe("Phase 3: Security & Cryptographic Field Hardening", () => {
   it("generates valid Ed25519 signed ticket and rejects forged signatures", async () => {
     const publicKey = await deriveTicketPublicKey(TEST_PRIVATE_KEY);
-    const ticket = await createTicketToken("attendee-uuid-1", TEST_PRIVATE_KEY);
+    const ticket = await createTicketToken("participant-uuid-1", TEST_PRIVATE_KEY);
 
     const verified = await verifyTicketToken(ticket.tokenString, publicKey);
     expect(verified.isValid).toBe(true);
@@ -23,18 +23,18 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
     expect(tamperedResult.isValid).toBe(false);
   });
 
-  it("verifies and secures Group Order passes with attendee counts", async () => {
+  it("verifies and secures Group Order passes with participant counts", async () => {
     const publicKey = await deriveTicketPublicKey(TEST_PRIVATE_KEY);
     const orderId = "00000000-0000-4000-8000-000000000001";
-    const attendeeCount = 12;
+    const participantCount = 12;
 
-    const groupToken = await createGroupOrderToken(orderId, attendeeCount, TEST_PRIVATE_KEY);
+    const groupToken = await createGroupOrderToken(orderId, participantCount, TEST_PRIVATE_KEY);
     const verified = await verifyGroupOrderToken(groupToken, publicKey);
 
     expect(verified.isValid).toBe(true);
     if (verified.isValid) {
       expect(verified.payload.orderId).toBe(orderId);
-      expect(verified.payload.attendeeCount).toBe(attendeeCount);
+      expect(verified.payload.participantCount).toBe(participantCount);
     }
 
     // Tampering test: different key
@@ -46,22 +46,22 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
 
   it("simulates offline gate collision resolution rules (earliest timestamp wins)", () => {
     interface OfflineScanRecord {
-      attendeeId: string;
+      participantId: string;
       standId: string;
       clientTime: number;
       syncTime: number;
     }
 
-    // Two devices scan the same attendee while offline
+    // Two devices scan the same participant while offline
     const scanStandA: OfflineScanRecord = {
-      attendeeId: "att-1",
+      participantId: "att-1",
       standId: "Gate A - Stand 1",
       clientTime: 1733648400000, // 09:00:00 AM WAT
       syncTime: 1733652000000,   // Syncs later at 10:00:00 AM
     };
 
     const scanStandB: OfflineScanRecord = {
-      attendeeId: "att-1",
+      participantId: "att-1",
       standId: "Gate B - Stand 3",
       clientTime: 1733648700000, // 09:05:00 AM WAT (5 minutes later)
       syncTime: 1733649000000,   // Syncs earlier at 09:10:00 AM
@@ -117,12 +117,12 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
   });
 
   it("enforces booklet issuance prerequisites (no booklet without prior check-in, no double-issue)", () => {
-    interface AttendeeState {
+    interface ParticipantState {
       checkedInAt: number | null;
       bookletIssuedAt: number | null;
     }
 
-    const state: AttendeeState = {
+    const state: ParticipantState = {
       checkedInAt: null,
       bookletIssuedAt: null,
     };
@@ -135,7 +135,7 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
         return { success: false, reason: "Booklet issue was already recorded." };
       }
       if (scanTime < state.checkedInAt) {
-        return { success: false, reason: "Booklet timestamp precedes the attendee arrival timestamp." };
+        return { success: false, reason: "Booklet timestamp precedes the participant arrival timestamp." };
       }
       state.bookletIssuedAt = scanTime;
       return { success: true };
@@ -147,7 +147,7 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
       reason: "Booklet cannot be issued before check-in.",
     });
 
-    // 2. Attendee arrives & checks in
+    // 2. Participant arrives & checks in
     state.checkedInAt = 2000;
 
     // 3. Issue booklet -> SUCCESS

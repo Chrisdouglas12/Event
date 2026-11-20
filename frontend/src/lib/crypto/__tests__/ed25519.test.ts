@@ -15,9 +15,9 @@ const WRONG_PRIVATE_KEY = "22".repeat(32);
 
 describe("Ed25519 ticket tokens", () => {
   it("signs tokens that verify with the public key only", async () => {
-    const attendeeId = "att_123456789";
+    const participantId = "att_123456789";
     const publicKey = await deriveTicketPublicKey(PRIVATE_KEY);
-    const { tokenString, tokenHash } = await createTicketToken(attendeeId, PRIVATE_KEY);
+    const { tokenString, tokenHash } = await createTicketToken(participantId, PRIVATE_KEY);
 
     expect(tokenHash).toHaveLength(64);
     const verification = await verifyTicketToken(tokenString, publicKey);
@@ -25,13 +25,13 @@ describe("Ed25519 ticket tokens", () => {
     expect(verification.payload?.version).toBe(2);
     if (verification.payload?.version === 2) expect(verification.payload.ticketId).toMatch(/^[A-Za-z0-9_-]{22}$/);
     const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(tokenString.split(".")[0])));
-    expect(payload).not.toHaveProperty("attendeeId");
-    expect((await createTicketToken(attendeeId, PRIVATE_KEY)).tokenString).toBe(tokenString);
+    expect(payload).not.toHaveProperty("participantId");
+    expect((await createTicketToken(participantId, PRIVATE_KEY)).tokenString).toBe(tokenString);
   });
 
   it("rejects signatures from a different private key", async () => {
     const publicKey = await deriveTicketPublicKey(PRIVATE_KEY);
-    const forged = await createTicketToken("forged_attendee", WRONG_PRIVATE_KEY);
+    const forged = await createTicketToken("forged_participant", WRONG_PRIVATE_KEY);
     const verification = await verifyTicketToken(forged.tokenString, publicKey);
     expect(verification.isValid).toBe(false);
     expect(verification.error).toContain("signature");
@@ -39,7 +39,7 @@ describe("Ed25519 ticket tokens", () => {
 
   it("rejects tampered payloads and malformed tokens", async () => {
     const publicKey = await deriveTicketPublicKey(PRIVATE_KEY);
-    const { tokenString } = await createTicketToken("real_attendee", PRIVATE_KEY);
+    const { tokenString } = await createTicketToken("real_participant", PRIVATE_KEY);
     const [payload, signature] = tokenString.split(".");
     const tampered = `${payload.slice(0, -2)}AA.${signature}`;
 
@@ -63,7 +63,7 @@ describe("Ed25519 ticket tokens", () => {
     expect(verification.isValid).toBe(true);
     if (verification.isValid) {
       expect(verification.payload.orderId).toBe(orderId);
-      expect(verification.payload.attendeeCount).toBe(4);
+      expect(verification.payload.participantCount).toBe(4);
     }
     expect((await verifyGroupOrderToken(token, await deriveTicketPublicKey(WRONG_PRIVATE_KEY))).isValid).toBe(false);
     await expect(createGroupOrderToken(orderId, 0, PRIVATE_KEY)).rejects.toThrow();

@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           </section>
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#111320]">Information used for registration</h2>
-            <p>The registration flow asks for attendee names and phone numbers, country, optional state/parish and email, and guardian contact details when an attendee is marked as a minor. Payment is initiated with Paystack or PayPal; this application does not ask for card security codes or bank login credentials.</p>
+            <p>The registration flow asks for participant names and phone numbers, country, optional state/chapter/zone and email, and guardian contact details when a participant is marked as a minor. Payment is initiated with Paystack or PayPal; this application does not ask for card security codes or bank login credentials.</p>
           </section>
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#111320]">Ticket and check-in</h2>

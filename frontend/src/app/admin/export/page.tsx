@@ -20,10 +20,10 @@ export default function AdminExportPage() {
             </div>
             <div className="space-y-1">
               <h3 className="text-base font-bold text-[#111320]">
-                Full Attendee Master Roster (CSV)
+                Full Participant Master Roster (CSV)
               </h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Includes all registered and confirmed attendees, reference codes, phone numbers, state/country, guardian contacts for minors, and check-in statuses.
+                Includes all registered and confirmed participants, reference codes, phone numbers, state/country, guardian contacts for minors, and check-in statuses.
               </p>
             </div>
           </div>

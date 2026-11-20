@@ -13,19 +13,19 @@ export default function FaqPage() {
   const faqs = [
     {
       q: "How much is the conference registration fee?",
-      a: "Registration is a flat rate of ₦5,000 for Nigerian attendees, or $20 USD / €20 EUR / £20 GBP for international attendees. There are no category differences; the same flat price applies to all attendees.",
+      a: "Registration is a flat rate of ₦5,000 for Nigeria participants, or $20 USD / €20 EUR / £20 GBP for international participants. There are no category differences; the same flat price applies to all participants.",
     },
     {
       q: "Are accommodation and meals included in the registration fee?",
-      a: "No. Accommodation and meals are not included. Attendees must arrange their own accommodation and food. The organizers have not provided lodging or meal details.",
+      a: "No. Accommodation and meals are not included. Participants must arrange their own accommodation and food. The organizers have not provided lodging or meal details.",
     },
     {
-      q: "Can I register a whole group, family, or church parish together?",
+      q: "Can I register a whole group, family, or chapter/zone together?",
       a: "Yes! You can choose 'Group Registration'. You can pay for all members in a single payment and either fill in their details immediately or share an invite link so members can claim their seats themselves. The group order also receives an express group QR code for fast gate check-in.",
     },
     {
       q: "Do I need an email address to register?",
-      a: "No. Email is completely optional for Nigerian attendees paying in Naira via Paystack. Your phone number (+234 format) and your unique reference code (HGC-XXXXXX) are all that is required. If you pay via PayPal in USD/EUR/GBP, an email address is required by PayPal.",
+      a: "No. Email is completely optional for Nigeria participants paying in Naira via Paystack. Your phone number (+234 format) and your unique reference code (HGC-XXXXXX) are all that is required. If you pay via PayPal in USD/EUR/GBP, an email address is required by PayPal.",
     },
     {
       q: "How do I receive my ticket and QR code?",

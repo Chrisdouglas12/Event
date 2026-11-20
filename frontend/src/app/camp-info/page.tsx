@@ -6,7 +6,7 @@ import { SITE_CONFIG } from "@/config/site";
 
 export const metadata = {
   title: "Camp Info & What to Bring | IHGC 2026",
-  description: "Confirmed venue and attendee planning information for IHGC 2026.",
+  description: "Confirmed venue and participant planning information for IHGC 2026.",
 };
 
 export default function CampInfoPage() {
@@ -17,7 +17,7 @@ export default function CampInfoPage() {
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8 space-y-4">
           <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">Venue & Planning</span>
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">Camp Info & What to Bring</h1>
-          <p className="text-gray-300 max-w-xl mx-auto text-sm sm:text-base">Confirmed attendee information for IHGC 2026.</p>
+          <p className="text-gray-300 max-w-xl mx-auto text-sm sm:text-base">Confirmed participant information for IHGC 2026.</p>
         </div>
       </section>
       <main className="flex-1 py-16 sm:py-24">
@@ -27,7 +27,7 @@ export default function CampInfoPage() {
               <AlertTriangle className="w-5 h-5" /> Accommodation and meals are not included
             </div>
             <p className="text-sm leading-relaxed text-amber-950">
-              Attendees must arrange their own accommodation and food. The organizers have not provided lodging or meal details.
+              Participants must arrange their own accommodation and food. The organizers have not provided lodging or meal details.
             </p>
           </section>
 

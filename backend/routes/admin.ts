@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import crypto from 'crypto';
 
 import { Order, ManualPayment } from '../schema/orders.ts';
-import { Attendee, Group } from '../schema/attendees.ts';
+import { Participant, Group } from '../schema/participants.ts';
 import { BookletStock, ScanEvent } from '../schema/scans.ts'; 
 import { authenticateStaff, requireRole } from './auth.ts';
 
@@ -22,12 +22,12 @@ function accessTokenFor(orderId: unknown): string {
     .slice(0, 32);
 }
 
-function qrTokenFor(attendeeId: unknown): string {
+function qrTokenFor(participantId: unknown): string {
   const secret = process.env.QR_TOKEN_SECRET;
   if (!secret || secret.length < 16) return "";
   return crypto
     .createHmac('sha256', secret)
-    .update(`attendee:${String(attendeeId)}`)
+    .update(`participant:${String(participantId)}`)
     .digest('base64url')
     .slice(0, 32);
 }
@@ -41,13 +41,29 @@ router.get(
   requireRole('admin', 'supervisor', 'finance'),
   async (_req: Request, res: Response) => {
     try {
-      const totalAttendees = await Attendee.countDocuments({ deletedAt: null });
-      const confirmedAttendees = await Attendee.countDocuments({ status: 'confirmed', deletedAt: null });
-      const checkedInAttendees = await Attendee.countDocuments({ status: 'checked_in', deletedAt: null });
+      const totalParticipants = await Participant.countDocuments({ deletedAt: null });
+      const confirmedParticipants = await Participant.countDocuments({ status: 'confirmed', deletedAt: null });
+      const checkedInParticipants = await Participant.countDocuments({ status: 'checked_in', deletedAt: null });
 
       const totalOrders = await Order.countDocuments({});
       const paidOrders = await Order.countDocuments({ status: 'paid' });
       const pendingOrders = await Order.countDocuments({ status: 'pending_payment' });
+
+      const attendanceOrders = await Order.find({ status: { $in: ['paid', 'pending_payment'] } }).lean();
+
+      const attendanceTotals = { physically: 0, online: 0, not_sure: 0 };
+      for (const order of attendanceOrders as any[]) {
+        if (order.isGroup && order.attendanceCounts) {
+          attendanceTotals.physically += Number(order.attendanceCounts.physically) || 0;
+          attendanceTotals.online += Number(order.attendanceCounts.online) || 0;
+          attendanceTotals.not_sure += Number(order.attendanceCounts.not_sure) || 0;
+        } else {
+          const mode = ['physically', 'online', 'not_sure'].includes(order.attendanceMode)
+            ? order.attendanceMode
+            : 'not_sure';
+          attendanceTotals[mode as keyof typeof attendanceTotals] += Number(order.seats) || 1;
+        }
+      }
 
       const revenueAgg = await Order.aggregate([
         { $match: { status: 'paid' } },
@@ -62,12 +78,13 @@ router.get(
       }
 
       return res.json({
-        totalAttendees,
-        confirmedAttendees,
-        checkedInAttendees,
+        totalParticipants,
+        confirmedParticipants,
+        checkedInParticipants,
         totalOrders,
         paidOrders,
         pendingOrders,
+        attendanceTotals,
         revenueByCurrency,
       });
     } catch (err) {
@@ -78,28 +95,28 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/attendees
+// GET /api/admin/participants
 // ─────────────────────────────────────────────────────────────────────────────
 router.get(
-  '/admin/attendees',
+  '/admin/participants',
   authenticateStaff,
   requireRole('admin', 'supervisor', 'attendant'),
   async (_req: Request, res: Response) => {
     try {
-      const attendees = await Attendee.find({ deletedAt: null })
+      const participants = await Participant.find({ deletedAt: null })
         .sort({ createdAt: -1 })
         .limit(50)
         .lean();
 
-      const formatted = attendees.map((att) => ({
+      const formatted = participants.map((att) => ({
         ...att,
         id: att._id.toString(),
       }));
 
-      return res.json({ attendees: formatted });
+      return res.json({ participants: formatted });
     } catch (err) {
-      console.error('[GET /admin/attendees] error:', err);
-      return res.status(500).json({ error: 'Failed to load attendees' });
+      console.error('[GET /admin/participants] error:', err);
+      return res.status(500).json({ error: 'Failed to load participants' });
     }
   }
 );
@@ -147,14 +164,14 @@ router.get(
         return res.status(404).json({ error: 'Order not found' });
       }
 
-      const attendees = await Attendee.find({ orderId: order._id, deletedAt: null }).lean();
+      const participants = await Participant.find({ orderId: order._id, deletedAt: null }).lean();
       const group = order.isGroup ? await Group.findOne({ orderId: order._id }).lean() : null;
 
-      const formattedAttendees = attendees.map((att: any) => ({
+      const formattedParticipants = participants.map((att: any) => ({
         id: att._id.toString(),
         refCode: att.refCode,
         name: att.name,
-        parish: att.parish,
+        chapterZone: att.chapterZone,
         status: att.status,
         qrToken: qrTokenFor(att._id),
       }));
@@ -168,7 +185,7 @@ router.get(
           totalMinor: order.totalMinor,
           currency: order.currency,
         },
-        attendees: formattedAttendees,
+        participants: formattedParticipants,
         group: group ? {
           id: group._id.toString(),
           managementToken: (group as any).managementToken,
@@ -217,6 +234,7 @@ router.get(
             id: order._id.toString(),
             reference: order.reference,
             groupName: order.groupName,
+            attendanceMode: order.attendanceMode || 'not_sure',
             payerName: order.payerName,
             payerPhoneE164: order.payerPhoneE164,
             totalMinor: order.totalMinor,
@@ -283,7 +301,7 @@ router.get(
   requireRole('admin', 'supervisor', 'attendant'),
   async (_req: Request, res: Response) => {
     try {
-      const currentIssued = await Attendee.countDocuments({
+      const currentIssued = await Participant.countDocuments({
         bookletIssuedAt: { $ne: null },
         deletedAt: null,
       });
@@ -393,11 +411,11 @@ router.post(
         return res.status(400).json({ error: 'Missing QR token or Stand ID' });
       }
 
-      // 1. Find the attendee by their QR hash
+      // 1. Find the participant by their QR hash
       const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
-      const attendee = await Attendee.findOne({ qrTokenHash: tokenHash, deletedAt: null });
+      const participant = await Participant.findOne({ qrTokenHash: tokenHash, deletedAt: null });
 
-      if (!attendee) {
+      if (!participant) {
         await ScanEvent.create({
           scanType: action || 'arrival',
           staffId,
@@ -411,33 +429,33 @@ router.post(
       }
 
       // 2. Prevent duplicate check-ins
-      if (action === 'arrival' && attendee.checkedInAt) {
+      if (action === 'arrival' && participant.checkedInAt) {
         return res.status(409).json({ 
-          error: `Already checked in on ${new Date(attendee.checkedInAt).toLocaleTimeString()}`,
-          attendee: { name: attendee.name, refCode: attendee.refCode }
+          error: `Already checked in on ${new Date(participant.checkedInAt).toLocaleTimeString()}`,
+          participant: { name: participant.name, refCode: participant.refCode }
         });
       }
 
-      if (action === 'booklet' && attendee.bookletIssuedAt) {
+      if (action === 'booklet' && participant.bookletIssuedAt) {
         return res.status(409).json({ 
           error: 'Booklet already issued.',
-          attendee: { name: attendee.name, refCode: attendee.refCode }
+          participant: { name: participant.name, refCode: participant.refCode }
         });
       }
 
       // 3. Perform the action
       if (action === 'arrival') {
-        attendee.checkedInAt = new Date();
-        attendee.status = 'checked_in';
+        participant.checkedInAt = new Date();
+        participant.status = 'checked_in';
       } else if (action === 'booklet') {
-        attendee.bookletIssuedAt = new Date();
-        attendee.status = 'booklet_issued';
+        participant.bookletIssuedAt = new Date();
+        participant.status = 'booklet_issued';
       }
-      await attendee.save();
+      await participant.save();
 
       // 4. Log the success
       await ScanEvent.create({
-        attendeeId: attendee._id,
+        participantId: participant._id,
         scanType: action || 'arrival',
         staffId,
         standId,
@@ -449,10 +467,10 @@ router.post(
       return res.json({
         success: true,
         message: action === 'arrival' ? 'Checked in successfully' : 'Booklet issued successfully',
-        attendee: {
-          name: attendee.name,
-          refCode: attendee.refCode,
-          parish: attendee.parish,
+        participant: {
+          name: participant.name,
+          refCode: participant.refCode,
+          chapterZone: participant.chapterZone,
         }
       });
 

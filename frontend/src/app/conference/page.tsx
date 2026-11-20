@@ -68,7 +68,7 @@ export default function ConferencePage() {
               <div>
                 <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Registration</div>
                 <div className="text-base font-bold text-[#111320] mt-0.5">₦5,000 / $20 / €20 / £20</div>
-                <div className="text-xs text-gray-500">Flat rate for every attendee</div>
+                <div className="text-xs text-gray-500">Flat rate for every participant</div>
               </div>
             </div>
           </div>
@@ -147,10 +147,10 @@ export default function ConferencePage() {
           <Reveal delay={250}>
           <div className="bg-[#EAF9F7] border border-[#CDEFEA] rounded-[20px] p-6 sm:p-8 space-y-3">
             <h3 className="text-lg font-bold text-[#0E1020]">
-              Important Planning Notice for Attendees
+              Important Planning Notice for Participants
             </h3>
             <p className="text-sm text-[#0E7A6E] leading-relaxed">
-              Registration is a flat fee of ₦5,000 / $20 / €20 / £20 per attendee. <strong>Accommodation and meals are not included.</strong> Attendees must arrange their own accommodation and food.
+              Registration is a flat fee of ₦5,000 / $20 / €20 / £20 per participant. <strong>Accommodation and meals are not included.</strong> Participants must arrange their own accommodation and food.
             </p>
             <div className="pt-2">
               <Link href="/camp-info" className="text-xs font-bold text-[#0E1020] underline hover:text-[#0E7A6E]">

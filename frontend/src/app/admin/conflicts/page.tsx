@@ -1,29 +1,30 @@
-import { db } from "@/db";
-import { desc, or, eq } from "drizzle-orm";
-import { scanEvents, attendees } from "@/db/schema";
-import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { adminApi } from "@/lib/admin-api";
 
 export const dynamic = "force-dynamic";
 
+type ConflictScan = {
+  id: string;
+  result: string;
+  standId: string;
+  clientTimestamp: string;
+  serverTimestamp: string;
+  notes?: string | null;
+};
+
 export default async function AdminConflictsPage() {
-  let conflictScans: any[] = [];
+  let conflictScans: ConflictScan[] = [];
   try {
-    conflictScans = await db.query.scanEvents.findMany({
-      where: or(
-        eq(scanEvents.result, "conflict"),
-        eq(scanEvents.result, "already_checked_in"),
-        eq(scanEvents.result, "invalid_signature")
-      ),
-      orderBy: [desc(scanEvents.serverTimestamp)],
-    });
-  } catch (err) {
-    console.error("[admin/conflicts] DB unavailable:", err);
+    const data = await adminApi("/scans/conflicts");
+    conflictScans = data.conflicts || [];
+  } catch (error) {
+    console.error("[admin/conflicts] Unable to load scan conflicts:", error);
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-[#111320] tracking-tight">Offline Sync Conflicts & Audit</h1>
+        <h1 className="text-2xl font-black text-[#111320] tracking-tight">Offline Sync Conflicts &amp; Audit</h1>
         <p className="text-xs text-gray-500 mt-0.5">
           Quarantine queue for dual offline scans, duplicate gate entries, and rejected cryptographic tickets.
         </p>
@@ -83,4 +84,3 @@ export default async function AdminConflictsPage() {
     </div>
   );
 }
-

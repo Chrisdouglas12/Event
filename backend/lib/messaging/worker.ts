@@ -41,7 +41,7 @@ export async function processNotificationQueue() {
     let delivered = false;
     try {
       delivered = await deliverTicketChannel({
-        attendeeName: job.payload.attendeeName,
+        participantName: job.payload.participantName,
         refCode: job.payload.refCode,
         phoneE164: job.payload.phoneE164 || "",
         email: job.payload.email || null,

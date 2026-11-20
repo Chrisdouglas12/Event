@@ -242,7 +242,7 @@ export default function AdminSettingsPage() {
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <div>
             <h2 className="text-lg font-bold text-[#111320]">Manual Bank Transfer</h2>
-            <p className="mt-1 text-xs text-gray-500">These details are shown to registrants only when NGN checkout is routed to manual transfer. Never ask attendees to upload a receipt.</p>
+            <p className="mt-1 text-xs text-gray-500">These details are shown to registrants only when NGN checkout is routed to manual transfer. Never ask participants to upload a receipt.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div><label className={labelCls}>Bank Name</label><input className={inputCls} value={settings.bankName || ""} onChange={(e) => updateSetting("bankName", e.target.value)} /></div>
@@ -269,7 +269,7 @@ export default function AdminSettingsPage() {
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-gray-400">Amounts are per attendee, flat rate. Stored in minor units (kobo/cents/pence).</p>
+          <p className="text-[11px] text-gray-400">Amounts are per participant, flat rate. Stored in minor units (kobo/cents/pence).</p>
         </section>
 
         {/* Provider Routing */}

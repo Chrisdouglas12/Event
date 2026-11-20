@@ -98,6 +98,7 @@ export default function StaffLoginPage() {
                 width={120}
                 height={40}
                 className="h-8 w-auto object-contain"
+                style={{ width: "auto" }}
               />
             </div>
             <div className="flex items-center justify-center gap-1.5 text-[#0E7A6E]">

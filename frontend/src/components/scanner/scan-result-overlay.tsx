@@ -9,13 +9,13 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
-import type { CachedAttendee } from "@/lib/offline/dexie-db";
+import type { CachedParticipant } from "@/lib/offline/dexie-db";
 
 export type ScanResult =
   | { type: "idle" }
-  | { type: "valid"; attendee: CachedAttendee; ticketToken: string; message: string }
-  | { type: "group"; orderId: string; orderToken: string; attendees: CachedAttendee[]; checkedIn: boolean; message?: string; error?: string }
-  | { type: "already_checked_in"; attendee: CachedAttendee; message: string }
+  | { type: "valid"; participant: CachedParticipant; ticketToken: string; message: string }
+  | { type: "group"; orderId: string; orderToken: string; participants: CachedParticipant[]; checkedIn: boolean; message?: string; error?: string }
+  | { type: "already_checked_in"; participant: CachedParticipant; message: string }
   | { type: "unknown"; message: string }
   | { type: "forged"; error: string }
   | { type: "error"; message: string };
@@ -26,8 +26,8 @@ interface ScanResultOverlayProps {
   busy?: boolean;
   issuingBooklet?: boolean;
   onDismiss: () => void;
-  onIssueBooklet: (attendee: CachedAttendee, ticketToken: string) => void;
-  onCheckInGroup: (attendees: CachedAttendee[], orderToken: string) => void;
+  onIssueBooklet: (participant: CachedParticipant, ticketToken: string) => void;
+  onCheckInGroup: (participants: CachedParticipant[], orderToken: string) => void;
 }
 
 function StatusIcon({ type }: { type: ScanResult["type"] }) {
@@ -74,7 +74,7 @@ export function ScanResultOverlay({
 
   const style = resultStyle(result.type);
   const eligibleGroupCount = result.type === "group"
-    ? result.attendees.filter((attendee) => attendee.status === "confirmed").length
+    ? result.participants.filter((participant) => participant.status === "confirmed").length
     : 0;
   const description = result.type === "forged" ? result.error
     : result.type === "unknown" || result.type === "error" ? result.message
@@ -118,10 +118,10 @@ export function ScanResultOverlay({
 
           {result.type === "valid" && (
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-[#F8FAFC] p-3.5 shadow-xs">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EAF9F7] font-heading text-sm font-bold text-[#0E7A6E]">{result.attendee.name.trim().charAt(0).toUpperCase()}</div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EAF9F7] font-heading text-sm font-bold text-[#0E7A6E]">{result.participant.name.trim().charAt(0).toUpperCase()}</div>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-heading text-[14px] font-bold text-[#111320]">{result.attendee.name}</div>
-                <div className="mt-0.5 truncate font-mono text-[11px] font-semibold text-gray-500">{result.attendee.refCode} <span className="font-body text-gray-400">· {standId}</span></div>
+                <div className="truncate font-heading text-[14px] font-bold text-[#111320]">{result.participant.name}</div>
+                <div className="mt-0.5 truncate font-mono text-[11px] font-semibold text-gray-500">{result.participant.refCode} <span className="font-body text-gray-400">· {standId}</span></div>
               </div>
               <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-heading text-[9px] font-bold uppercase text-emerald-700">Checked in</span>
             </div>
@@ -129,11 +129,11 @@ export function ScanResultOverlay({
 
           {result.type === "already_checked_in" && (
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-              <div className="font-heading text-[15px] font-bold text-[#111320]">{result.attendee.name}</div>
-              <div className="mt-1 font-mono text-[11px] font-bold text-gray-700">{result.attendee.refCode}</div>
+              <div className="font-heading text-[15px] font-bold text-[#111320]">{result.participant.name}</div>
+              <div className="mt-1 font-mono text-[11px] font-bold text-gray-700">{result.participant.refCode}</div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
-                <div><span className="block font-heading text-[10px] font-bold uppercase text-gray-500">Checked in</span><strong className="mt-0.5 block font-heading text-gray-800">{result.attendee.checkedInAt ? new Date(result.attendee.checkedInAt).toLocaleTimeString("en-NG", { timeZone: "Africa/Lagos", hour: "numeric", minute: "2-digit" }) : "Earlier"}</strong></div>
-                <div><span className="block font-heading text-[10px] font-bold uppercase text-gray-500">Gate Stand</span><strong className="mt-0.5 block truncate font-heading text-gray-800">{result.attendee.checkedInStand || "Not recorded"}</strong></div>
+                <div><span className="block font-heading text-[10px] font-bold uppercase text-gray-500">Checked in</span><strong className="mt-0.5 block font-heading text-gray-800">{result.participant.checkedInAt ? new Date(result.participant.checkedInAt).toLocaleTimeString("en-NG", { timeZone: "Africa/Lagos", hour: "numeric", minute: "2-digit" }) : "Earlier"}</strong></div>
+                <div><span className="block font-heading text-[10px] font-bold uppercase text-gray-500">Gate Stand</span><strong className="mt-0.5 block truncate font-heading text-gray-800">{result.participant.checkedInStand || "Not recorded"}</strong></div>
               </div>
             </div>
           )}
@@ -142,19 +142,19 @@ export function ScanResultOverlay({
             <div className="mt-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 text-[11px]">
                 <span className="font-heading font-bold uppercase tracking-wider text-gray-500">Paid seats</span>
-                <span className="font-heading font-extrabold text-gray-800">{result.attendees.length} attendees</span>
+                <span className="font-heading font-extrabold text-gray-800">{result.participants.length} participants</span>
               </div>
               <ul className="max-h-[34svh] divide-y divide-gray-100 overflow-y-auto">
-                {result.attendees.map((attendee) => {
-                  const checkedIn = attendee.checkedInAt || attendee.status === "checked_in" || attendee.status === "booklet_issued";
+                {result.participants.map((participant) => {
+                  const checkedIn = participant.checkedInAt || participant.status === "checked_in" || participant.status === "booklet_issued";
                   return (
-                    <li key={attendee.attendeeId} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <li key={participant.participantId} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
-                        <div className="truncate font-heading text-[12px] font-bold text-[#111320]">{attendee.name}</div>
-                        <div className="mt-0.5 font-mono text-[10px] text-gray-500">{attendee.refCode}</div>
+                        <div className="truncate font-heading text-[12px] font-bold text-[#111320]">{participant.name}</div>
+                        <div className="mt-0.5 font-mono text-[10px] text-gray-500">{participant.refCode}</div>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 font-heading text-[9px] font-bold uppercase ${checkedIn ? "bg-amber-50 text-amber-800" : attendee.status === "confirmed" ? "bg-emerald-50 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
-                        {checkedIn ? "Already in" : attendee.status === "confirmed" ? "Ready" : "Review"}
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 font-heading text-[9px] font-bold uppercase ${checkedIn ? "bg-amber-50 text-amber-800" : participant.status === "confirmed" ? "bg-emerald-50 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
+                        {checkedIn ? "Already in" : participant.status === "confirmed" ? "Ready" : "Review"}
                       </span>
                     </li>
                   );
@@ -163,8 +163,8 @@ export function ScanResultOverlay({
             </div>
           )}
 
-          {result.type === "valid" && !result.attendee.bookletIssuedAt && (
-            <button onClick={() => onIssueBooklet(result.attendee, result.ticketToken)} disabled={busy || issuingBooklet} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#0E7A6E]/30 bg-[#EAF9F7] font-heading text-[12px] font-bold text-[#0E7A6E] hover:bg-[#DCF5F1] disabled:cursor-wait disabled:opacity-60 transition-colors">
+          {result.type === "valid" && !result.participant.bookletIssuedAt && (
+            <button onClick={() => onIssueBooklet(result.participant, result.ticketToken)} disabled={busy || issuingBooklet} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#0E7A6E]/30 bg-[#EAF9F7] font-heading text-[12px] font-bold text-[#0E7A6E] hover:bg-[#DCF5F1] disabled:cursor-wait disabled:opacity-60 transition-colors">
               {issuingBooklet ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
               <span>{issuingBooklet ? "Recording issue…" : "Issue Conference Booklet"}</span>
             </button>
@@ -172,9 +172,9 @@ export function ScanResultOverlay({
 
           <div className="mt-4 grid grid-cols-2 gap-2.5">
             {result.type === "group" && !result.checkedIn && eligibleGroupCount > 0 && (
-              <button onClick={() => onCheckInGroup(result.attendees, result.orderToken)} disabled={busy} className="col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0E7A6E] px-4 font-heading text-[12px] font-bold text-white shadow-sm hover:bg-[#0B645B] disabled:cursor-wait disabled:opacity-60 transition-colors">
+              <button onClick={() => onCheckInGroup(result.participants, result.orderToken)} disabled={busy} className="col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0E7A6E] px-4 font-heading text-[12px] font-bold text-white shadow-sm hover:bg-[#0B645B] disabled:cursor-wait disabled:opacity-60 transition-colors">
                 {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                <span>Check in {eligibleGroupCount} {eligibleGroupCount === 1 ? "attendee" : "attendees"}</span>
+                <span>Check in {eligibleGroupCount} {eligibleGroupCount === 1 ? "participant" : "participants"}</span>
               </button>
             )}
             <button onClick={onDismiss} className="col-span-2 min-h-12 rounded-xl bg-[#0E1020] px-4 font-heading text-[12px] font-bold text-white hover:bg-[#1A1D36] active:scale-95 transition-all">

@@ -10,11 +10,11 @@ export default function WalkInRegistrationPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+234 ");
   const [state, setState] = useState("FCT Abuja");
-  const [parish, setParish] = useState("");
+  const [chapterZone, setChapterZone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "pos">("cash");
   const [tellerOrReceipt, setTellerOrReceipt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [completedAttendee, setCompletedAttendee] = useState<any | null>(null);
+  const [completedParticipant, setCompletedParticipant] = useState<any | null>(null);
   const [completedTicketUrl, setCompletedTicketUrl] = useState<string | null>(null);
   const [amountMinor, setAmountMinor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export default function WalkInRegistrationPage() {
           name,
           phone: phone.trim(),
           state,
-          parish: parish || undefined,
+          chapterZone: chapterZone || undefined,
           paymentMethod,
           tellerOrReceipt: tellerOrReceipt || "CASH_COLLECTED_AT_GATE",
         }),
@@ -59,7 +59,7 @@ export default function WalkInRegistrationPage() {
         throw new Error(data.error || "Failed to process walk-in registration.");
       }
 
-      setCompletedAttendee(data.attendee);
+      setCompletedParticipant(data.participant);
       setCompletedTicketUrl(data.ticketUrl);
       setAmountMinor(data.amountMinor);
     } catch (err: any) {
@@ -72,9 +72,9 @@ export default function WalkInRegistrationPage() {
   const resetForm = () => {
     setName("");
     setPhone("+234 ");
-    setParish("");
+    setChapterZone("");
     setTellerOrReceipt("");
-    setCompletedAttendee(null);
+    setCompletedParticipant(null);
     setCompletedTicketUrl(null);
     idempotencyKey.current = null;
     setError(null);
@@ -97,12 +97,12 @@ export default function WalkInRegistrationPage() {
       </header>
 
       <main className="flex-1 p-4 sm:p-8 max-w-lg mx-auto w-full">
-        {!completedAttendee ? (
+        {!completedParticipant ? (
           <div className="bg-white rounded-[24px] border border-gray-200 p-6 sm:p-8 shadow-sm space-y-6">
             <div className="space-y-1">
               <h1 className="text-xl font-heading font-extrabold text-[#111320] flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-[#0E7A6E]" />
-                <span>Register & Check-in Walk-in Attendee</span>
+                <span>Register & Check-in Walk-in Participant</span>
               </h1>
               <p className="text-xs text-gray-500">
                 Collect the configured fee, issue the ticket, and record gate arrival in one flow.
@@ -111,7 +111,7 @@ export default function WalkInRegistrationPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-gray-700">Attendee Full Name *</label>
+                <label className="font-semibold text-gray-700">Participant Full Name *</label>
                 <input
                   type="text"
                   required
@@ -146,12 +146,12 @@ export default function WalkInRegistrationPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-semibold text-gray-700">Parish (Optional)</label>
+                  <label className="font-semibold text-gray-700">Chapter/Zone (Optional)</label>
                   <input
                     type="text"
-                    placeholder="Chapter / Church"
-                    value={parish}
-                    onChange={(e) => setParish(e.target.value)}
+                    placeholder="Chapter / Zone"
+                    value={chapterZone}
+                    onChange={(e) => setChapterZone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-[8px] bg-gray-50 border border-gray-200 text-sm focus:outline-none"
                   />
                 </div>
@@ -232,17 +232,17 @@ export default function WalkInRegistrationPage() {
                 Admission Confirmed & Checked In
               </span>
               <h2 className="text-2xl font-black text-[#111320]">
-                {completedAttendee.name}
+                {completedParticipant.name}
               </h2>
               <div className="text-xs text-gray-500 font-mono">
-                Ref Code: <strong className="text-black text-sm">{completedAttendee.refCode}</strong>
+                Ref Code: <strong className="text-black text-sm">{completedParticipant.refCode}</strong>
               </div>
             </div>
 
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-left text-xs font-mono space-y-1 max-w-xs mx-auto">
               <div>Stand: <strong>{standId}</strong></div>
               <div>Status: <strong className="text-emerald-700">checked_in</strong></div>
-              <div>Payment: <strong>{formatMoneyMinor(completedAttendee.amountMinor ?? amountMinor ?? 0, "NGN")} ({paymentMethod.toUpperCase()})</strong></div>
+              <div>Payment: <strong>{formatMoneyMinor(completedParticipant.amountMinor ?? amountMinor ?? 0, "NGN")} ({paymentMethod.toUpperCase()})</strong></div>
             </div>
 
             <div className="pt-2 space-y-3">
@@ -258,7 +258,7 @@ export default function WalkInRegistrationPage() {
                 onClick={resetForm}
                 className="w-full py-3 rounded-full bg-[#0E1020] text-white font-bold text-xs shadow-sm cursor-pointer"
               >
-                Register Next Walk-in Attendee
+                Register Next Walk-in Participant
               </button>
               <Link
                 href="/staff/scanner"

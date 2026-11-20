@@ -13,9 +13,9 @@ const notificationJobSchema = new mongoose.Schema(
       ref: 'Order',
       required: true,
     },
-    attendeeId: {
+    participantId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Attendee',
+      ref: 'Participant',
       required: true,
     },
     channel: {
@@ -27,7 +27,7 @@ const notificationJobSchema = new mongoose.Schema(
       required: true,
     },
     payload: {
-      // { attendeeName, refCode, phoneE164?, email?, ticketUrl }
+      // { participantName, refCode, phoneE164?, email?, ticketUrl }
       type: mongoose.Schema.Types.Mixed,
       required: true,
     },
@@ -90,8 +90,8 @@ notificationJobSchema.index({ status: 1, availableAt: 1 });
 // Per-order reporting / admin lookup.
 notificationJobSchema.index({ orderId: 1 });
 
-// Per-attendee history (nice to have for support).
-notificationJobSchema.index({ attendeeId: 1 });
+// Per-participant history (nice to have for support).
+notificationJobSchema.index({ participantId: 1 });
 
 // Detect stuck jobs (processing but locked too long ago).
 notificationJobSchema.index({ status: 1, lockedAt: 1 });

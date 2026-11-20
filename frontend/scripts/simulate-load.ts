@@ -75,7 +75,7 @@ async function runLoadBenchmark() {
 
   const signTasks = Array.from({ length: CONCURRENCY_ITERATIONS }, async (_, i) => {
     const t0 = performance.now();
-    const ticket = await createTicketToken(`attendee-${i}`, TEST_PRIVATE_KEY);
+    const ticket = await createTicketToken(`participant-${i}`, TEST_PRIVATE_KEY);
     signDurations.push(performance.now() - t0);
     return ticket;
   });

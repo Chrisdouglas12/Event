@@ -5,7 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 // routes
-import attendeeRoutes from "./routes/attendees.ts";
+import participantRoutes from "./routes/participants.ts";
 import authRoutes from "./routes/auth.ts";
 import jobRoutes from "./routes/jobs.ts";
 import orderRoutes from "./routes/orders.ts";
@@ -55,7 +55,7 @@ app.get("/health", (_req: Request, res: Response) => {
 // MOUNT ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
-app.use("/api", attendeeRoutes);
+app.use("/api", participantRoutes);
 app.use("/api", authRoutes);
 app.use("/api", jobRoutes);
 app.use("/api", orderRoutes);

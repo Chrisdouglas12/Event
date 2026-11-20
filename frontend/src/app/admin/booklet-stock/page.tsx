@@ -39,9 +39,9 @@ export default async function AdminBookletStockPage() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="space-y-2 rounded-[16px] border border-gray-200 bg-white p-5">
-          <div className="flex items-center justify-between text-xs font-semibold text-gray-500"><span>Issued to attendees</span><CheckCircle2 className="h-4 w-4 text-emerald-600" /></div>
+          <div className="flex items-center justify-between text-xs font-semibold text-gray-500"><span>Issued to participants</span><CheckCircle2 className="h-4 w-4 text-emerald-600" /></div>
           <div className="text-3xl font-black text-emerald-700">{currentIssued.toLocaleString()}</div>
-          <div className="text-[11px] text-gray-400">Current attendee issue records</div>
+          <div className="text-[11px] text-gray-400">Current participant issue records</div>
         </div>
         <div className="space-y-2 rounded-[16px] border border-gray-200 bg-white p-5">
           <div className="flex items-center justify-between text-xs font-semibold text-gray-500"><span>Allocated</span><BookOpen className="h-4 w-4 text-amber-600" /></div>

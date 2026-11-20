@@ -21,7 +21,7 @@ describe("ticket notification outbox payloads", () => {
       payerEmail: "payer@example.com",
     }, [{
       id: "79cc4e29-8f37-4c0f-b2dc-1f153762e12a",
-      name: "Attendee One",
+      name: "Participant One",
       refCode: "HGC-000001",
       phoneE164: "+2348012345678",
       email: null,
@@ -40,20 +40,20 @@ describe("ticket notification outbox payloads", () => {
 
   it("creates a fresh idempotency key for each requested recovery resend", async () => {
     const order = { id: "e49f2e1d-85c0-4779-a544-24b3ba93a20c", reference: "HGC-123456", payerEmail: null };
-    const attendee = [{
+    const participant = [{
       id: "79cc4e29-8f37-4c0f-b2dc-1f153762e12a",
-      name: "Attendee One",
+      name: "Participant One",
       refCode: "HGC-000001",
       phoneE164: "+2348012345678",
       email: null,
     }];
-    const first = await buildTicketNotificationJobs(order, attendee, { appUrl: "https://tickets.example.test", resend: true });
-    const second = await buildTicketNotificationJobs(order, attendee, { appUrl: "https://tickets.example.test", resend: true });
+    const first = await buildTicketNotificationJobs(order, participant, { appUrl: "https://tickets.example.test", resend: true });
+    const second = await buildTicketNotificationJobs(order, participant, { appUrl: "https://tickets.example.test", resend: true });
     expect(first[0].idempotencyKey).not.toBe(second[0].idempotencyKey);
     expect(first[0].idempotencyKey).toMatch(/^resend:/);
   });
 
-  it("does not create jobs for an empty attendee list", async () => {
+  it("does not create jobs for an empty participant list", async () => {
     await expect(buildTicketNotificationJobs({
       id: "e49f2e1d-85c0-4779-a544-24b3ba93a20c",
       reference: "HGC-123456",

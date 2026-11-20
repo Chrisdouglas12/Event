@@ -24,7 +24,7 @@
 | **CR-011** | About Page | Ministry Story & Background | Copy | **PENDING OWNER** | Approved history, mission, ministry background and About Horemow copy. A labeled placeholder is shown. |
 | **CR-012** | Conference Page | Theme Exposition | Copy | **PENDING OWNER** | Theme title is confirmed; approved exposition copy is still needed. |
 | **CR-013** | Camp Info / Contact | Venue Map & Directions | Map pin / directions | **PENDING OWNER** | Confirm exact map pin and provide approved travel directions; the unverified embed and route instructions were removed. |
-| **CR-014** | Camp Info / FAQ | Lodging & Meals Advice | Copy | **FULFILLED** | Confirmed fact: accommodation and meals are not included; attendees arrange their own. |
+| **CR-014** | Camp Info / FAQ | Lodging & Meals Advice | Copy | **FULFILLED** | Confirmed fact: accommodation and meals are not included; participants arrange their own. |
 | **CR-015** | FAQ Page | Official FAQ Questions & Answers | Copy | **PENDING OWNER** | Core FAQs drafted based on brief facts |
 | **CR-016** | Contact Page | Official Contact Email | Text | **PENDING OWNER** | None yet; dynamic slot hidden/shown |
 | **CR-017** | Global Header / Footer | Social Media Channels | URLs | **FULFILLED** | YouTube, Facebook, and X links provided |

@@ -57,10 +57,16 @@ export const CURRENCIES = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ATTENDEE
+// PARTICIPANT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const ATTENDEE_STATUSES = [
+export const ATTENDANCE_MODES = [
+  'physically',
+  'online',
+  'not_sure',
+];
+
+export const PARTICIPANT_STATUSES = [
   'unconfirmed',
   'confirmed',
   'checked_in',

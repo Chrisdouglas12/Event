@@ -19,7 +19,7 @@ export class PaystackProvider implements PaymentProvider {
       reference: params.orderReference,
       amount: params.amountMinor, // Already in minor units (kobo)
       currency: params.currency,
-      email: params.payerEmail || `${params.orderReference.toLowerCase()}@attendee.invalid`,
+      email: params.payerEmail || `${params.orderReference.toLowerCase()}@participant.invalid`,
       callback_url: params.callbackUrl,
       metadata: {
         orderId: params.orderId,

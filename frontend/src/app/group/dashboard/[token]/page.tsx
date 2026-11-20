@@ -12,7 +12,7 @@ type Seat = {
   isClaimed: boolean;
   claimedAt: string | null;
   inviteUrl: string;
-  attendee: { id: string; name: string; phone: string; refCode: string; status: string } | null;
+  participant: { id: string; name: string; phone: string; refCode: string; status: string } | null;
 };
 
 type DashboardData = {
@@ -112,10 +112,10 @@ export default function GroupDashboardPage() {
                       )}
                     </div>
 
-                    {seat.isClaimed && seat.attendee ? (
+                    {seat.isClaimed && seat.participant ? (
                       <div className="space-y-1">
-                        <div className="font-bold text-[#111320] text-sm">{seat.attendee.name}</div>
-                        <div className="text-xs text-gray-500 font-mono">{seat.attendee.refCode}</div>
+                        <div className="font-bold text-[#111320] text-sm">{seat.participant.name}</div>
+                        <div className="text-xs text-gray-500 font-mono">{seat.participant.refCode}</div>
                       </div>
                     ) : (
                       <div className="space-y-2">

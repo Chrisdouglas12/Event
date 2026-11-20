@@ -20,6 +20,7 @@ export function Footer() {
                 width={130}
                 height={40}
                 className="h-7 w-auto object-contain"
+                style={{ width: "auto" }}
               />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-sm pt-2">
@@ -147,10 +148,10 @@ export function Footer() {
             {/* Event Card 2: Group Registration Pass */}
             <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
               <div className="text-xs text-[#8EE3D6] font-semibold uppercase tracking-wider">
-                Group Pass (Church / Parish)
+                Group Pass (Chapter / Zone)
               </div>
               <div className="text-xs text-gray-300 leading-snug">
-                Register entire parishes or groups with express check-in QR and leader dashboard.
+                Register entire chapters/zones or groups with express check-in QR and leader dashboard.
               </div>
               <Link
                 href="/register"

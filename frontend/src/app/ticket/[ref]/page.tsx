@@ -8,7 +8,7 @@ import { Calendar, MapPin, ShieldCheck } from "lucide-react";
 
 export const metadata = {
   title: "My Conference Ticket | IHGC 2026",
-  description: "Official attendee admission ticket and cryptographic QR pass.",
+  description: "Official participant admission ticket and cryptographic QR pass.",
 };
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export default async function TicketPage({
     return notFound();
   }
 
-  const { order, attendees } = data.tickets;
+  const { order, participants } = data.tickets;
   const group = data.tickets.group;
 
   return (
@@ -73,7 +73,7 @@ export default async function TicketPage({
           </div>
 
           {/* Render Tickets */}
-          {attendees.map((ticket: any, index: number) => (
+          {participants.map((ticket: any, index: number) => (
             <div
               key={ticket.id}
               className="bg-white rounded-[24px] shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-gray-200/80 overflow-hidden print:shadow-none print:border-black"
@@ -82,7 +82,7 @@ export default async function TicketPage({
               <div className="bg-[#0E1020] text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8EE3D6]">
-                    Official Admission Pass • {order.isGroup ? `Seat ${index + 1} of ${attendees.length}` : "Individual"}
+                    Official Admission Pass • {order.isGroup ? `Seat ${index + 1} of ${participants.length}` : "Individual"}
                   </div>
                   <h1 className="text-xl sm:text-2xl font-black tracking-tight">
                     {SITE_CONFIG.eventTitle}
@@ -107,25 +107,25 @@ export default async function TicketPage({
                   <QrView
                     value={ticket.qrToken}
                     refCode={ticket.refCode}
-                    attendeeName={ticket.name}
+                    participantName={ticket.name}
                   />
                   <div className="text-[11px] text-gray-400 text-center mt-2 font-mono">
                     ID: {ticket.refCode} • Cryptographically Signed
                   </div>
                 </div>
 
-                {/* Attendee & Event Metadata */}
+                {/* Participant & Event Metadata */}
                 <div className="md:col-span-6 space-y-5 text-sm">
                   <div>
                     <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                      Attendee Name
+                      Participant Name
                     </div>
                     <div className="text-xl font-bold text-[#111320] mt-0.5">
                       {ticket.name}
                     </div>
-                    {ticket.parish && (
+                    {ticket.chapterZone && (
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {ticket.parish}
+                        {ticket.chapterZone}
                       </div>
                     )}
                   </div>

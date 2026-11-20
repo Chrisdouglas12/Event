@@ -1,13 +1,13 @@
 import Dexie, { type EntityTable } from "dexie";
 
-export interface CachedAttendee {
+export interface CachedParticipant {
   tokenHash: string; // Primary key for fast O(1) hash lookup
   ticketId: string;
-  attendeeId: string;
+  participantId: string;
   orderId: string;
   refCode: string;
   name: string;
-  parish: string | null;
+  chapterZone: string | null;
   status: "unconfirmed" | "confirmed" | "checked_in" | "booklet_issued";
   bookletIssuedAt: string | null;
   checkedInAt: string | null;
@@ -17,7 +17,7 @@ export interface CachedAttendee {
 
 export interface PendingScan {
   id?: number;
-  attendeeId: string;
+  participantId: string;
   scanType: "arrival" | "booklet";
   standId: string;
   /** Server attaches the authenticated staff identity at sync time. */
@@ -37,25 +37,25 @@ export interface ScannerSetting {
 }
 
 class ScannerDatabase extends Dexie {
-  cachedAttendees!: EntityTable<CachedAttendee, "tokenHash">;
+  cachedParticipants!: EntityTable<CachedParticipant, "tokenHash">;
   pendingScans!: EntityTable<PendingScan, "id">;
   scannerSettings!: EntityTable<ScannerSetting, "key">;
 
   constructor() {
     super("HoremowScannerDB");
     this.version(1).stores({
-      cachedAttendees: "&tokenHash, attendeeId, refCode, status",
-      pendingScans: "++id, attendeeId, idempotencyKey, synced",
+      cachedParticipants: "&tokenHash, participantId, refCode, status",
+      pendingScans: "++id, participantId, idempotencyKey, synced",
       scannerSettings: "&key",
     });
     this.version(2).stores({
-      cachedAttendees: "&tokenHash, attendeeId, orderId, refCode, status",
-      pendingScans: "++id, attendeeId, idempotencyKey, synced",
+      cachedParticipants: "&tokenHash, participantId, orderId, refCode, status",
+      pendingScans: "++id, participantId, idempotencyKey, synced",
       scannerSettings: "&key",
     });
     this.version(3).stores({
-      cachedAttendees: "&tokenHash, ticketId, attendeeId, orderId, refCode, status",
-      pendingScans: "++id, attendeeId, idempotencyKey, synced",
+      cachedParticipants: "&tokenHash, ticketId, participantId, orderId, refCode, status",
+      pendingScans: "++id, participantId, idempotencyKey, synced",
       scannerSettings: "&key",
     });
   }

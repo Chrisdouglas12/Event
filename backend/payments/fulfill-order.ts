@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { attendees, notificationJobs, orders, payments } from "@/db/schema";
+import { participants, notificationJobs, orders, payments } from "@/db/schema";
 import { createTicketToken, getTicketSigningKey } from "@/lib/crypto/ed25519";
 import { buildTicketNotificationJobs } from "@/lib/messaging/outbox";
 import type { VerifyPaymentResult } from "./provider.interface";
@@ -13,7 +13,7 @@ export async function fulfillVerifiedPayment(input: {
   provider: ProviderName;
   verification: VerifyPaymentResult;
   rawPayloadHash?: string | null;
-}): Promise<{ fulfilled: boolean; attendees: (typeof attendees.$inferSelect)[] }> {
+}): Promise<{ fulfilled: boolean; participants: (typeof participants.$inferSelect)[] }> {
   const { verification } = input;
   if (!verification.isSuccessful || verification.isPending) {
     throw new Error("Payment is not complete at the gateway.");
@@ -42,7 +42,7 @@ export async function fulfillVerifiedPayment(input: {
       .set({ status: "paid", updatedAt: new Date() })
       .where(and(eq(orders.id, order.id), eq(orders.status, "pending_payment")))
       .returning({ id: orders.id });
-    if (!transitioned) return { fulfilled: false, attendees: [] };
+    if (!transitioned) return { fulfilled: false, participants: [] };
 
     const paymentValues = {
       provider: input.provider,
@@ -56,17 +56,17 @@ export async function fulfillVerifiedPayment(input: {
     };
     await tx.update(payments).set(paymentValues).where(eq(payments.id, payment.id));
 
-    const orderAttendees = await tx
+    const orderParticipants = await tx
       .select()
-      .from(attendees)
-      .where(and(eq(attendees.orderId, order.id), isNull(attendees.deletedAt)));
+      .from(participants)
+      .where(and(eq(participants.orderId, order.id), isNull(participants.deletedAt)));
     const confirmed = [];
-    for (const attendee of orderAttendees) {
-      const { tokenHash } = await createTicketToken(attendee.id, signingKey);
+    for (const participant of orderParticipants) {
+      const { tokenHash } = await createTicketToken(participant.id, signingKey);
       const [saved] = await tx
-        .update(attendees)
+        .update(participants)
         .set({ status: "confirmed", qrTokenHash: tokenHash, updatedAt: new Date() })
-        .where(eq(attendees.id, attendee.id))
+        .where(eq(participants.id, participant.id))
         .returning();
       confirmed.push(saved);
     }
@@ -74,6 +74,6 @@ export async function fulfillVerifiedPayment(input: {
     const jobs = await buildTicketNotificationJobs(order, confirmed);
     if (jobs.length) await tx.insert(notificationJobs).values(jobs).onConflictDoNothing();
 
-    return { fulfilled: true, attendees: confirmed };
+    return { fulfilled: true, participants: confirmed };
   });
 }

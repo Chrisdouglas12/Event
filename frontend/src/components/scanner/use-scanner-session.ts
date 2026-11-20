@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
-import type { CachedAttendee } from "@/lib/offline/dexie-db";
+import type { CachedParticipant } from "@/lib/offline/dexie-db";
 import type { ScanResult } from "./scan-result-overlay";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
@@ -144,14 +144,14 @@ export function useScannerSession() {
         if (res.status === 409) {
           setScanResult({
             type: "already_checked_in",
-            attendee: {
-              attendeeId: data.attendee?.id || "",
-              name: data.attendee?.name || "Unknown",
-              refCode: data.attendee?.refCode || "—",
+            participant: {
+              participantId: data.participant?.id || "",
+              name: data.participant?.name || "Unknown",
+              refCode: data.participant?.refCode || "—",
               status: "checked_in",
               checkedInAt: new Date().toISOString(),
               checkedInStand: standId,
-            } as CachedAttendee,
+            } as CachedParticipant,
             message: data.error || "Already checked in.",
           });
         } else if (res.status === 404) {
@@ -164,14 +164,14 @@ export function useScannerSession() {
       } else {
         setScanResult({
           type: "valid",
-          attendee: {
-            attendeeId: data.attendee.id || "",
-            name: data.attendee.name,
-            refCode: data.attendee.refCode,
+          participant: {
+            participantId: data.participant.id || "",
+            name: data.participant.name,
+            refCode: data.participant.refCode,
             status: "confirmed",
             checkedInAt: action === "arrival" ? new Date().toISOString() : null,
             bookletIssuedAt: action === "booklet" ? new Date().toISOString() : null,
-          } as CachedAttendee,
+          } as CachedParticipant,
           ticketToken: token,
           message: data.message,
         });
@@ -189,7 +189,7 @@ export function useScannerSession() {
     setManualCode("");
   };
 
-  const handleIssueBooklet = async (attendee: CachedAttendee, ticketToken: string) => {
+  const handleIssueBooklet = async (participant: CachedParticipant, ticketToken: string) => {
     setIssuingBooklet(true);
     try {
       await processScan(ticketToken, "booklet");
@@ -215,12 +215,12 @@ export function useScannerSession() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/attendees`, { 
-        headers: { "Authorization": `Bearer ${staffToken}` } 
+      const res = await fetch(`${API_BASE}/api/admin/participants`, {
+        headers: { "Authorization": `Bearer ${staffToken}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setSyncMessage(`Roster synced: ${data.attendees.length} attendees ready.`);
+        setSyncMessage(`Roster synced: ${data.participants.length} participants ready.`);
       } else {
         setSyncMessage("Sync failed.");
       }
@@ -230,7 +230,7 @@ export function useScannerSession() {
     }
   };
 
-  const handleGroupCheckIn = async () => {
+  const handleGroupCheckIn = async (_participants: CachedParticipant[], _orderToken: string) => {
     alert("Group check-in is coming in the next iteration.");
   };
 
