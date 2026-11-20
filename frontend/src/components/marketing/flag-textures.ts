@@ -103,6 +103,11 @@ function drawGB(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, H / 2 - 13, W, 26);
 }
 
+/** Flag plates use BoxGeometry so each printed face has full 0..1 UV coverage. */
+export function makeFlagGeometry(THREE: Three, width: number, height: number) {
+  return new THREE.BoxGeometry(width, height, 0.09);
+}
+
 export function makeFlagTexture(THREE: Three, flag: FlagDef) {
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -136,6 +141,8 @@ export function makeFlagTexture(THREE: Three, flag: FlagDef) {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.anisotropy = 4;
   return tex;
 }

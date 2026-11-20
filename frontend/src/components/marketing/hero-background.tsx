@@ -31,7 +31,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
     let cleanup = () => {};
 
     (async () => {
-      const [THREE, { FLAGS, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
+      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
         import("three"),
         import("./flag-textures"),
       ]);
@@ -277,26 +277,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
           const tex = makeFlagTexture(THREE, def);
           textures.push(tex);
 
-          const shape = new THREE.Shape();
-          shape.moveTo(-w / 2, -h / 2);
-          shape.lineTo(w / 2, -h / 2);
-          shape.lineTo(w / 2, h / 2);
-          shape.lineTo(-w / 2, h / 2);
-          shape.closePath();
-
-          const geo = new THREE.ExtrudeGeometry(shape, {
-            depth: 0.09,
-            bevelEnabled: true,
-            bevelSegments: 3,
-            bevelSize: 0.018,
-            bevelThickness: 0.018,
-            curveSegments: 1,
-          });
-          geo.center();
+          // BoxGeometry gives every face proper 0..1 UVs, so the complete flag
+          // artwork is shown on the front and back (without mirroring the back).
+          const geo = makeFlagGeometry(THREE, w, h);
 
           const flagFace = new THREE.MeshStandardMaterial({
             map: tex,
-            side: THREE.DoubleSide,
             roughness: 0.48,
             metalness: 0.04,
             emissive: new THREE.Color(0x0d1f38),
@@ -307,9 +293,16 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
             roughness: 0.38,
             metalness: 0.12,
           });
-          // ExtrudeGeometry assigns group 0 to the front/back caps and group 1
-          // to the bevel/sides — the artwork belongs on the caps.
-          const mesh = new THREE.Mesh(geo, [flagFace, flagEdge]);
+          // BoxGeometry material order: +x, -x, +y, -y, +z, -z.
+          // The large +z/-z faces carry the artwork; the rest are the edge.
+          const mesh = new THREE.Mesh(geo, [
+            flagEdge,
+            flagEdge,
+            flagEdge,
+            flagEdge,
+            flagFace,
+            flagFace,
+          ]);
 
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
