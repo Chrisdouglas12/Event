@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  createFallbackModel,
+  createModelInstance,
+  loadTravelModel,
+} from "@/lib/travel-models";
 
 /**
  * Earth with two orbits of flags, as in the sketch:
@@ -121,6 +126,18 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         })
       );
       worldScroll.add(atmosphere);
+
+      // Airliners circle above the globe. They are loaded from a local GLB and
+      // share the scene lights, so they feel part of the same 3D world.
+      const heroAircraftGroup = new THREE.Group();
+      worldScroll.add(heroAircraftGroup);
+      const heroAircraft: {
+        group: InstanceType<typeof THREE.Group>;
+        angle: number;
+        radius: number;
+        speed: number;
+        height: number;
+      }[] = [];
 
       // ---------- Campground backdrop (3D plane far behind the globe) ----------
       const BACKDROP_Z = -14;
@@ -368,6 +385,34 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         (err) => console.warn("[HeroBackground] campground image failed to load:", err)
       );
 
+      // ---------- Realistic hero aircraft ----------
+      (async () => {
+        let source: InstanceType<typeof THREE.Object3D>;
+        try {
+          source = await loadTravelModel(THREE, "aircraft");
+        } catch (error) {
+          console.warn("[HeroBackground] aircraft model unavailable, using fallback:", error);
+          source = createFallbackModel(THREE, "aircraft");
+        }
+        if (disposed) return;
+
+        [
+          { radius: 3.1, speed: 0.11, height: 1.2, heading: 0 },
+          { radius: 3.7, speed: -0.085, height: 1.75, heading: Math.PI },
+        ].forEach((cfg, i) => {
+          const plane = createModelInstance(THREE, source, 1.25);
+          plane.rotation.y += cfg.heading;
+          heroAircraftGroup.add(plane);
+          heroAircraft.push({
+            group: plane,
+            angle: i * Math.PI * 0.85,
+            radius: cfg.radius,
+            speed: cfg.speed,
+            height: cfg.height,
+          });
+        });
+      })();
+
       // ---------- Pointer parallax ----------
       const pointer = { x: 0, y: 0 };
       const onPointer = (e: PointerEvent) => {
@@ -406,6 +451,17 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
         // Rotate rings together as one
         spinners.forEach((r) => (r.g.rotation.y += dt * r.speed));
+
+        // Airliners follow gentle orbits around the globe.
+        heroAircraft.forEach((plane) => {
+          plane.angle += dt * plane.speed;
+          plane.group.position.set(
+            Math.cos(plane.angle) * plane.radius,
+            plane.height + Math.sin(plane.angle * 1.6) * 0.35,
+            Math.sin(plane.angle) * plane.radius * 0.45
+          );
+          plane.group.rotation.z = Math.cos(plane.angle) * 0.1;
+        });
 
         world.rotation.x += (BASE_TILT + pointer.y * 0.05 - world.rotation.x) * 0.04;
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;

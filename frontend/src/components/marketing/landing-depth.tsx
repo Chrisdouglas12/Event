@@ -2,19 +2,24 @@
 
 import { useEffect, useRef } from "react";
 import type * as Three from "three";
+import {
+  createFallbackModel,
+  createModelInstance,
+  loadTravelModel,
+  type TravelModelKind,
+} from "@/lib/travel-models";
 
 /**
- * One persistent WebGL layer for the whole landing page.
+ * One persistent WebGL layer behind the whole landing page.
  *
- * Everything is driven by a single damped scroll value and one clock, so the
- * starfields, orbit rings, particles and camera move together instead of each
- * section running its own parallax on a different timeline.
- *
- * - Three star layers at different distances give real depth.
- * - As each section enters, the formation eases into the next "chapter".
- * - The palette/blend mode follows the section tone (mint on navy, deep teal
- *   on light sections) and fades out over the hero globe and the footer.
+ * The page is navy from hero to footer. As each section enters the viewport,
+ * this layer eases into a travel "chapter": aircraft over the hero/why section,
+ * cars on a road through the people sections, and ships on a sea lane around
+ * the CTA/about sections. All motion uses the same damped scroll value and one
+ * clock, so vehicles, route guides and the camera stay in time.
  */
+
+type SceneName = "hero" | "air" | "road" | "sea" | "arrival";
 
 type Formation = {
   x: number;
@@ -24,6 +29,26 @@ type Formation = {
   spread: number;
   spin: number;
 };
+
+type Vehicle = {
+  group: Three.Group;
+  scene: SceneName;
+  span: number;
+  y: number;
+  z: number;
+  size: number;
+  speed: number;
+  phase: number;
+  wobble: number;
+  reverse: boolean;
+};
+
+type Guide = {
+  scene: SceneName;
+  materials: Three.LineDashedMaterial[];
+};
+
+const SCENES: SceneName[] = ["hero", "air", "road", "sea", "arrival"];
 
 const FORMATIONS: Formation[] = [
   { x: -4.2, y: 1.1, scale: 0.85, tilt: 0.12, spread: 0.85, spin: 0.12 },
@@ -40,6 +65,31 @@ const STAR_LAYERS = [
   { count: 320, rMin: 19, rMax: 32, size: 0.18, opacity: 0.5, depth: 0.18, speed: -0.014 },
   { count: 180, rMin: 10, rMax: 17, size: 0.28, opacity: 0.6, depth: 0.32, speed: 0.022 },
 ];
+
+const VEHICLE_LANES: {
+  kind: TravelModelKind;
+  scene: SceneName;
+  count: number;
+  y: number;
+  z: number;
+  size: number;
+  speed: number;
+  wobble: number;
+  reverse?: boolean;
+}[] = [
+  { kind: "aircraft", scene: "air", count: 3, y: 2.4, z: -1.5, size: 2.5, speed: 0.045, wobble: 0.24 },
+  { kind: "car", scene: "road", count: 4, y: -1.9, z: 2.4, size: 1.35, speed: 0.085, wobble: 0.02 },
+  { kind: "ship", scene: "sea", count: 2, y: -2.2, z: -1.2, size: 2.4, speed: 0.035, wobble: 0.12 },
+  { kind: "aircraft", scene: "arrival", count: 2, y: 1.2, z: 0.5, size: 2.2, speed: 0.05, wobble: 0.2, reverse: true },
+];
+
+const SCENE_CAMERA: Record<SceneName, { x: number; y: number; z: number }> = {
+  hero: { x: 0, y: 0, z: 13 },
+  air: { x: 1.2, y: 1.3, z: 12 },
+  road: { x: -1.1, y: -0.9, z: 10.5 },
+  sea: { x: 1.4, y: -1.2, z: 12.5 },
+  arrival: { x: 0, y: 0.7, z: 11.5 },
+};
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const smooth = (v: number) => {
@@ -83,28 +133,38 @@ export function LandingDepth() {
         powerPreference: "high-performance",
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 140);
-      camera.position.set(0, 0, 12);
+      camera.position.set(0, 0, 13);
       scene.add(camera);
+
+      scene.add(new THREE.HemisphereLight(0xd7fff8, 0x07101e, 1.5));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+      keyLight.position.set(6, 7, 8);
+      scene.add(keyLight);
+      const rimLight = new THREE.DirectionalLight(0x8ee3d6, 1.2);
+      rimLight.position.set(-7, -2, -4);
+      scene.add(rimLight);
 
       const root = new THREE.Group();
       scene.add(root);
 
-      // Materials tracked so opacity and palette can be animated together.
-      type TrackedMaterial = Three.PointsMaterial | Three.MeshBasicMaterial;
-      const tracked: { mat: TrackedMaterial; base: number }[] = [];
+      // Materials tracked so opacity/palette can be animated together.
+      const tracked: { mat: Three.Material; base: number; scene?: SceneName }[] = [];
       let additive = true;
 
-      const track = <T extends TrackedMaterial>(mat: T, base: number): T => {
+      const track = <T extends Three.Material>(mat: T, base: number, group?: SceneName): T => {
         mat.transparent = true;
         mat.depthWrite = false;
         mat.blending = THREE.AdditiveBlending;
         mat.opacity = base;
-        tracked.push({ mat, base });
+        tracked.push({ mat, base, scene: group });
         return mat;
       };
 
@@ -122,24 +182,24 @@ export function LandingDepth() {
         starLayers.push({ points, depth: cfg.depth, speed: cfg.speed });
       });
 
-      // ---------- Core formation ----------
+      // ---------- Core formation (kept subtle behind the cards) ----------
       const core = new THREE.Group();
       root.add(core);
 
       const shellMat = track(
-        new THREE.MeshBasicMaterial({ color: 0x8ee3d6, wireframe: true, opacity: 0.32 }),
-        0.32
+        new THREE.MeshBasicMaterial({ color: 0x8ee3d6, wireframe: true, opacity: 0.22 }),
+        0.22
       );
       core.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 1), shellMat));
 
-      const innerMat = track(new THREE.MeshBasicMaterial({ color: 0x0e7a6e, opacity: 0.16 }), 0.16);
+      const innerMat = track(new THREE.MeshBasicMaterial({ color: 0x0e7a6e, opacity: 0.12 }), 0.12);
       core.add(new THREE.Mesh(new THREE.SphereGeometry(1.55, 32, 32), innerMat));
 
       const rings: Three.Mesh[] = [];
       [
-        { r: 2.9, tilt: 0.35, tube: 0.012, opacity: 0.32 },
-        { r: 3.7, tilt: -0.55, tube: 0.01, opacity: 0.26 },
-        { r: 4.5, tilt: 1.1, tube: 0.008, opacity: 0.18 },
+        { r: 2.9, tilt: 0.35, tube: 0.012, opacity: 0.26 },
+        { r: 3.7, tilt: -0.55, tube: 0.01, opacity: 0.2 },
+        { r: 4.5, tilt: 1.1, tube: 0.008, opacity: 0.14 },
       ].forEach((cfg) => {
         const mat = track(new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: cfg.opacity }), cfg.opacity);
         const ring = new THREE.Mesh(new THREE.TorusGeometry(cfg.r, cfg.tube, 6, 140), mat);
@@ -150,7 +210,7 @@ export function LandingDepth() {
 
       const nodeGeo = new THREE.SphereGeometry(0.055, 8, 8);
       for (let i = 0; i < 18; i++) {
-        const mat = track(new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: 0.72 }), 0.72);
+        const mat = track(new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: 0.6 }), 0.6);
         const node = new THREE.Mesh(nodeGeo, mat);
         const angle = (i / 18) * Math.PI * 2;
         const radius = i % 2 ? 2.9 : 3.7;
@@ -158,23 +218,76 @@ export function LandingDepth() {
         core.add(node);
       }
 
-      // ---------- Ambient particles that expand as you scroll ----------
       const particleGeo = new THREE.BufferGeometry();
       particleGeo.setAttribute("position", new THREE.BufferAttribute(shellPoints(650, 5, 13), 3));
       const particleMat = track(
-        new THREE.PointsMaterial({ color: 0x8ee3d6, size: 0.09, sizeAttenuation: true, opacity: 0.5 }),
-        0.5
+        new THREE.PointsMaterial({ color: 0x8ee3d6, size: 0.09, sizeAttenuation: true, opacity: 0.42 }),
+        0.42
       );
       const particles = new THREE.Points(particleGeo, particleMat);
       root.add(particles);
+
+      // ---------- Travel route guides ----------
+      const makeRoute = (
+        sceneName: SceneName,
+        y: number,
+        z: number,
+        color: number,
+        opacity: number,
+        wave = 0
+      ): Guide => {
+        const group = new THREE.Group();
+        const materials: Three.LineDashedMaterial[] = [];
+        for (let lane = 0; lane < 3; lane++) {
+          const points: Three.Vector3[] = [];
+          for (let i = 0; i <= 140; i++) {
+            const t = i / 140;
+            const x = mix(-12, 12, t);
+            const yy = y + lane * 0.32 + Math.sin(t * Math.PI * 4 + lane) * wave;
+            points.push(new THREE.Vector3(x, yy, z + lane * 0.4));
+          }
+          const geo = new THREE.BufferGeometry().setFromPoints(points);
+          const mat = track(
+            new THREE.LineDashedMaterial({
+              color,
+              dashSize: 0.38,
+              gapSize: 0.3,
+              opacity,
+              transparent: true,
+              depthWrite: false,
+            }),
+            opacity,
+            sceneName
+          );
+          const line = new THREE.Line(geo, mat);
+          line.computeLineDistances();
+          group.add(line);
+          materials.push(mat);
+        }
+        root.add(group);
+        return { scene: sceneName, materials };
+      };
+
+      const guides: Guide[] = [
+        makeRoute("air", 2.4, -1.5, 0x8ee3d6, 0.3, 0.35),
+        makeRoute("road", -2.1, 2.4, 0x8ee3d6, 0.26),
+        makeRoute("sea", -2.4, -1.2, 0x7fb6d9, 0.28, 0.16),
+        makeRoute("arrival", 1.2, 0.5, 0x8ee3d6, 0.22, 0.25),
+      ];
 
       // ---------- Scroll + section state ----------
       let sections: HTMLElement[] = [];
       let sectionCount = 1;
       let targetProgress = 0;
       let progress = 0;
-      let lightTarget = 0;
-      let light = 0;
+      let activeScene: SceneName = "hero";
+      const sceneWeights: Record<SceneName, number> = {
+        hero: 1,
+        air: 0,
+        road: 0,
+        sea: 0,
+        arrival: 0,
+      };
 
       const measure = () => {
         sections = Array.from(document.querySelectorAll<HTMLElement>("section"));
@@ -196,18 +309,9 @@ export function LandingDepth() {
           if (rect.top <= marker) index = i;
         }
 
-        const style = getComputedStyle(sections[index] || document.body);
-        const bg = style.backgroundColor;
-        const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-        let luminance = 1; // transparent backgrounds fall back to the light page base
-        if (match) {
-          const alpha = match[4] === undefined ? 1 : Number(match[4]);
-          if (alpha > 0) {
-            luminance =
-              (Number(match[1]) * 0.299 + Number(match[2]) * 0.587 + Number(match[3]) * 0.114) / 255;
-          }
-        }
-        lightTarget = luminance > 0.45 ? 1 : 0;
+        const current = sections[index];
+        const declared = current?.dataset.scene as SceneName | undefined;
+        activeScene = declared && SCENES.includes(declared) ? declared : "hero";
       };
 
       measure();
@@ -248,6 +352,65 @@ export function LandingDepth() {
       window.addEventListener("resize", onResize);
       window.addEventListener("pointermove", onPointer, { passive: true });
 
+      // ---------- Realistic vehicles ----------
+      const vehicles: Vehicle[] = [];
+      const modelSources: Three.Object3D[] = [];
+
+      VEHICLE_LANES.forEach((lane, laneIndex) => {
+        for (let i = 0; i < lane.count; i++) {
+          const group = new THREE.Group();
+          group.visible = false;
+          root.add(group);
+          vehicles.push({
+            group,
+            scene: lane.scene,
+            span: 11.5,
+            y: lane.y + (i % 2) * 0.18,
+            z: lane.z + i * 0.22,
+            size: lane.size,
+            speed: lane.speed,
+            phase: (i / lane.count + laneIndex * 0.13) % 1,
+            wobble: lane.wobble,
+            reverse: Boolean(lane.reverse),
+          });
+        }
+      });
+
+      const loadVehicles = async () => {
+        const kinds = Array.from(new Set(VEHICLE_LANES.map((lane) => lane.kind)));
+        const results = await Promise.all(
+          kinds.map(async (kind) => {
+            try {
+              return [kind, await loadTravelModel(THREE, kind)] as const;
+            } catch (error) {
+              console.warn(`[LandingDepth] ${kind} model unavailable, using fallback:`, error);
+              return [kind, createFallbackModel(THREE, kind)] as const;
+            }
+          })
+        );
+
+        if (disposed) return;
+        const sources = new Map<TravelModelKind, Three.Object3D>();
+        results.forEach(([kind, source]) => {
+          sources.set(kind, source);
+          modelSources.push(source);
+        });
+
+        VEHICLE_LANES.forEach((lane) => {
+          const source = sources.get(lane.kind);
+          if (!source) return;
+          vehicles
+            .filter((vehicle) => vehicle.scene === lane.scene && Math.abs(vehicle.size - lane.size) < 0.01)
+            .forEach((vehicle) => {
+              const model = createModelInstance(THREE, source, lane.size);
+              if (vehicle.reverse) model.rotation.y += Math.PI;
+              vehicle.group.add(model);
+            });
+        });
+      };
+
+      void loadVehicles();
+
       const darkColor = new THREE.Color(0x8ee3d6);
       const lightColor = new THREE.Color(0x0e5f57);
       const currentColor = darkColor.clone();
@@ -260,7 +423,10 @@ export function LandingDepth() {
 
       const update = (time: number, step: number, damp: (k: number) => number) => {
         progress = mix(progress, targetProgress, damp(6));
-        light = mix(light, lightTarget, damp(4));
+        SCENES.forEach((name) => {
+          const target = name === activeScene ? 1 : 0;
+          sceneWeights[name] = mix(sceneWeights[name], target, damp(4));
+        });
 
         const chapter = progress * (sectionCount - 1);
         const index = Math.floor(chapter);
@@ -297,27 +463,59 @@ export function LandingDepth() {
         particles.rotation.x += step * 0.02;
         particles.scale.setScalar(mix(particles.scale.x, targetSpread, damp(2.5)));
 
-        camera.position.z = mix(camera.position.z, 12 - progress * 3.2, damp(2));
-        camera.position.x = mix(camera.position.x, Math.sin(progress * Math.PI * 2.4) * 2.2, damp(2));
-        camera.position.y = mix(
-          camera.position.y,
-          Math.cos(progress * Math.PI * 1.7) * 0.9 + pointer.y * 0.3,
-          damp(2)
-        );
-        camera.lookAt(0, 0, 0);
+        // Vehicles share one clock; scroll nudges them forward and selects the
+        // lane, but never restarts an individual animation timeline.
+        vehicles.forEach((vehicle) => {
+          const weight = sceneWeights[vehicle.scene];
+          vehicle.group.visible = weight > 0.015;
+          if (!vehicle.group.visible) return;
 
-        currentColor.copy(darkColor).lerp(lightColor, light);
-        const envelope =
-          smooth((progress - 0.02) / 0.1) *
-          (1 - smooth((progress - 0.93) / 0.07)) *
-          (1 - light * 0.45);
-
-        tracked.forEach(({ mat, base }) => {
-          mat.color.copy(currentColor);
-          mat.opacity = base * envelope;
+          const travel =
+            (((time * vehicle.speed + vehicle.phase + progress * 0.22) % 1) + 1) % 1;
+          const x = mix(-vehicle.span, vehicle.span, travel) * (vehicle.reverse ? -1 : 1);
+          vehicle.group.position.x = mix(vehicle.group.position.x, x, damp(12));
+          vehicle.group.position.y = mix(
+            vehicle.group.position.y,
+            vehicle.y + Math.sin(travel * Math.PI * 2 + vehicle.phase * 6) * vehicle.wobble,
+            damp(8)
+          );
+          vehicle.group.position.z = mix(vehicle.group.position.z, vehicle.z, damp(6));
+          vehicle.group.rotation.z = Math.cos(travel * Math.PI * 2) * 0.06 * vehicle.wobble * 8;
+          const scale = Math.max(0.001, weight);
+          vehicle.group.scale.setScalar(scale);
         });
 
-        const wantAdditive = light < 0.5;
+        const camTarget = SCENES.reduce(
+          (acc, name) => {
+            const cfg = SCENE_CAMERA[name];
+            const w = sceneWeights[name];
+            acc.x += cfg.x * w;
+            acc.y += cfg.y * w;
+            acc.z += cfg.z * w;
+            return acc;
+          },
+          { x: 0, y: 0, z: 0 }
+        );
+        camera.position.x = mix(camera.position.x, camTarget.x + pointer.x * 0.35, damp(2));
+        camera.position.y = mix(camera.position.y, camTarget.y + pointer.y * 0.3, damp(2));
+        camera.position.z = mix(camera.position.z, camTarget.z - progress * 1.2, damp(2));
+        camera.lookAt(0, 0, 0);
+
+        const envelope =
+          smooth((progress - 0.01) / 0.08) *
+          (1 - smooth((progress - 0.95) / 0.05));
+
+        currentColor.copy(darkColor);
+        tracked.forEach(({ mat, base, scene }) => {
+          const sceneWeight = scene ? sceneWeights[scene] : 1;
+          mat.opacity = base * envelope * sceneWeight;
+          if (!scene) {
+            const colored = mat as Three.MeshBasicMaterial | Three.PointsMaterial;
+            colored.color?.copy(currentColor);
+          }
+        });
+
+        const wantAdditive = true;
         if (wantAdditive !== additive) {
           additive = wantAdditive;
           tracked.forEach(({ mat }) => {
@@ -350,7 +548,6 @@ export function LandingDepth() {
       };
       document.addEventListener("visibilitychange", onVisibility);
 
-      // Draw the initial state before the first scroll happens.
       update(0, 0, () => 1);
       renderer.render(scene, camera);
       schedule();
@@ -364,13 +561,22 @@ export function LandingDepth() {
         window.removeEventListener("resize", onResize);
         window.removeEventListener("pointermove", onPointer);
         document.removeEventListener("visibilitychange", onVisibility);
-        scene.traverse((obj) => {
-          const mesh = obj as Three.Mesh;
-          mesh.geometry?.dispose?.();
-          const mat = mesh.material as Three.Material | Three.Material[] | undefined;
-          if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-          else mat?.dispose();
-        });
+
+        const geometries = new Set<Three.BufferGeometry>();
+        const materials = new Set<Three.Material>();
+        const collect = (obj: Three.Object3D) => {
+          obj.traverse((child) => {
+            const mesh = child as Three.Mesh;
+            if (mesh.geometry) geometries.add(mesh.geometry);
+            const mat = mesh.material as Three.Material | Three.Material[] | undefined;
+            if (Array.isArray(mat)) mat.forEach((m) => materials.add(m));
+            else if (mat) materials.add(mat);
+          });
+        };
+        scene.traverse(collect);
+        modelSources.forEach(collect);
+        geometries.forEach((geo) => geo.dispose());
+        materials.forEach((mat) => mat.dispose());
         renderer.dispose();
         renderer.domElement.remove();
       };
@@ -385,7 +591,7 @@ export function LandingDepth() {
   }, []);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-30">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
       <div ref={hostRef} className="h-full w-full" />
     </div>
   );

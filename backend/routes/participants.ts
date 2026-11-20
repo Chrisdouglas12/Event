@@ -809,7 +809,8 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     let totalMinor = price.amountMinor * seats;
     if (currency === 'NGN' && body.customAmountMinor !== undefined) {
       const customAmountMinor = Number(body.customAmountMinor);
-      if (!Number.isInteger(customAmountMinor) || customAmountMinor < 200_000) {
+      const minimumContributionMinor = seats * 200_000;
+      if (!Number.isInteger(customAmountMinor) || customAmountMinor < minimumContributionMinor) {
         return res.status(400).json({ error: 'Please enter a valid contribution amount.' });
       }
       totalMinor = customAmountMinor;

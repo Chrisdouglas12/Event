@@ -83,6 +83,77 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-4px);
 }
 
+/* ============ LANDING TRAVEL DEPTH ============ */
+/* The landing page is navy from the hero to the footer. Sections are mostly
+   transparent so the shared travel scene can be seen between the cards. */
+.landing-navy {
+  background-color: #07101e;
+  background-image:
+    radial-gradient(circle at 15% 12%, rgba(14, 122, 110, 0.2), transparent 32%),
+    radial-gradient(circle at 82% 68%, rgba(32, 78, 110, 0.22), transparent 34%),
+    linear-gradient(180deg, #080d1a 0%, #07101e 55%, #060c17 100%);
+}
+
+.floating-card {
+  background: rgba(255, 255, 255, 0.93);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.floating-card-dark {
+  background: rgba(10, 18, 34, 0.82);
+  border: 1px solid rgba(142, 227, 214, 0.18);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.depth-stage {
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
+}
+
+.depth-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.depth-card-left {
+  transform: rotateY(5deg) rotateX(-2deg) translateZ(0);
+}
+
+.depth-card-right {
+  transform: rotateY(-5deg) rotateX(-2deg) translateZ(0);
+}
+
+.depth-photo {
+  box-shadow:
+    0 34px 70px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(142, 227, 214, 0.16);
+}
+
+.depth-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(142, 227, 214, 0.1), transparent 45%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .depth-card,
+  .depth-card-left,
+  .depth-card-right {
+    transform: none !important;
+  }
+}
+
 /* Scanner viewfinder scan line */
 @keyframes scanline {
   0%, 100% { top: 8%; }

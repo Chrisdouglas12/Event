@@ -199,7 +199,8 @@ export default function RegisterPage() {
     }
 
     if (currency === "NGN") {
-      if (!Number.isInteger(customNairaMajor) || customNairaMinor === null || customNairaMinor < 200_000) {
+      const minimumContributionMinor = (isGroup ? seatsCount : 1) * 200_000;
+      if (!Number.isInteger(customNairaMajor) || customNairaMinor === null || customNairaMinor < minimumContributionMinor) {
         return setError("Please enter a valid contribution amount.");
       }
     }
@@ -564,7 +565,7 @@ export default function RegisterPage() {
             {currency === "NGN" && (
               <div className="space-y-1 rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <label className="text-xs font-semibold text-[#111320]">
-                  Contribution Amount (₦) *
+                  {isGroup ? "Total Group Contribution (₦) *" : "Contribution Amount (₦) *"}
                 </label>
                 <input
                   type="number"

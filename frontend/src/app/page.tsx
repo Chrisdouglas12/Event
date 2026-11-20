@@ -35,10 +35,11 @@ export default function HomePage() {
     },
   };
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="landing-navy min-h-screen flex flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }} />
       {/* One scroll-synced WebGL layer for the whole page. */}
       <LandingDepth />
+      <div className="relative z-10 flex flex-1 flex-col">
       {/* 55px Slim Header */}
       <Header />
 
@@ -52,16 +53,16 @@ export default function HomePage() {
 
       {/* Featured Ministers Section matching KILO instructor card layout */}
       <Reveal>
-      <section className="py-20 lg:py-24 bg-[#F8FAFC]">
+      <section data-scene="road" className="relative py-20 lg:py-24 overflow-hidden">
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]">
               Featured Ministers
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#111320] tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
               Featured Ministers
             </h2>
-            <p className="text-sm text-[#6B7280]">
+            <p className="text-sm text-[#A9B4C6]">
               Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026.
             </p>
           </div>
@@ -106,9 +107,9 @@ export default function HomePage() {
 
       {/* Official Conference Flyer */}
       <Reveal>
-      <section className="py-16 lg:py-20 bg-white">
+      <section data-scene="arrival" className="relative py-16 lg:py-20 overflow-hidden">
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
-          <div className="bg-[#F8FAFC] rounded-[24px] border border-gray-100 overflow-hidden">
+          <div className="floating-card rounded-[28px] overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2 items-center">
               <Parallax speed={0.15} className="relative aspect-[3/4] lg:aspect-auto lg:h-[480px] bg-[#0E1020]">
                 <Image
@@ -155,6 +156,7 @@ export default function HomePage() {
 
       {/* Deep Navy Footer */}
       <Footer />
+      </div>
     </div>
   );
 }

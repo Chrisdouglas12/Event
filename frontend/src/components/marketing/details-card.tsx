@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Clock, MapPin, Share2 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
+import { TiltCard } from "@/components/ui/tilt-card";
 
 export function DetailsCard() {
   const handleShare = () => {
@@ -19,20 +20,23 @@ export function DetailsCard() {
   };
 
   return (
-    <section className="bg-[#FAFAFA] py-20 lg:py-24">
+    <section data-scene="road" className="relative py-20 lg:py-24 overflow-hidden">
       <div className="mx-auto max-w-[1240px] px-6 sm:px-8">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-[#111320] sm:text-4xl">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]">
+            Plan Your Journey
+          </span>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Conference Details
           </h2>
-          <p className="mt-2 text-sm text-[#6B7280]">
+          <p className="mt-2 text-sm text-[#A9B4C6]">
             Essential dates, venue location, and session times
           </p>
         </div>
 
-        <div className="mx-auto max-w-4xl overflow-hidden rounded-[20px] border border-gray-200/80 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.05)]">
+        <TiltCard intensity={4} className="mx-auto max-w-4xl floating-card rounded-[24px] overflow-hidden">
           <div className="grid grid-cols-1 items-center gap-6 p-6 sm:p-8 md:grid-cols-12">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[14px] border border-[#CDEFEA] bg-[#EAF9F7] md:col-span-4">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[14px] border border-[#CDEFEA] bg-[#EAF9F7] md:col-span-4 depth-photo">
               <Image
                 src="/images/campground.jpg"
                 alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
@@ -102,7 +106,7 @@ export function DetailsCard() {
               Register Now
             </Link>
           </div>
-        </div>
+        </TiltCard>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import Image from "next/image";
-import { Globe, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
+import { TiltCard } from "@/components/ui/tilt-card";
 
 export interface MinisterProps {
   name: string;
@@ -17,16 +18,20 @@ export interface MinisterProps {
 
 export function MinisterCard({ name, role, bio, image, socials }: MinisterProps) {
   return (
-    <div className="bg-white rounded-[24px] overflow-hidden shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-gray-100/80 grid grid-cols-1 md:grid-cols-12 transition-transform duration-300 hover:-translate-y-1">
+    <TiltCard
+      intensity={5}
+      className="floating-card rounded-[26px] overflow-hidden grid grid-cols-1 md:grid-cols-12 transition-shadow duration-300 hover:shadow-[0_34px_100px_rgba(0,0,0,0.5)]"
+    >
       {/* Left half: Full-bleed portrait image */}
-      <div className="md:col-span-5 relative min-h-[320px] md:min-h-full aspect-[4/5] bg-gray-100">
+      <div className="md:col-span-5 relative min-h-[320px] md:min-h-full aspect-[4/5] bg-[#0E1020] overflow-hidden">
         {image ? (
           <Image src={image} alt={name} fill className="object-cover object-top" sizes="(max-width: 768px) 100vw, 42vw" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#F3F4F6] p-6 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0E1020] p-6 text-center text-xs font-semibold uppercase tracking-wide text-[#8EE3D6]">
             Photo needed: {name}, unique portrait for this page
           </div>
         )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/40 via-transparent to-transparent" />
       </div>
 
       {/* Right half: Content */}
@@ -83,27 +88,30 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
           </span>
         </div>
       </div>
-    </div>
+    </TiltCard>
   );
 }
 
 export function MoreMinistersCard() {
   return (
-    <div className="bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] rounded-[24px] border-2 border-dashed border-[#CDEFEA] p-8 flex flex-col items-center justify-center text-center min-h-[300px] space-y-4">
-      <div className="w-12 h-12 rounded-full bg-[#EAF9F7] text-[#0E1020] flex items-center justify-center shadow-sm">
-        <Sparkles className="w-5 h-5 text-[#0E7A6E]" />
+    <TiltCard
+      intensity={4}
+      className="rounded-[26px] border-2 border-dashed border-[#8EE3D6]/35 bg-[#0B1527]/70 p-8 flex flex-col items-center justify-center text-center min-h-[300px] space-y-4 backdrop-blur-xl"
+    >
+      <div className="w-12 h-12 rounded-full bg-[#8EE3D6]/15 text-[#8EE3D6] flex items-center justify-center shadow-sm">
+        <Sparkles className="w-5 h-5" />
       </div>
       <div className="space-y-1 max-w-sm">
-        <h4 className="text-xl font-bold text-[#111320]">
+        <h4 className="text-xl font-bold text-white">
           More Ministers To Be Announced
         </h4>
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-[#A9B4C6]">
           Additional minister names and profiles will appear here when supplied by the organizers.
         </p>
       </div>
-      <div className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-[#0E7A6E] bg-white px-4 py-2 rounded-full shadow-sm">
+      <div className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-[#8EE3D6] bg-white/5 px-4 py-2 rounded-full border border-white/10">
         Information pending
       </div>
-    </div>
+    </TiltCard>
   );
 }
