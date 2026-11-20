@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { Parallax } from "@/components/ui/parallax";
+import { RevealText } from "@/components/ui/reveal-text";
 import { TiltCard } from "@/components/ui/tilt-card";
 
 export function WhyAttend() {
@@ -22,36 +23,53 @@ export function WhyAttend() {
 
   return (
     <section data-scene="air" className="relative py-20 lg:py-28 overflow-hidden">
-      <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
-        <TiltCard intensity={4} className="floating-card rounded-[30px] depth-stage">
+      <div className="w-full px-[5px]">
+        <TiltCard intensity={4} className="floating-card rounded-[4px] depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Heading, Subtitle, Bullet list, Mint Pill Button */}
             <div className="lg:col-span-6 flex flex-col items-start space-y-6">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]">
-                Why Attend
-              </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#111320] leading-[1.15] tracking-tight">
-                Why Attend This Conference?
-              </h2>
+              <RevealText
+                as="span"
+                text="Why Attend"
+                className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+                stagger={0.02}
+              />
+              <RevealText
+                as="h2"
+                text="Why Attend This Conference?"
+                className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-white leading-[1.15] tracking-tight"
+                stagger={0.045}
+              />
 
-              <p className="text-base text-[#5C6472] leading-relaxed">
-                The International Holiness General Conference 2026 takes place from 8 to 11 December at Holiness Campground, Kwali, Abuja.
-              </p>
+              <RevealText
+                as="p"
+                text="The International Holiness General Conference 2026 takes place from 8 to 11 December at Holiness Campground, Kwali, Abuja."
+                className="text-base text-[#B9C4D4] leading-relaxed"
+                stagger={0.012}
+              />
 
               {/* Bullet items with mint arrow-chevrons */}
               <div className="space-y-5 pt-2">
                 {points.map((pt, idx) => (
-                  <div key={idx} className="flex items-start gap-3.5">
-                    <div className="mt-1 w-5 h-5 rounded-full bg-[#EAF9F7] flex items-center justify-center shrink-0">
-                      <ChevronRight className="w-3.5 h-3.5 text-[#0E1020]" strokeWidth={2.5} />
+                  <div key={pt.title} className="flex items-start gap-3.5">
+                    <div className="mt-1 w-5 h-5 rounded-full bg-[#8EE3D6]/15 border border-[#8EE3D6]/30 flex items-center justify-center shrink-0">
+                      <ChevronRight className="w-3.5 h-3.5 text-[#8EE3D6]" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-[#111320]">
-                        {pt.title}
-                      </h3>
-                      <p className="text-sm text-[#6B7280] leading-relaxed mt-1">
-                        {pt.description}
-                      </p>
+                      <RevealText
+                        as="h3"
+                        text={pt.title}
+                        className="text-base font-semibold text-white"
+                        delay={idx * 0.08}
+                        stagger={0.03}
+                      />
+                      <RevealText
+                        as="p"
+                        text={pt.description}
+                        className="text-sm text-[#A9B4C6] leading-relaxed mt-1"
+                        delay={idx * 0.08 + 0.08}
+                        stagger={0.01}
+                      />
                     </div>
                   </div>
                 ))}
@@ -70,17 +88,15 @@ export function WhyAttend() {
 
             {/* Right Column: Layered Collage with Chamfered Corner & Mint Frame */}
             <div className="lg:col-span-6 relative flex min-w-0 justify-center lg:justify-end depth-stage">
-              {/* Mint outline frame background */}
               <div
-                className="absolute -top-4 right-0 sm:-right-4 w-72 h-80 sm:w-96 sm:h-[420px] rounded-[32px] border-2 border-[#8EE3D6]/40 -z-0"
+                className="absolute -top-4 right-0 sm:-right-4 w-72 h-80 sm:w-96 sm:h-[420px] rounded-[4px] border-2 border-[#8EE3D6]/40 -z-0"
                 style={{ transform: "translateZ(-30px)" }}
               />
 
               <div className="relative z-10 grid w-full max-w-[500px] grid-cols-12 items-start gap-3 sm:gap-4">
-                {/* Primary Main Image: Official Conference Flyer (parallax layer) */}
                 <TiltCard
                   intensity={7}
-                  className="col-span-8 col-start-1 relative aspect-[4/5] min-w-0 rounded-[24px] overflow-hidden shadow-xl bg-[#0E1020] depth-card-left"
+                  className="col-span-8 col-start-1 relative aspect-[4/5] min-w-0 rounded-[4px] overflow-hidden shadow-xl bg-[#0E1020] depth-card-left"
                 >
                   <Parallax speed={0.18} className="absolute inset-0">
                     <Image
@@ -94,10 +110,9 @@ export function WhyAttend() {
                   </Parallax>
                 </TiltCard>
 
-                {/* Secondary worship photo with a chamfered corner */}
                 <TiltCard
                   intensity={9}
-                  className="col-span-7 col-start-6 -ml-0 sm:-ml-16 mt-10 sm:mt-24 relative aspect-[3/4] min-w-0 rounded-[20px] overflow-hidden shadow-2xl clip-chamfer-tr bg-[#0E1020] depth-card-right"
+                  className="col-span-7 col-start-6 -ml-0 sm:-ml-16 mt-10 sm:mt-24 relative aspect-[3/4] min-w-0 rounded-[4px] overflow-hidden shadow-2xl clip-chamfer-tr bg-[#0E1020] depth-card-right"
                 >
                   <Parallax speed={0.28} className="absolute inset-0">
                     <Image

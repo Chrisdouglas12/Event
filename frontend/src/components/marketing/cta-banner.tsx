@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { RevealText } from "@/components/ui/reveal-text";
 import { TiltCard } from "@/components/ui/tilt-card";
 
 export function CtaBanner() {
@@ -28,14 +29,20 @@ export function CtaBanner() {
       />
 
       {/* Content */}
-      <div className="relative z-20 max-w-3xl mx-auto px-6">
-        <TiltCard intensity={4} className="floating-card-dark rounded-[28px] px-8 py-12 sm:px-12 space-y-6 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white leading-[1.12] tracking-tight">
-            International Holiness General Conference 2026
-          </h2>
-          <p className="text-base sm:text-lg text-[#B9C4D4] max-w-xl mx-auto">
-            &ldquo;Man and Satan in Contention Against the Holy God&rdquo; · 8–11 December · Kwali, Abuja
-          </p>
+      <div className="relative z-20 w-full px-[5px]">
+        <TiltCard intensity={4} className="floating-card rounded-[4px] px-8 py-12 sm:px-12 space-y-6 text-center">
+          <RevealText
+            as="h2"
+            text="International Holiness General Conference 2026"
+            className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white leading-[1.12] tracking-tight"
+            stagger={0.035}
+          />
+          <RevealText
+            as="p"
+            text="“Man and Satan in Contention Against the Holy God” · 8–11 December · Kwali, Abuja"
+            className="text-base sm:text-lg text-[#B9C4D4] max-w-xl mx-auto"
+            stagger={0.012}
+          />
           <div className="pt-2">
             <Link
               href="/register"

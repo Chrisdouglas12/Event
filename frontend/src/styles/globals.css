@@ -95,23 +95,51 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .floating-card {
-  background: rgba(255, 255, 255, 0.93);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(7, 16, 30, 0.42);
+  border: 1px solid rgba(142, 227, 214, 0.18);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 
 .floating-card-dark {
-  background: rgba(10, 18, 34, 0.82);
+  background: rgba(7, 16, 30, 0.42);
   border: 1px solid rgba(142, 227, 214, 0.18);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 24px 80px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+/* Scroll-synced word reveal used on the landing page. Each word is clipped by
+   its own mask so the text appears to rise out of the navy background. */
+.reveal-text {
+  perspective: 900px;
+}
+
+.reveal-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.reveal-word {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-word {
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
 }
 
 .depth-stage {

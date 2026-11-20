@@ -2,22 +2,23 @@ import Link from "next/link";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
+import { RevealText } from "@/components/ui/reveal-text";
 import { TiltCard } from "@/components/ui/tilt-card";
 
 export function AboutPreview() {
   return (
     <section data-scene="sea" className="relative py-20 lg:py-28 overflow-hidden">
-      <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
-        <TiltCard intensity={3} className="floating-card rounded-[30px] depth-stage">
+      <div className="w-full px-[5px]">
+        <TiltCard intensity={3} className="floating-card rounded-[4px] depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}
             <div className="lg:col-span-6 relative flex justify-center lg:justify-start order-2 lg:order-1 min-h-[440px] depth-stage">
               {/* Mint outline frame background */}
-              <div className="absolute -top-4 -left-4 w-72 h-80 sm:w-80 sm:h-96 rounded-[32px] border-2 border-[#8EE3D6]/40 -z-0" />
+              <div className="absolute -top-4 -left-4 w-72 h-80 sm:w-80 sm:h-96 rounded-[4px] border-2 border-[#8EE3D6]/40 -z-0" />
 
               <div className="relative z-10 w-full max-w-[480px]">
                 {/* Back Main Image */}
-                <TiltCard intensity={8} className="relative w-[85%] aspect-[4/5] rounded-[24px] overflow-hidden bg-gray-100 depth-photo depth-card-left">
+                <TiltCard intensity={8} className="relative w-[85%] aspect-[4/5] rounded-[4px] overflow-hidden bg-[#0E1020] depth-photo depth-card-left">
                   <Image
                     src="/images/about_us_1.jpg"
                     alt="Horemow ministry and fellowship"
@@ -28,7 +29,7 @@ export function AboutPreview() {
                 </TiltCard>
 
                 {/* Front Overlapping Image */}
-                <TiltCard intensity={11} className="absolute top-12 right-0 w-[55%] aspect-square rounded-[20px] overflow-hidden border-4 border-white bg-gray-100 depth-photo depth-card-right">
+                <TiltCard intensity={11} className="absolute top-12 right-0 w-[55%] aspect-square rounded-[4px] overflow-hidden border-4 border-[#8EE3D6]/50 bg-[#0E1020] depth-photo depth-card-right">
                   <Image
                     src="/images/about_us_2.jpg"
                     alt="Horemow conference interaction"
@@ -44,7 +45,7 @@ export function AboutPreview() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Watch Horemow video on YouTube"
-                  className="absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] rounded-[16px] overflow-hidden shadow-xl border-2 border-white group block cursor-pointer depth-card"
+                  className="absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] rounded-[4px] overflow-hidden shadow-xl border-2 border-[#8EE3D6]/50 group block cursor-pointer depth-card"
                   style={{ transform: "translateZ(40px)" }}
                 >
                   <Image
@@ -55,7 +56,7 @@ export function AboutPreview() {
                     sizes="(max-width: 640px) 144px, 176px"
                   />
                   <div className="absolute inset-0 bg-[#8EE3D6]/40 group-hover:bg-[#8EE3D6]/20 transition-colors flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#0E1020] group-hover:scale-110 transition-transform">
+                    <div className="w-10 h-10 rounded-full bg-[#F8FFFE] shadow-md flex items-center justify-center text-[#0E1020] group-hover:scale-110 transition-transform">
                       <Play className="w-4 h-4 fill-current ml-0.5" />
                     </div>
                   </div>
@@ -65,21 +66,33 @@ export function AboutPreview() {
 
             {/* Right Column: Text & Mint Pill Button */}
             <div className="lg:col-span-6 flex flex-col items-start space-y-6 order-1 lg:order-2">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]">
-                About The Movement
-              </span>
+              <RevealText
+                as="span"
+                text="About The Movement"
+                className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+                stagger={0.02}
+              />
 
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#111320] leading-[1.15] tracking-tight">
-                Holiness Revival Movement Worldwide
-              </h2>
+              <RevealText
+                as="h2"
+                text="Holiness Revival Movement Worldwide"
+                className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-white leading-[1.15] tracking-tight"
+                stagger={0.035}
+              />
 
-              <p className="text-base text-[#5C6472] leading-relaxed">
-                Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement operating across Christian denominations to revive biblical righteousness, inward and outward holiness, sanctification, and rapture readiness.
-              </p>
+              <RevealText
+                as="p"
+                text="Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement operating across Christian denominations to revive biblical righteousness, inward and outward holiness, sanctification, and rapture readiness."
+                className="text-base text-[#B9C4D4] leading-relaxed"
+                stagger={0.01}
+              />
 
-              <p className="text-sm text-[#6B7280] leading-relaxed">
-                With chapters spanning Nigeria, East and West Africa, North America, and across the globe, the movement treats the 66 books of the Holy Bible as its absolute and final working manual.
-              </p>
+              <RevealText
+                as="p"
+                text="With chapters spanning Nigeria, East and West Africa, North America, and across the globe, the movement treats the 66 books of the Holy Bible as its absolute and final working manual."
+                className="text-sm text-[#A9B4C6] leading-relaxed"
+                stagger={0.01}
+              />
 
               <div className="pt-2">
                 <Link

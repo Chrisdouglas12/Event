@@ -11,6 +11,7 @@ import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { Footer } from "@/components/marketing/footer";
 import { Reveal } from "@/components/ui/reveal";
+import { RevealText } from "@/components/ui/reveal-text";
 import { Parallax } from "@/components/ui/parallax";
 import { SITE_CONFIG } from "@/config/site";
 
@@ -54,17 +55,26 @@ export default function HomePage() {
       {/* Featured Ministers Section matching KILO instructor card layout */}
       <Reveal>
       <section data-scene="road" className="relative py-20 lg:py-24 overflow-hidden">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]">
-              Featured Ministers
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Featured Ministers
-            </h2>
-            <p className="text-sm text-[#A9B4C6]">
-              Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026.
-            </p>
+        <div className="w-full px-[5px]">
+          <div className="text-center max-w-2xl mx-auto px-4 mb-14 space-y-2">
+            <RevealText
+              as="span"
+              text="Featured Ministers"
+              className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+              stagger={0.02}
+            />
+            <RevealText
+              as="h2"
+              text="Featured Ministers"
+              className="text-3xl sm:text-4xl font-bold text-white tracking-tight"
+              stagger={0.04}
+            />
+            <RevealText
+              as="p"
+              text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
+              className="text-sm text-[#A9B4C6]"
+              stagger={0.012}
+            />
           </div>
 
           <div className="space-y-10">
@@ -108,8 +118,8 @@ export default function HomePage() {
       {/* Official Conference Flyer */}
       <Reveal>
       <section data-scene="arrival" className="relative py-16 lg:py-20 overflow-hidden">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
-          <div className="floating-card rounded-[28px] overflow-hidden">
+        <div className="w-full px-[5px]">
+          <div className="floating-card rounded-[4px] overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2 items-center">
               <Parallax speed={0.15} className="relative aspect-[3/4] lg:aspect-auto lg:h-[480px] bg-[#0E1020]">
                 <Image
@@ -122,27 +132,36 @@ export default function HomePage() {
                 />
               </Parallax>
               <div className="p-8 sm:p-12 space-y-5">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#0E7A6E]">
-                  Official Flyer
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#111320] tracking-tight">
-                  Spread the Word — Share the Flyer
-                </h2>
-                <p className="text-sm text-[#6B7280] leading-relaxed">
-                  Download the official International Holiness General Conference 2026 flyer and share it with your chapter/zone, cell groups, and social media. Registration is open now at ₦5,000 / $20 / €20 / £20.
-                </p>
+                <RevealText
+                  as="span"
+                  text="Official Flyer"
+                  className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]"
+                  stagger={0.02}
+                />
+                <RevealText
+                  as="h2"
+                  text="Spread the Word — Share the Flyer"
+                  className="text-2xl sm:text-3xl font-bold text-white tracking-tight"
+                  stagger={0.03}
+                />
+                <RevealText
+                  as="p"
+                  text="Download the official International Holiness General Conference 2026 flyer and share it with your chapter/zone, cell groups, and social media. Registration is open now at ₦5,000 / $20 / €20 / £20."
+                  className="text-sm text-[#A9B4C6] leading-relaxed"
+                  stagger={0.01}
+                />
                 <div className="flex flex-wrap items-center gap-4 pt-2">
                   <a
                     href="/images/conference_flyer.png"
                     download="IHGC-2026-Flyer.png"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0E1020] text-white font-bold text-sm hover:bg-[#1A1D36] transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#8EE3D6] text-[#0E1020] font-bold text-sm hover:bg-[#7BD4C7] transition-colors"
                   >
-                    <Download className="w-4 h-4 text-[#8EE3D6]" />
+                    <Download className="w-4 h-4" />
                     Download Flyer
                   </a>
                   <Link
                     href="/conference"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#0E1020] text-[#0E1020] font-bold text-sm hover:bg-[#0E1020] hover:text-white transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#8EE3D6]/50 text-[#8EE3D6] font-bold text-sm hover:bg-[#8EE3D6] hover:text-[#0E1020] transition-colors"
                   >
                     Conference Details
                   </Link>
