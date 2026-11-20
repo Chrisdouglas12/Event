@@ -73,9 +73,8 @@ const notificationJobSchema = new mongoose.Schema(
   { collection: 'notification_jobs' }
 );
 
-notificationJobSchema.pre('save', function (next) {
+notificationJobSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

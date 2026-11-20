@@ -103,7 +103,7 @@ const eventSettingsSchema = new mongoose.Schema(
   { collection: 'event_settings' }
 );
 
-eventSettingsSchema.pre('save', function (next) {
+eventSettingsSchema.pre('save', function () {
   // Keep thresholds deterministic regardless of what the admin panel sends.
   if (Array.isArray(this.capacityAlertThresholds)) {
     this.capacityAlertThresholds = [...new Set(this.capacityAlertThresholds)].sort(
@@ -111,7 +111,6 @@ eventSettingsSchema.pre('save', function (next) {
     );
   }
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -167,9 +166,8 @@ const providerRouteSchema = new mongoose.Schema(
   }
 );
 
-providerRouteSchema.pre('save', function (next) {
+providerRouteSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,9 +211,8 @@ const ministerSchema = new mongoose.Schema(
   { collection: 'ministers' }
 );
 
-ministerSchema.pre('save', function (next) {
+ministerSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -266,9 +263,8 @@ const programmeItemSchema = new mongoose.Schema(
   { collection: 'programme_items' }
 );
 
-programmeItemSchema.pre('save', function (next) {
+programmeItemSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

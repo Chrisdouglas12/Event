@@ -66,9 +66,8 @@ const staffUserSchema = new mongoose.Schema(
   { collection: 'staff_users' }
 );
 
-staffUserSchema.pre('save', function (next) {
+staffUserSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

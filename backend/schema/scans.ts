@@ -149,9 +149,8 @@ const bookletStockSchema = new mongoose.Schema(
   { collection: 'booklet_stock' }
 );
 
-bookletStockSchema.pre('save', function (next) {
+bookletStockSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
