@@ -23,12 +23,13 @@ export function proxy(request: NextRequest) {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── 2. CSP & SECURITY HEADERS ────────────────────────────────────────────
-  const random = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  const nonce = btoa(Array.from(random, (byte) => String.fromCharCode(byte)).join(""));
+  // Next.js/Turbopack emits inline bootstrap scripts without a nonce. When a
+  // nonce is present, browsers ignore 'unsafe-inline', so keep the script
+  // sources nonce-free and allow same-origin + inline scripts explicitly.
   const scriptSource =
     process.env.NODE_ENV === "production"
-      ? `'self' 'nonce-${nonce}' 'unsafe-inline' https://challenges.cloudflare.com`
-      : `'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com`;
+      ? `'self' 'unsafe-inline' https://challenges.cloudflare.com`
+      : `'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com`;
   const connectSource = [
     "'self'",
     apiOrigin(),
@@ -56,8 +57,6 @@ export function proxy(request: NextRequest) {
   ].join("; ");
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", policy);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", policy);
