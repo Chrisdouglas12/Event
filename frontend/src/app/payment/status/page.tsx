@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
+import { BookletDownload } from "@/components/ticket/booklet-download";
 import { SITE_CONFIG } from "@/config/site";
 
 // Origin of the backend (no trailing slash, no /api). Unset = same origin.
@@ -72,8 +73,15 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 const FONT = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
-// Shrinks the font until the text fits the width.
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, size: number, weight = 700, min = 24) {
+// Shrinks a single line until it fits the available width.
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  size: number,
+  weight = 700,
+  min = 22
+) {
   let s = size;
   ctx.font = `${weight} ${s}px ${FONT}`;
   while (s > min && ctx.measureText(text).width > maxWidth) {
@@ -82,11 +90,58 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, 
   }
 }
 
+// Wraps text into centred lines with an ellipsis when it exceeds maxLines,
+// so long names never encroach on the QR code or the page edges.
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  maxWidth: number,
+  startY: number,
+  options: { size: number; weight?: number; lineHeight: number; maxLines?: number; color: string }
+) {
+  const { size, weight = 700, lineHeight, maxLines = 2, color } = options;
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${size}px ${FONT}`;
+
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  let index = 0;
+
+  for (; index < words.length; index++) {
+    const candidate = line ? `${line} ${words[index]}` : words[index];
+    if (!line || ctx.measureText(candidate).width <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+    lines.push(line);
+    line = words[index];
+    if (lines.length >= maxLines) break;
+  }
+
+  if (lines.length < maxLines && line) lines.push(line);
+
+  const truncated = index < words.length - 1;
+  if (truncated && lines.length > 0) {
+    let last = lines[lines.length - 1];
+    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[lines.length - 1] = `${last.trimEnd()}…`;
+  }
+
+  lines.forEach((value, i) => ctx.fillText(value, centerX, startY + i * lineHeight));
+  return startY + lines.length * lineHeight;
+}
+
 // Draws the full ticket (header, name, reference, QR, instructions) onto a canvas.
 // The same canvas is used for the PNG download and the PDF.
 async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HTMLCanvasElement> {
   const W = 1080;
   const H = 1500;
+  const SIDE_MARGIN = 70;
+  const contentWidth = W - SIDE_MARGIN * 2;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -95,57 +150,62 @@ async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HT
 
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
 
   // Header band
   ctx.fillStyle = "#0E1020";
   ctx.fillRect(0, 0, W, 300);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
 
   ctx.fillStyle = "#8EE3D6";
   ctx.font = `700 30px ${FONT}`;
   ctx.fillText("PARTICIPANT PASS", W / 2, 90);
 
   ctx.fillStyle = "#FFFFFF";
-  fitText(ctx, EVENT.name, W - 120, 58);
+  fitText(ctx, EVENT.name, contentWidth, 58, 800, 30);
   ctx.fillText(EVENT.name, W / 2, 170);
 
   ctx.fillStyle = "#C7CAD6";
   const sub = `${EVENT.dates}  •  ${EVENT.venue}`;
-  fitText(ctx, sub, W - 120, 32, 400);
+  fitText(ctx, sub, contentWidth, 32, 400, 22);
   ctx.fillText(sub, W / 2, 235);
 
-  // Participant
-  ctx.fillStyle = "#111320";
-  fitText(ctx, ticket.name, W - 120, 64);
-  ctx.fillText(ticket.name, W / 2, 400);
+  // Participant name (max two lines, never overlapping the reference block)
+  drawWrappedText(ctx, ticket.name, W / 2, contentWidth, 400, {
+    size: 56,
+    weight: 700,
+    lineHeight: 64,
+    maxLines: 2,
+    color: "#111320",
+  });
 
+  // Reference
   ctx.fillStyle = "#6B7280";
-  ctx.font = `600 30px ${FONT}`;
-  ctx.fillText("REFERENCE", W / 2, 460);
+  ctx.font = `600 28px ${FONT}`;
+  ctx.fillText("REFERENCE", W / 2, 560);
   ctx.fillStyle = "#0E7A6E";
-  ctx.font = `800 54px ${FONT}`;
-  ctx.fillText(ticket.refCode, W / 2, 525);
+  fitText(ctx, ticket.refCode, contentWidth, 52, 800, 32);
+  ctx.fillText(ticket.refCode, W / 2, 620);
 
   // QR code
   const img = new Image();
   img.src = qrDataUrl;
   await img.decode();
-  const qrSize = 760;
+  const qrSize = 700;
   const qrX = (W - qrSize) / 2;
-  const qrY = 580;
+  const qrY = 680;
   ctx.strokeStyle = "#E5E7EB";
   ctx.lineWidth = 4;
   ctx.strokeRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
   ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
 
-  // Instructions
+  // Instructions (kept inside the bottom margin)
   ctx.fillStyle = "#111320";
-  ctx.font = `600 34px ${FONT}`;
-  ctx.fillText("Show this QR code at the booklet desk", W / 2, 1450 - 70);
+  fitText(ctx, "Show this QR code at the booklet desk", contentWidth, 32, 600, 22);
+  ctx.fillText("Show this QR code at the booklet desk", W / 2, 1420);
   ctx.fillStyle = "#6B7280";
-  ctx.font = `400 28px ${FONT}`;
-  ctx.fillText("to collect your conference booklet. Do not share this code.", W / 2, 1450 - 25);
+  fitText(ctx, "to collect your conference booklet. Do not share this code.", contentWidth, 26, 400, 18);
+  ctx.fillText("to collect your conference booklet. Do not share this code.", W / 2, 1462);
 
   return canvas;
 }
@@ -462,6 +522,8 @@ function StatusContent() {
         {bundle.participants.map((t) => (
           <TicketCard key={t.id} ticket={t} bundle={bundle} />
         ))}
+
+        <BookletDownload />
 
         <div className="max-w-md w-full print:hidden">
           <HelpLine />

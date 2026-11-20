@@ -3,6 +3,7 @@ import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { QrView } from "@/components/ticket/qr-view";
 import { OrderQrCard } from "@/components/ticket/order-qr-card";
+import { BookletDownload } from "@/components/ticket/booklet-download";
 import { SITE_CONFIG } from "@/config/site";
 import { Calendar, MapPin, ShieldCheck } from "lucide-react";
 
@@ -70,6 +71,11 @@ export default async function TicketPage({
                 <strong>Admission Ticket Confirmed</strong> — Showing this screen at the gate is your primary admission pass.
               </div>
             </div>
+          </div>
+
+          {/* Booklet download */}
+          <div className="flex justify-center print:hidden">
+            <BookletDownload />
           </div>
 
           {/* Render Tickets */}

@@ -11,7 +11,9 @@ import jobRoutes from "./routes/jobs.ts";
 import orderRoutes from "./routes/orders.ts";
 import scanRoutes from "./routes/scans.ts";
 import settingsRoutes from "./routes/settings.ts";
+import resourceRoutes from "./routes/resources.ts";
 import adminRoutes from "./routes/admin.ts"; // 👈 ADDED THIS
+import { ensureBookletSeeded } from "./lib/booklet.ts";
 
 dotenv.config();
 
@@ -61,6 +63,7 @@ app.use("/api", jobRoutes);
 app.use("/api", orderRoutes);
 app.use("/api", scanRoutes);
 app.use("/api", settingsRoutes);
+app.use("/api", resourceRoutes);
 app.use("/api", adminRoutes); // 👈 ADDED THIS
 
 // 404 handler
@@ -81,6 +84,15 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 async function start() {
   await mongoose.connect(MONGODB_URI as string);
   console.log("MongoDB connected");
+
+  try {
+    if (await ensureBookletSeeded()) {
+      console.log("Conference booklet stored in the database.");
+    }
+  } catch (err) {
+    console.warn("Could not seed the conference booklet:", err);
+  }
+
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
