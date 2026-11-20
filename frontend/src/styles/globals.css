@@ -154,6 +154,43 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Instant globe poster shown while the Three.js bundle initializes. It uses
+   the same earth texture as the WebGL globe and fades out once the scene has
+   rendered its first frame. */
+.globe-poster {
+  background-image:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.26), transparent 34%),
+    linear-gradient(180deg, rgba(9, 24, 44, 0.08), rgba(4, 12, 24, 0.62)),
+    url("/textures/earth.jpg");
+  background-size: cover, cover, 215% 100%;
+  background-position: center, center, 28% center;
+  border-radius: 9999px;
+  box-shadow:
+    inset -36px -18px 80px rgba(0, 0, 0, 0.72),
+    inset 12px 8px 34px rgba(142, 227, 214, 0.1),
+    0 0 90px rgba(72, 152, 214, 0.28);
+  transition: opacity 420ms ease-out;
+}
+
+.globe-poster::before,
+.globe-poster::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 9999px;
+  border: 1px solid rgba(142, 227, 214, 0.28);
+  pointer-events: none;
+}
+
+.globe-poster::before {
+  transform: scaleX(0.42) rotate(-12deg);
+}
+
+.globe-poster::after {
+  transform: scaleY(0.36) rotate(8deg);
+  border-color: rgba(142, 227, 214, 0.16);
+}
+
 /* Scanner viewfinder scan line */
 @keyframes scanline {
   0%, 100% { top: 8%; }

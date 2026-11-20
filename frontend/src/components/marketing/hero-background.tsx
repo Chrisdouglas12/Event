@@ -21,6 +21,7 @@ import {
  */
 export function HeroBackground({ align = "left" }: { align?: "left" | "right" }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -30,8 +31,10 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
     let cleanup = () => {};
 
     (async () => {
-      const THREE = await import("three");
-      const { FLAGS, makeFlagTexture, makeFallbackEarth } = await import("./flag-textures");
+      const [THREE, { FLAGS, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
+        import("three"),
+        import("./flag-textures"),
+      ]);
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -427,6 +430,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       let raf = 0;
       let inView = true;
       let tabVisible = !document.hidden;
+      let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
 
       const frame = (timestamp?: number) => {
@@ -484,6 +488,10 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
 
         renderer.render(scene, camera);
+        if (!posterHidden && posterRef.current) {
+          posterHidden = true;
+          posterRef.current.style.opacity = "0";
+        }
         schedule();
       };
       const schedule = () => {
@@ -542,7 +550,17 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      <div ref={hostRef} className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto" />
+      {/* Preload the poster texture and hero airliner before JS asks for them. */}
+      <link rel="preload" as="image" href="/textures/earth.jpg" />
+      <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
+
+      <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
+        <div
+          ref={posterRef}
+          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
+        />
+        <div ref={hostRef} className="absolute inset-0" />
+      </div>
       <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
       <div className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#0E1020]/90 via-[#0E1020]/35 to-transparent" />
     </div>
