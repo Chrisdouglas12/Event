@@ -182,18 +182,18 @@ async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HT
   // Reference
   ctx.fillStyle = "#6B7280";
   ctx.font = `600 28px ${FONT}`;
-  ctx.fillText("REFERENCE", W / 2, 560);
+  ctx.fillText("REFERENCE", W / 2, 535);
   ctx.fillStyle = "#0E7A6E";
   fitText(ctx, ticket.refCode, contentWidth, 52, 800, 32);
-  ctx.fillText(ticket.refCode, W / 2, 620);
+  ctx.fillText(ticket.refCode, W / 2, 590);
 
   // QR code
   const img = new Image();
   img.src = qrDataUrl;
   await img.decode();
-  const qrSize = 700;
+  const qrSize = 680;
   const qrX = (W - qrSize) / 2;
-  const qrY = 680;
+  const qrY = 640;
   ctx.strokeStyle = "#E5E7EB";
   ctx.lineWidth = 4;
   ctx.strokeRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
@@ -202,10 +202,10 @@ async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HT
   // Instructions (kept inside the bottom margin)
   ctx.fillStyle = "#111320";
   fitText(ctx, "Show this QR code at the booklet desk", contentWidth, 32, 600, 22);
-  ctx.fillText("Show this QR code at the booklet desk", W / 2, 1420);
+  ctx.fillText("Show this QR code at the booklet desk", W / 2, 1395);
   ctx.fillStyle = "#6B7280";
   fitText(ctx, "to collect your conference booklet. Do not share this code.", contentWidth, 26, 400, 18);
-  ctx.fillText("to collect your conference booklet. Do not share this code.", W / 2, 1462);
+  ctx.fillText("to collect your conference booklet. Do not share this code.", W / 2, 1440);
 
   return canvas;
 }
@@ -360,8 +360,8 @@ function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }
 
       {bundle.group && (
         <div className="px-6 pb-6 text-center text-[11px] text-gray-500">
-          Group: {bundle.order.groupName || "—"} · {bundle.group.claimedSeats} of {bundle.group.totalSeats} seats
-          claimed
+          Group: {bundle.order.groupName || "—"} · {bundle.group.claimedSeats} of {bundle.group.totalSeats}
+          participants claimed
         </div>
       )}
     </div>

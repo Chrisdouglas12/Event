@@ -123,7 +123,7 @@ export async function issueConferenceBooklet(participant: CachedParticipant, sta
   return { outcome: result.outcome as "issued" | "already_issued", participant: result.participant };
 }
 
-/** Applies an offline group action as one IndexedDB transaction and queues each seat for idempotent sync. */
+/** Applies an offline group action as one IndexedDB transaction and queues each participant for idempotent sync. */
 export async function recordGroupArrivalCheckIn(participants: CachedParticipant[], standId: string, groupOrderToken: string): Promise<CachedParticipant[]> {
   const clientTimestamp = new Date().toISOString();
   const eligibleIds = new Set(participants.filter((participant) => participant.status === "confirmed").map((participant) => participant.participantId));

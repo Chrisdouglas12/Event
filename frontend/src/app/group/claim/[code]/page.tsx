@@ -49,7 +49,7 @@ export default function GroupClaimPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to claim seat.");
+        throw new Error(data.error || "Failed to claim your place.");
       }
 
       setSuccess(data.message || "Seat claimed successfully!");

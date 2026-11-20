@@ -305,7 +305,7 @@ participantSchema.index(
   { partialFilterExpression: { deletedAt: { $type: 'date' } } }
 );
 
-// Group seats
+// Group participants
 groupSeatSchema.index({ groupId: 1 });
 groupSeatSchema.index({ participantId: 1 });
 

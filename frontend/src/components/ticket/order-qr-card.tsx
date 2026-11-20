@@ -39,7 +39,7 @@ export function OrderQrCard({ orderReference, token }: OrderQrCardProps) {
           Group Order QR
         </div>
         <div className="text-xs text-gray-500 leading-relaxed">
-          "Scan at the group check-in desk to review all paid seats and check them in together."
+          "Scan at the group check-in desk to review all paid participants and check them in together."
         </div>
         <div className="text-[11px] font-mono text-gray-400">{orderReference}</div>
       </div>

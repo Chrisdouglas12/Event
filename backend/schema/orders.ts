@@ -91,7 +91,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
       default: 'not_sure',
     },
-    // Number of seats this order holds; powers the per-ticket-type cap.
+    // Number of participants this order holds; powers the per-ticket-type cap.
     seats: {
       type: Number,
       min: 0,

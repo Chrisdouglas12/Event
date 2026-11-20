@@ -141,7 +141,7 @@ export function ScanResultOverlay({
           {result.type === "group" && (
             <div className="mt-4 overflow-hidden rounded-2xl border border-gray-100 bg-white">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 text-[11px]">
-                <span className="font-heading font-bold uppercase tracking-wider text-gray-500">Paid seats</span>
+                <span className="font-heading font-bold uppercase tracking-wider text-gray-500">Paid participants</span>
                 <span className="font-heading font-extrabold text-gray-800">{result.participants.length} participants</span>
               </div>
               <ul className="max-h-[34svh] divide-y divide-gray-100 overflow-y-auto">

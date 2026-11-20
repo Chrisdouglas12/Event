@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { Header } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
+import { LandingDepth } from "@/components/marketing/landing-depth";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard, MoreMinistersCard } from "@/components/marketing/minister-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
@@ -36,6 +37,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }} />
+      {/* One scroll-synced WebGL layer for the whole page. */}
+      <LandingDepth />
       {/* 55px Slim Header */}
       <Header />
 

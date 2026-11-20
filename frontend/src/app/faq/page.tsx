@@ -21,7 +21,7 @@ export default function FaqPage() {
     },
     {
       q: "Can I register a whole group, family, or chapter/zone together?",
-      a: "Yes! You can choose 'Group Registration'. You can pay for all members in a single payment and either fill in their details immediately or share an invite link so members can claim their seats themselves. The group order also receives an express group QR code for fast gate check-in.",
+      a: "Yes! You can choose 'Group Registration'. You can pay for all members in a single payment and either fill in their details immediately or share an invite link so members can claim their places themselves. The group order also receives an express group QR code for fast gate check-in.",
     },
     {
       q: "Do I need an email address to register?",

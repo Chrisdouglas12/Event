@@ -54,7 +54,7 @@ describe("Ed25519 ticket tokens", () => {
     expect(await verifyOrderAccessToken(accessToken, "order_456", publicKey)).toBe(false);
   });
 
-  it("signs group order QR payloads and rejects invalid seat counts or forged signatures", async () => {
+  it("signs group order QR payloads and rejects invalid participant counts or forged signatures", async () => {
     const orderId = "550e8400-e29b-41d4-a716-446655440000";
     const publicKey = await deriveTicketPublicKey(PRIVATE_KEY);
     const token = await createGroupOrderToken(orderId, 4, PRIVATE_KEY);

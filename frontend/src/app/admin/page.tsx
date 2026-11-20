@@ -157,7 +157,7 @@ export default async function AdminDashboardPage() {
               <div className="mt-0.5 text-lg font-extrabold text-[#111320] sm:mt-1 sm:text-xl">
                 {attendanceTotals[key]}
               </div>
-              <div className="mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">seats</div>
+              <div className="mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">participants</div>
             </div>
           ))}
         </div>

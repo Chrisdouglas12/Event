@@ -179,7 +179,7 @@ export default async function TicketPage({
               <div>
                 <div className="text-sm font-bold text-[#111320]">Group Management</div>
                 <div className="text-xs text-gray-500">
-                  Track claimed seats and share invite links with your group members.
+                  Track claimed participants and share invite links with your group members.
                 </div>
               </div>
               <a

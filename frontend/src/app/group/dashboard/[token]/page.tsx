@@ -90,7 +90,7 @@ export default function GroupDashboardPage() {
                 )}
               </div>
 
-              {/* Seats Grid */}
+              {/* Participants Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {data.seats.map((seat, idx) => (
                   <div
@@ -99,7 +99,7 @@ export default function GroupDashboardPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Seat {idx + 1}
+                        Participant {idx + 1}
                       </span>
                       {seat.isClaimed ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
