@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { ShieldCheck, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
@@ -12,6 +12,7 @@ export default function StaffLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [totpToken, setTotpToken] = useState("");
   const [challenge, setChallenge] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -131,15 +132,26 @@ export default function StaffLoginPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[#111320]">Password</label>
-                <input
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputCls}
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${inputCls} pr-11`}
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[8px] text-gray-500 transition-colors hover:text-[#0E1020] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8EE3D6] cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {error && (

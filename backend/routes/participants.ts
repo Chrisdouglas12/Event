@@ -8,6 +8,7 @@ import { Order, Payment } from '../schema/orders.ts';
 import { ATTENDANCE_MODES, CURRENCIES, GENDERS } from '../constants/enums.ts';
 import { TicketType, Participant, Group, GroupSeat } from '../schema/participants.ts';
 import { toE164 } from '../lib/phone.ts';
+import { markViolation } from '../lib/security.ts';
 
 const router = express.Router();
 
@@ -157,13 +158,18 @@ function attendanceModeOrFallback(value: unknown): AttendanceMode {
     : 'not_sure';
 }
 
-function providerFor(currency: string): PaymentProvider {
-  return currency === 'NGN' ? 'paystack' : 'paypal';
+/**
+ * Every supported currency is now charged through Paystack. The selected
+ * currency is passed to Paystack at initialization; international payment
+ * availability is controlled by the Paystack account settings, not by this
+ * application disabling the option in the form.
+ */
+function providerFor(_currency: string): PaymentProvider {
+  return 'paystack';
 }
 
 function providerConfigured(provider: PaymentProvider): boolean {
-  if (provider === 'paystack') return !!process.env.PAYSTACK_SECRET_KEY;
-  return !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  return provider === 'paystack' && !!process.env.PAYSTACK_SECRET_KEY;
 }
 
 function frontendUrl(): string {
@@ -308,7 +314,7 @@ async function initPaystack(data: CheckoutData) {
     body: JSON.stringify({
       email: data.payer.email,
       amount: data.totalMinor,
-      currency: 'NGN',
+      currency: data.currency,
       reference: data.reference,
       callback_url: `${frontendUrl()}/payment/status?ref=${encodeURIComponent(data.reference)}&access=${encodeURIComponent(accessTokenFor(data.reference))}&ck=${encodeURIComponent(callbackToken)}`,
       metadata: { orderId: data.reference, isGroup: data.isGroup },
@@ -681,6 +687,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     }
 
     if (!(await verifyTurnstile(body.turnstileToken, req.ip))) {
+      markViolation(req, 'checkout_turnstile_failed', 2);
       return res.status(400).json({ error: 'Verification failed. Please try again.' });
     }
 
@@ -725,10 +732,6 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     if (country === 'Nigeria' && !state) {
       return res.status(400).json({ error: 'State is required for Nigerian residents' });
     }
-
-    const chapterZone = typeof body.chapterZone === 'string' && body.chapterZone.trim()
-      ? body.chapterZone.trim()
-      : null;
 
     const attendanceMode = attendanceModeOrFallback(body.attendanceMode);
 
@@ -788,7 +791,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
           throw new Error(`Group attendance counts must add up to ${seats} participants.`);
         }
         if (male + female !== seats) {
-          throw new Error(`Male and Female counts must add up to ${seats} participants (children included).`);
+          throw new Error(`Brothers and Sisters counts must add up to ${seats} participants (children included).`);
         }
         if (hasChildren && childCount < 1) {
           throw new Error('Children count must be at least 1 when children are attending.');
@@ -850,7 +853,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       payer: { name: payerName, phoneE164: payerPhone, email: payerEmail },
       country,
       state: country === 'Nigeria' ? state : null,
-      chapterZone,
+      chapterZone: null,
       attendanceMode,
       attendanceCounts,
       gender: isGroup ? null : body.gender as Gender,

@@ -3,7 +3,6 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import QRCode from "qrcode";
 import {
   Loader2,
   CheckCircle2,
@@ -16,199 +15,23 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { OrderQrCard } from "@/components/ticket/order-qr-card";
+import { BookletDownload } from "@/components/ticket/booklet-download";
+import { GroupTicketCard } from "@/components/ticket/group-ticket-card";
 import { SITE_CONFIG } from "@/config/site";
+import {
+  EVENT,
+  Ticket,
+  TicketBundle,
+  canvasToBlob,
+  downloadBlob,
+  qrDataUrl,
+  renderTicketCanvas,
+} from "@/lib/tickets/ticket-pdf";
 
 // Origin of the backend (no trailing slash, no /api). Unset = same origin.
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
-const EVENT = {
-  name: "IHGC 2026 General Conference",
-  dates: "8 – 11 Dec 2026",
-  venue: "Holiness Campground, Kwali, Abuja",
-};
-
-// --- TYPES ---
-
-type Ticket = {
-  id: string;
-  refCode: string;
-  name: string;
-  status: string;
-  qrToken: string;
-};
-
-type TicketBundle = {
-  order: {
-    reference: string;
-    currency: string;
-    totalMinor: number;
-    isGroup: boolean;
-    groupName: string | null;
-  };
-  participants: Ticket[];
-  group: { id: string; totalSeats: number; claimedSeats: number; qrToken?: string } | null;
-};
-
 type Phase = "checking" | "pending" | "timeout" | "need_phone" | "failed" | "error" | "ready";
-
-// --- DOWNLOAD HELPERS ---
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not create image"))), "image/png");
-  });
-}
-
-const FONT = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
-
-// Shrinks a single line until it fits the available width.
-function fitText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  size: number,
-  weight = 700,
-  min = 22
-) {
-  let s = size;
-  ctx.font = `${weight} ${s}px ${FONT}`;
-  while (s > min && ctx.measureText(text).width > maxWidth) {
-    s -= 2;
-    ctx.font = `${weight} ${s}px ${FONT}`;
-  }
-}
-
-// Wraps text into centred lines with an ellipsis when it exceeds maxLines,
-// so long names never encroach on the QR code or the page edges.
-function drawWrappedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  centerX: number,
-  maxWidth: number,
-  startY: number,
-  options: { size: number; weight?: number; lineHeight: number; maxLines?: number; color: string }
-) {
-  const { size, weight = 700, lineHeight, maxLines = 2, color } = options;
-  ctx.fillStyle = color;
-  ctx.font = `${weight} ${size}px ${FONT}`;
-
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  let index = 0;
-
-  for (; index < words.length; index++) {
-    const candidate = line ? `${line} ${words[index]}` : words[index];
-    if (!line || ctx.measureText(candidate).width <= maxWidth) {
-      line = candidate;
-      continue;
-    }
-    lines.push(line);
-    line = words[index];
-    if (lines.length >= maxLines) break;
-  }
-
-  if (lines.length < maxLines && line) lines.push(line);
-
-  const truncated = index < words.length - 1;
-  if (truncated && lines.length > 0) {
-    let last = lines[lines.length - 1];
-    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    lines[lines.length - 1] = `${last.trimEnd()}…`;
-  }
-
-  lines.forEach((value, i) => ctx.fillText(value, centerX, startY + i * lineHeight));
-  return startY + lines.length * lineHeight;
-}
-
-// Draws the full ticket (header, name, reference, QR, instructions) onto a canvas.
-// The same canvas is used for the PNG download and the PDF.
-async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HTMLCanvasElement> {
-  const W = 1080;
-  const H = 1500;
-  const SIDE_MARGIN = 70;
-  const contentWidth = W - SIDE_MARGIN * 2;
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas is not supported");
-
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-
-  // Header band
-  ctx.fillStyle = "#0E1020";
-  ctx.fillRect(0, 0, W, 300);
-
-  ctx.fillStyle = "#8EE3D6";
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText("PARTICIPANT PASS", W / 2, 90);
-
-  ctx.fillStyle = "#FFFFFF";
-  fitText(ctx, EVENT.name, contentWidth, 58, 800, 30);
-  ctx.fillText(EVENT.name, W / 2, 170);
-
-  ctx.fillStyle = "#C7CAD6";
-  const sub = `${EVENT.dates}  •  ${EVENT.venue}`;
-  fitText(ctx, sub, contentWidth, 32, 400, 22);
-  ctx.fillText(sub, W / 2, 235);
-
-  // Participant name (max two lines, never overlapping the reference block)
-  drawWrappedText(ctx, ticket.name, W / 2, contentWidth, 400, {
-    size: 56,
-    weight: 700,
-    lineHeight: 64,
-    maxLines: 2,
-    color: "#111320",
-  });
-
-  // Reference
-  ctx.fillStyle = "#6B7280";
-  ctx.font = `600 28px ${FONT}`;
-  ctx.fillText("REFERENCE", W / 2, 535);
-  ctx.fillStyle = "#0E7A6E";
-  fitText(ctx, ticket.refCode, contentWidth, 52, 800, 32);
-  ctx.fillText(ticket.refCode, W / 2, 590);
-
-  // QR code
-  const img = new Image();
-  img.src = qrDataUrl;
-  await img.decode();
-  const qrSize = 680;
-  const qrX = (W - qrSize) / 2;
-  const qrY = 640;
-  ctx.strokeStyle = "#E5E7EB";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
-  ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
-
-  // Instructions (kept inside the bottom margin)
-  ctx.fillStyle = "#111320";
-  fitText(ctx, "Show this QR code at the camp gate for check-in.", contentWidth, 32, 600, 22);
-  ctx.fillText("Show this QR code at the camp gate for check-in.", W / 2, 1395);
-  ctx.fillStyle = "#6B7280";
-  fitText(ctx, "Keep your screen brightness up and do not share this code.", contentWidth, 26, 400, 18);
-  ctx.fillText("Keep your screen brightness up and do not share this code.", W / 2, 1440);
-
-  return canvas;
-}
 
 // --- SHARED UI ---
 
@@ -238,12 +61,7 @@ function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }
 
   useEffect(() => {
     let alive = true;
-    QRCode.toDataURL(ticket.qrToken, {
-      errorCorrectionLevel: "M",
-      margin: 2,
-      width: 1024,
-      color: { dark: "#000000", light: "#FFFFFF" },
-    })
+    qrDataUrl(ticket.qrToken)
       .then((url) => {
         if (alive) setQr(url);
       })
@@ -541,24 +359,14 @@ function StatusContent() {
         </div>
 
         {bundle.group?.qrToken ? (
-          <>
-            <OrderQrCard
-              orderReference={bundle.order.reference}
-              token={bundle.group.qrToken}
-              seats={bundle.group.totalSeats}
-            />
-            <div className="max-w-md w-full rounded-[20px] border border-gray-100 bg-white p-5 text-center text-xs text-gray-600">
-              <p className="font-semibold text-[#111320]">
-                {bundle.order.groupName || "Group"} · {bundle.group.totalSeats} paid seats
-              </p>
-              <p className="mt-1">
-                Scan the group QR once at the gate to check in every paid seat, including children.
-              </p>
-            </div>
-          </>
+          <GroupTicketCard group={bundle.group} order={bundle.order} />
         ) : (
           bundle.participants.map((t) => <TicketCard key={t.id} ticket={t} bundle={bundle} />)
         )}
+
+        <div className="max-w-md w-full print:hidden">
+          <BookletDownload />
+        </div>
 
         <div className="max-w-md w-full print:hidden">
           <HelpLine />

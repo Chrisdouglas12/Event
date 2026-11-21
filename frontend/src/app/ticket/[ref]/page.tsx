@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { QrView } from "@/components/ticket/qr-view";
-import { OrderQrCard } from "@/components/ticket/order-qr-card";
+import { BookletDownload } from "@/components/ticket/booklet-download";
+import { GroupTicketCard } from "@/components/ticket/group-ticket-card";
+import { TicketPdfButton } from "@/components/ticket/ticket-pdf-button";
 import { SITE_CONFIG } from "@/config/site";
 import { Calendar, MapPin, ShieldCheck } from "lucide-react";
 
@@ -77,24 +79,8 @@ export default async function TicketPage({
             </div>
           </div>
 
-          {/* Group check-in QR — one scan checks in every paid seat. */}
-          {group?.qrToken && (
-            <>
-              <OrderQrCard
-                orderReference={order.reference}
-                token={group.qrToken}
-                seats={group.totalSeats}
-              />
-              <div className="bg-white rounded-[20px] border border-gray-200 p-5 text-center text-xs text-gray-600 print:break-inside-avoid">
-                <p className="font-semibold text-[#111320]">
-                  {order.groupName || "Group"} · {group.totalSeats} paid seats
-                </p>
-                <p className="mt-1">
-                  Scan this group QR once at the gate to check in everyone in the group, including children.
-                </p>
-              </div>
-            </>
-          )}
+          {/* Group pass — one scan checks in every paid seat, with PDF download. */}
+          {group?.qrToken && <GroupTicketCard group={group} order={order} />}
 
           {/* Render individual tickets only when there is no group capability. */}
           {!group?.qrToken && participants.map((ticket: any, index: number) => (
@@ -135,6 +121,9 @@ export default async function TicketPage({
                   />
                   <div className="text-[11px] text-gray-400 text-center mt-2 font-mono">
                     ID: {ticket.refCode} • Cryptographically Signed
+                  </div>
+                  <div className="w-full max-w-[260px] mt-4 print:hidden">
+                    <TicketPdfButton ticket={ticket} />
                   </div>
                 </div>
 
@@ -186,6 +175,19 @@ export default async function TicketPage({
               </div>
             </div>
           ))}
+
+          {/* Programme booklet is available for every paid order. */}
+          <div className="bg-white rounded-[20px] border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+            <div>
+              <div className="text-sm font-bold text-[#111320]">Programme Booklet</div>
+              <div className="text-xs text-gray-500">
+                Download the full IHGC 2026 programme as a PDF for offline reading.
+              </div>
+            </div>
+            <div className="w-full sm:w-[280px] shrink-0">
+              <BookletDownload compact />
+            </div>
+          </div>
 
           {/* Group leader dashboard link */}
           {group && (

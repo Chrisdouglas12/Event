@@ -55,7 +55,7 @@ export default async function AdminPaymentsPage() {
       <div>
         <h1 className="text-2xl font-black text-[#111320] tracking-tight">Payments</h1>
         <p className="mt-0.5 text-xs text-gray-500">
-          Verified Paystack and PayPal payments. No pending or manual-transfer records are stored.
+          Verified Paystack payments. No pending or manual-transfer records are stored.
         </p>
       </div>
 

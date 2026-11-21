@@ -25,7 +25,7 @@ export default function FaqPage() {
     },
     {
       q: "Do I need an email address to register?",
-      a: "No. Email is completely optional for Nigeria participants paying in Naira via Paystack. Your phone number (+234 format) and your unique reference code (HGC-XXXXXX) are all that is required. If you pay via PayPal in USD/EUR/GBP, an email address is required by PayPal.",
+      a: "A valid email address is required so Paystack can send your payment receipt. Your phone number and unique reference code (HGC-XXXXXX) are also needed if you need to recover your ticket.",
     },
     {
       q: "How do I receive my ticket and QR code?",

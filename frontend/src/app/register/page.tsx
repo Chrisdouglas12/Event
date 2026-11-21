@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { SITE_CONFIG } from "@/config/site";
-import { formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
+import { CURRENCIES, formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
 import {
   COUNTRIES,
   NIGERIA,
@@ -458,20 +458,9 @@ export default function RegisterPage() {
   const [isGroup, setIsGroup] = useState(false);
   const [currency, setCurrency] = useState<SupportedCurrency>("NGN");
 
-  // Config loaded from Express
+  // Config loaded from Express. Every supported currency is routed through
+  // Paystack, so availability only depends on the configured price.
   const [pricesMinor, setPricesMinor] = useState<Partial<Record<SupportedCurrency, number>>>({});
-  const [currencyAvailable, setCurrencyAvailable] = useState<Record<SupportedCurrency, boolean>>({
-    NGN: false,
-    USD: false,
-    EUR: false,
-    GBP: false,
-  });
-  const [providerByCurrency, setProviderByCurrency] = useState<Record<SupportedCurrency, string>>({
-    NGN: "paystack",
-    USD: "paypal",
-    EUR: "paypal",
-    GBP: "paypal",
-  });
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [configState, setConfigState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -481,7 +470,6 @@ export default function RegisterPage() {
   const [payerEmail, setPayerEmail] = useState("");
   const [country, setCountry] = useState("Nigeria");
   const [state, setState] = useState("");
-  const [chapterZone, setChapterZone] = useState("");
   const [groupName, setGroupName] = useState("");
   // Kept as a string so the group leader types the count manually. Submission
   // is blocked until it is at least 2 (the backend enforces the same rule).
@@ -539,7 +527,6 @@ export default function RegisterPage() {
     setPayerEmail("");
     setCountry("Nigeria");
     setState("");
-    setChapterZone("");
     setGroupName("");
     setSeatsInput("0");
     setAttendanceMode("physically");
@@ -621,18 +608,8 @@ export default function RegisterPage() {
         if (!response.ok) throw new Error(data.error || "Config unavailable");
         if (cancelled) return;
 
-        const available: Record<SupportedCurrency, boolean> = { NGN: false, USD: false, EUR: false, GBP: false };
-        for (const c of CURRENCY_LIST) available[c] = Boolean(data.currencyAvailable?.[c]);
-
         setPricesMinor(data.pricesMinor || {});
-        setCurrencyAvailable(available);
-        setProviderByCurrency((prev) => ({ ...prev, ...(data.providerByCurrency || {}) }));
         setRegistrationOpen(Boolean(data.registrationOpen));
-
-        // Fall back to the first available currency
-        const firstAvailable = CURRENCY_LIST.find((c) => available[c]);
-        setCurrency((prev) => (available[prev] ? prev : firstAvailable ?? prev));
-
         setConfigState("ready");
       })
       .catch((err) => {
@@ -702,7 +679,6 @@ export default function RegisterPage() {
         ? effectiveSeats * unitMinor
         : null;
   const formattedTotal = totalMinor !== null ? formatMoneyMinor(totalMinor, currency) : "—";
-  const checkoutProvider = providerByCurrency[currency] === "paystack" ? "Paystack" : "PayPal";
 
   /* ---------- Validation ---------- */
 
@@ -720,13 +696,13 @@ export default function RegisterPage() {
         errs.inviteeCount = `Enter a number between 1 and ${seatsCount}.`;
       }
       if (genderCounts.male + genderCounts.female !== seatsCount) {
-        errs.genderCounts = `Male and Female must add up to ${seatsCount} participants (children included).`;
+        errs.genderCounts = `Brothers and Sisters must add up to ${seatsCount} participants (children included).`;
       }
       if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
         errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
       }
     } else {
-      if (gender !== "male" && gender !== "female") errs.gender = "Select Male or Female.";
+      if (gender !== "male" && gender !== "female") errs.gender = "Select Brother or Sister.";
       if (firstTime !== "yes" && firstTime !== "no") errs.firstTime = "Select Yes or No.";
     }
 
@@ -803,7 +779,6 @@ export default function RegisterPage() {
         },
         country: matchedCountry || country.trim(),
         state: isNigeria && matchedState ? matchedState : undefined,
-        chapterZone: chapterZone.trim() || undefined,
         attendanceMode,
         gender: isGroup ? undefined : gender,
         firstTime: isGroup ? undefined : firstTime === "yes",
@@ -871,7 +846,6 @@ export default function RegisterPage() {
   const submitDisabled =
     loading ||
     configState !== "ready" ||
-    !currencyAvailable[currency] ||
     !registrationOpen ||
     totalMinor === null ||
     (isGroup && (!Number.isInteger(parsedSeats) || parsedSeats < 2 || parsedSeats > 500));
@@ -997,30 +971,29 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 rounded-full bg-white/10 p-1">
-                  {CURRENCY_LIST.map((c) => {
-                    const isAvailable = configState === "ready" && currencyAvailable[c];
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        disabled={configState !== "ready"}
-                        aria-pressed={currency === c}
-                        onClick={() => {
-                          setCurrency(c);
-                          clearErr("customNairaAmount");
-                        }}
-                        className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
-                          currency === c
-                            ? "bg-white text-[#0E1020] shadow-xs"
-                            : configState !== "ready" || isAvailable
-                              ? "text-white/60 hover:text-white"
-                              : "cursor-not-allowed text-white/30 line-through"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
+                  {CURRENCY_LIST.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={configState !== "ready"}
+                      aria-pressed={currency === c}
+                      title={CURRENCIES[c].label}
+                      onClick={() => {
+                        setCurrency(c);
+                        clearErr("customNairaAmount");
+                      }}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all ${
+                        currency === c
+                          ? "bg-white text-[#0E1020] shadow-xs"
+                          : "text-white/70 hover:text-white"
+                      } ${configState !== "ready" ? "cursor-not-allowed opacity-50" : ""}`}
+                    >
+                      <span aria-hidden className="text-sm leading-none">
+                        {CURRENCIES[c].flag}
+                      </span>
+                      <span>{c}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1216,9 +1189,9 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field
                         htmlFor="field-genderCounts"
-                        label="Male Count *"
+                        label="Number of Brothers *"
                         error={fieldErrors.genderCounts}
-                        hint="Include male children in this count."
+                        hint="Include boys in this count."
                       >
                         <input
                           type="number"
@@ -1233,7 +1206,11 @@ export default function RegisterPage() {
                           {...fp("genderCounts")}
                         />
                       </Field>
-                      <Field htmlFor="field-genderCounts-female" label="Female Count *">
+                      <Field
+                        htmlFor="field-genderCounts-female"
+                        label="Number of Sisters *"
+                        hint="Include girls in this count."
+                      >
                         <input
                           id="field-genderCounts-female"
                           type="number"
@@ -1277,7 +1254,7 @@ export default function RegisterPage() {
                                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                             }`}
                           >
-                            {value === "male" ? "Male" : "Female"}
+                            {value === "male" ? "Brother" : "Sister"}
                           </button>
                         ))}
                       </div>
@@ -1367,18 +1344,6 @@ export default function RegisterPage() {
                     />
                   </Field>
 
-                  {isNigeria && (
-                    <Field htmlFor="field-chapterZone" label="Chapter/Zone (Optional)">
-                      <input
-                        id="field-chapterZone"
-                        type="text"
-                        placeholder="e.g. Horemow Kwali Chapter"
-                        value={chapterZone}
-                        onChange={(e) => setChapterZone(e.target.value)}
-                        className={inputCls(false)}
-                      />
-                    </Field>
-                  )}
                 </div>
 
                 {/* Minor checkbox */}
@@ -1638,7 +1603,7 @@ export default function RegisterPage() {
                 )}
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-gray-500">Pay with</dt>
-                  <dd className="font-semibold text-[#111320]">{checkoutProvider}</dd>
+                  <dd className="font-semibold text-[#111320]">Paystack</dd>
                 </div>
               </dl>
 
@@ -1678,11 +1643,6 @@ export default function RegisterPage() {
                 {configState === "ready" && !registrationOpen && (
                   <p role="status" className="text-xs text-amber-800">
                     Online registration is closed.
-                  </p>
-                )}
-                {configState === "ready" && !currencyAvailable[currency] && (
-                  <p role="status" className="text-xs text-amber-800">
-                    Checkout is unavailable for {currency} right now.
                   </p>
                 )}
               </div>

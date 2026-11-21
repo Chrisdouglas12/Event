@@ -11,6 +11,11 @@ import scanRoutes from "./routes/scans.ts";
 import settingsRoutes from "./routes/settings.ts";
 import resourceRoutes from "./routes/resources.ts";
 import adminRoutes from "./routes/admin.ts";
+import {
+  ipFirewall,
+  rateLimitSensitive,
+  securityHeaders,
+} from "./lib/security.ts";
 
 dotenv.config();
 
@@ -18,9 +23,27 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Behind a reverse proxy, req.ip must reflect the real client or every user
+// would share the proxy's rate-limit bucket. Set TRUST_PROXY=false when the
+// backend is exposed directly.
+const trustProxy = process.env.TRUST_PROXY;
+app.set(
+  "trust proxy",
+  trustProxy === undefined
+    ? 1
+    : trustProxy === "false"
+      ? false
+      : /^\d+$/.test(trustProxy)
+        ? Number(trustProxy)
+        : trustProxy
+);
+
 if (!MONGODB_URI) {
   throw new Error("MONGODB_URI is not set");
 }
+
+app.use(securityHeaders);
+app.use(ipFirewall);
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3001",
@@ -41,7 +64,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({
@@ -49,6 +72,91 @@ app.get("/health", (_req: Request, res: Response) => {
     db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RATE LIMITS — SENSITIVE ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.use(
+  "/api",
+  rateLimitSensitive({
+    name: "api_global",
+    limit: 1_000,
+    windowMs: 5 * 60_000,
+    violationWeight: 1,
+  })
+);
+
+app.use(
+  "/api/auth/login",
+  rateLimitSensitive({
+    name: "auth_login",
+    limit: 8,
+    windowMs: 15 * 60_000,
+    key: (req) => String(req.body?.username || "").trim().toLowerCase(),
+    failureWeights: { 400: 1, 401: 2, 403: 3 },
+    violationWeight: 2,
+  })
+);
+app.use(
+  "/api/auth/totp",
+  rateLimitSensitive({
+    name: "auth_totp",
+    limit: 8,
+    windowMs: 15 * 60_000,
+    failureWeights: { 400: 1, 401: 2, 403: 3 },
+    violationWeight: 2,
+  })
+);
+app.use(
+  "/api/checkout/initialize",
+  rateLimitSensitive({
+    name: "checkout_initialize",
+    limit: 12,
+    windowMs: 10 * 60_000,
+    failureWeights: { 400: 1, 409: 1, 503: 1 },
+    violationWeight: 2,
+  })
+);
+app.use(
+  "/api/checkout/verify",
+  rateLimitSensitive({
+    name: "checkout_verify",
+    limit: 60,
+    windowMs: 10 * 60_000,
+    violationWeight: 1,
+  })
+);
+app.use(
+  "/api/admin",
+  rateLimitSensitive({
+    name: "admin_api",
+    limit: 240,
+    windowMs: 5 * 60_000,
+    failureWeights: { 401: 3, 403: 3 },
+    violationWeight: 2,
+  })
+);
+app.use(
+  "/api/settings",
+  rateLimitSensitive({
+    name: "settings_api",
+    limit: 120,
+    windowMs: 5 * 60_000,
+    failureWeights: { 401: 3, 403: 3 },
+    violationWeight: 2,
+  })
+);
+app.use(
+  "/api/scans",
+  rateLimitSensitive({
+    name: "scanner_api",
+    limit: 400,
+    windowMs: 5 * 60_000,
+    failureWeights: { 401: 3, 403: 3 },
+    violationWeight: 2,
+  })
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOUNT ROUTES

@@ -46,7 +46,7 @@ type ProgrammeItem = {
 };
 
 const CURRENCIES = ["NGN", "USD", "EUR", "GBP"] as const;
-const PROVIDERS = ["paystack", "paypal"] as const;
+const PROVIDERS = ["paystack"] as const;
 
 const EMPTY_PROGRAMME: ProgrammeItem = {
   eventDate: "",
@@ -528,7 +528,7 @@ export default function AdminSettingsPage() {
                 {CURRENCIES.map((c) => {
                   const route = routes.find((r) => r.currency === c) || {
                     currency: c,
-                    primaryProvider: c === "NGN" ? "paystack" : "paypal",
+                    primaryProvider: "paystack",
                     isEnabled: true,
                     feePolicy: "organizer_absorbs",
                   };

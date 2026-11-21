@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Parallax } from "@/components/ui/parallax";
@@ -10,6 +11,36 @@ import { useLandingSettings } from "@/components/marketing/landing-settings";
 export function WhyAttend() {
   const { theme, datesText, openingTimeLabel, whyAttendIntro, venueName, venueAddress } =
     useLandingSettings();
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Match the hero globe: zoom out across the first viewport of scroll and
+  // zoom back in when the user returns to the top.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const progress = Math.min(
+        1,
+        Math.max(0, window.scrollY / Math.max(1, window.innerHeight))
+      );
+      sectionRef.current?.style.setProperty("--why-zoom", (1 - progress * 0.22).toFixed(3));
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      sectionRef.current?.style.removeProperty("--why-zoom");
+    };
+  }, []);
 
   const points = [
     {
@@ -28,9 +59,10 @@ export function WhyAttend() {
 
   return (
     <section
+      ref={sectionRef}
       data-scene="air"
       data-enter
-      className="cv-auto relative overflow-hidden py-12 lg:py-16"
+      className="why-attend-zoom cv-auto relative overflow-hidden py-12 lg:py-16"
       style={
         {
           "--wa-accent": "#0E7A6E",

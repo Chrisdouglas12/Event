@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { Request } from "express";
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
@@ -47,9 +48,9 @@ export async function rateLimit(
   );
 
   if (!configured) {
-    return process.env.NODE_ENV === "production"
-      ? { allowed: false, remaining: 0, retryAfterSeconds: 60 }
-      : localRateLimit(key, limit, windowMs);
+    // A missing Redis config must never take the whole API down. The local
+    // fixed-window limiter still protects a single backend instance.
+    return localRateLimit(key, limit, windowMs);
   }
 
   const keyHash = crypto.createHash("sha256").update(key).digest("hex");
@@ -79,16 +80,18 @@ export async function rateLimit(
       retryAfterSeconds: count <= limit ? 0 : Math.max(1, Math.ceil(ttlMs / 1000)),
     };
   } catch {
-    return process.env.NODE_ENV === "production"
-      ? { allowed: false, remaining: 0, retryAfterSeconds: 60 }
-      : localRateLimit(key, limit, windowMs);
+    // Redis is an optimization for multi-instance deployments, not a hard
+    // dependency. Fall back to the in-process limiter instead of blocking every
+    // legitimate request.
+    return localRateLimit(key, limit, windowMs);
   }
 }
 
+/** Express-compatible client IP reader. Trust proxy is configured in server.ts. */
 export function clientIp(req: Request): string {
-  const realIp = req.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",").at(-1)?.trim() || "unknown";
-  return "unknown";
+  const raw = req.ip || req.socket?.remoteAddress || "unknown";
+  let ip = String(raw).trim();
+  if (ip.startsWith("[") && ip.endsWith("]")) ip = ip.slice(1, -1);
+  if (ip.startsWith("::ffff:")) ip = ip.slice(7);
+  return ip.split("%")[0].toLowerCase();
 }

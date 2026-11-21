@@ -429,7 +429,7 @@ export default async function AdminDashboardPage() {
         >
           <div className="text-xs font-bold text-[#111320] sm:text-sm">Payments →</div>
           <div className="text-[11px] text-gray-500 sm:text-xs">
-            Review verified Paystack and PayPal payments.
+            Review verified Paystack payments.
           </div>
         </Link>
         <Link
