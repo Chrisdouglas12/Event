@@ -25,12 +25,19 @@ import {
  * oval; the lens shift keeps it a perfect circle. The globe is centred in the
  * free space between the screen edge and the hero text column
  * ([data-hero-content]), so the gap to the screen edge equals the gap to the boxes.
+ * `desktopLift` nudges the globe upward in pixels on desktop only.
  */
 
 // Visual radius of the globe + rings, in world units (outer ring 2.44 + flag depth)
 const R_VIS = 2.55;
 
-export function HeroBackground({ align = "left" }: { align?: "left" | "right" }) {
+export function HeroBackground({
+  align = "left",
+  desktopLift = 0,
+}: {
+  align?: "left" | "right";
+  desktopLift?: number;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
 
@@ -372,7 +379,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
           const diameter = Math.max(200, Math.min(freeW - gap * 2, h * 0.86));
 
           const cx = (freeLeft + freeRight) / 2;
-          const cy = h * 0.485;
+          const cy = h * 0.485 - desktopLift;
 
           const pxPerUnit = h / vh;
           const s = diameter / (2 * R_VIS * pxPerUnit);
@@ -612,7 +619,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       disposed = true;
       cleanup();
     };
-  }, [align]);
+  }, [align, desktopLift]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">

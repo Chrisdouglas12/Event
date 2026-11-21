@@ -631,22 +631,19 @@ export default function RegisterPage() {
       {/* Hero with overlapping registration card */}
       <section className="relative w-full overflow-hidden bg-[#0E1020] px-6 pb-28 pt-14 text-white sm:px-8 lg:pb-40 lg:pt-20">
         <div className="absolute inset-0 z-0">
-          <HeroBackground align="right" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0E1020] via-[#0E1020]/85 to-[#0E1020]/25" />
+          <HeroBackground align="left" desktopLift={10} />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/25 to-[#0E1020]/75" />
         </div>
 
         <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 items-center gap-8 lg:grid-cols-12">
-          <div className="space-y-4 text-left lg:col-span-7">
+          <div className="hidden lg:block lg:col-span-5" />
+          <div data-hero-content className="space-y-4 text-left lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#8EE3D6]">
               <span>IHGC 2026 Registration</span>
             </div>
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-[42px] xl:text-5xl">
               Register For The 2026 General Conference
             </h1>
-            <p className="max-w-lg text-sm leading-relaxed text-gray-300 sm:text-base lg:text-lg">
-              Secure your 4-day all-access participant badge and instant QR ticket. Register as an individual or
-              register a group from your chapter/zone.
-            </p>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-xs text-gray-400 lg:text-sm">
               <div>• 8 – 11 Dec 2026</div>
               <div>• Kwali, Abuja</div>
