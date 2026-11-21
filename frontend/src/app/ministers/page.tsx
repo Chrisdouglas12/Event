@@ -1,6 +1,6 @@
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { MinisterCard, MoreMinistersCard } from "@/components/marketing/minister-card";
+import { MinisterCard } from "@/components/marketing/minister-card";
 import { SITE_CONFIG } from "@/config/site";
 
 export const metadata = {
@@ -45,9 +45,6 @@ export default function MinistersPage() {
               }}
             />
           ))}
-
-          {/* More ministers card */}
-          <MoreMinistersCard />
         </div>
       </section>
 

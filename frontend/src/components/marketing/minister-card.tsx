@@ -36,24 +36,6 @@ function GlobeIcon({ className }: { className?: string }) {
   );
 }
 
-function SparkleIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-      <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z" />
-    </svg>
-  );
-}
-
 function SocialLink({
   href,
   label,
@@ -161,43 +143,6 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             Horemow social channel
           </span>
         </div>
-      </div>
-    </TiltCard>
-  );
-}
-
-export function MoreMinistersCard() {
-  return (
-    <TiltCard
-      intensity={0}
-      className="relative flex min-h-[300px] flex-col items-center justify-center space-y-5 overflow-hidden rounded-[4px] border-2 border-dashed border-[#CBD5E1] bg-white/95 p-8 text-center transition-colors duration-300 hover:border-[#0E7A6E]/40 md:min-h-[400px] lg:p-12"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8EE3D6] opacity-[0.08] blur-3xl"
-      />
-
-      <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
-        <SparkleIcon className="h-6 w-6" />
-      </div>
-
-      <div className="relative max-w-sm space-y-2">
-        <RevealText
-          as="h4"
-          text="More Ministers To Be Announced"
-          className="text-xl font-bold text-[#0E1020] lg:text-2xl"
-          speed={14}
-        />
-        <RevealText
-          as="p"
-          text="Additional minister names and profiles will appear here when supplied by the organizers."
-          className="text-sm leading-relaxed text-[#4B5563]"
-          speed={9}
-        />
-      </div>
-
-      <div className="relative inline-flex items-center rounded-full border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#0E7A6E]">
-        Information pending
       </div>
     </TiltCard>
   );

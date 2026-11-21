@@ -20,7 +20,7 @@ export function Hero() {
 
       {/* Layer 1: Globe background (slowest / farthest) */}
       <ParallaxLayer speed={0.4} className="absolute inset-0">
-        <HeroBackground />
+        <HeroBackground desktopLift={10} />
       </ParallaxLayer>
 
       <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-8 pt-[350px] sm:pt-[390px] pb-14 lg:py-20 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">

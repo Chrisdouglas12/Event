@@ -5,7 +5,7 @@ import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingSectionDepth } from "@/components/marketing/landing-section-depth";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { WhyAttend } from "@/components/marketing/why-attend";
-import { MinisterCard, MoreMinistersCard } from "@/components/marketing/minister-card";
+import { MinisterCard } from "@/components/marketing/minister-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
@@ -56,7 +56,7 @@ export default function HomePage() {
           <Hero />
 
           {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
-          <div className="joined-flow mx-4 border-x border-white/15 bg-white/[0.02] shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
+          <div className="joined-flow mx-4 border-x border-white/15 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
             <WhyAttend />
             <TimelineDivider />
 
@@ -94,9 +94,6 @@ export default function HomePage() {
                       }}
                     />
                   ))}
-
-                  {/* Designed "More ministers to be announced" card */}
-                  <MoreMinistersCard />
                 </div>
               </div>
             </section>

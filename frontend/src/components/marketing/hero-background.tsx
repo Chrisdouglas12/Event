@@ -129,13 +129,17 @@ export function HeroBackground({
       };
       tryLoad(0);
 
-      // Atmosphere glow (uGlow is lowered on desktop so it stays a soft blue rim)
+      // Atmosphere: a tight blue rim plus a wider mint halo, so the globe sits
+      // inside a visible sphere of light instead of ending at a hard edge.
       const atmosphereMat = new THREE.ShaderMaterial({
         transparent: true,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        uniforms: { uGlow: { value: 1 } },
+        uniforms: {
+          uGlow: { value: 1 },
+          uColor: { value: new THREE.Color(0x73ccff) },
+        },
         vertexShader: `
           varying vec3 vN;
           void main(){
@@ -144,14 +148,24 @@ export function HeroBackground({
           }`,
         fragmentShader: `
           uniform float uGlow;
+          uniform vec3 uColor;
           varying vec3 vN;
           void main(){
-            float i = pow(0.74 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.5);
-            gl_FragColor = vec4(0.45, 0.8, 1.0, 1.0) * i * uGlow;
+            float facing = dot(vN, vec3(0.0, 0.0, 1.0));
+            float rim = pow(max(0.0, 0.78 - facing), 3.0);
+            float haze = pow(max(0.0, 1.0 - abs(facing)), 6.0) * 0.22;
+            gl_FragColor = vec4(uColor, 1.0) * (rim + haze) * uGlow;
           }`,
       });
-      const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 48, 48), atmosphereMat);
+      const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 64, 64), atmosphereMat);
       worldScroll.add(atmosphere);
+
+      const outerAtmosphereMat = atmosphereMat.clone();
+      outerAtmosphereMat.uniforms = THREE.UniformsUtils.clone(atmosphereMat.uniforms);
+      outerAtmosphereMat.uniforms.uGlow.value = 0.5;
+      outerAtmosphereMat.uniforms.uColor.value = new THREE.Color(0x7ff0d2);
+      const outerAtmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.78, 64, 64), outerAtmosphereMat);
+      worldScroll.add(outerAtmosphere);
 
       // Airliners circle above the globe. They are loaded from a local GLB and
       // share the scene lights, so they feel part of the same 3D world.
@@ -272,6 +286,83 @@ export function HeroBackground({
 
       const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
       const textures: InstanceType<typeof THREE.Texture>[] = [];
+
+      // ---------- Galaxy dust & nebula atmosphere ----------
+      const galaxyCount = 560;
+      const galaxyPos = new Float32Array(galaxyCount * 3);
+      const galaxyColors = new Float32Array(galaxyCount * 3);
+      const galaxyPalette = [
+        new THREE.Color(0x8ee3d6),
+        new THREE.Color(0xa8ceff),
+        new THREE.Color(0xffffff),
+        new THREE.Color(0xd7b7ff),
+      ];
+      for (let i = 0; i < galaxyCount; i++) {
+        const r = 3.1 + Math.random() * 3.4;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        galaxyPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        galaxyPos[i * 3 + 1] = r * Math.cos(phi) * 0.7;
+        galaxyPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+        const c = galaxyPalette[i % galaxyPalette.length];
+        galaxyColors[i * 3] = c.r;
+        galaxyColors[i * 3 + 1] = c.g;
+        galaxyColors[i * 3 + 2] = c.b;
+      }
+      const galaxyGeo = new THREE.BufferGeometry();
+      galaxyGeo.setAttribute("position", new THREE.BufferAttribute(galaxyPos, 3));
+      galaxyGeo.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
+      const galaxy = new THREE.Points(
+        galaxyGeo,
+        new THREE.PointsMaterial({
+          size: 0.085,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.72,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          sizeAttenuation: true,
+        })
+      );
+      worldScroll.add(galaxy);
+
+      // Soft nebula puffs give the sphere a deeper, cloudy atmosphere.
+      let nebulaGroup: InstanceType<typeof THREE.Group> | null = null;
+      const glowCanvas = document.createElement("canvas");
+      glowCanvas.width = glowCanvas.height = 128;
+      const glowCtx = glowCanvas.getContext("2d");
+      if (glowCtx) {
+        const grad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0, "rgba(255,255,255,0.75)");
+        grad.addColorStop(0.35, "rgba(255,255,255,0.22)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        glowCtx.fillStyle = grad;
+        glowCtx.fillRect(0, 0, 128, 128);
+        const glowTex = new THREE.CanvasTexture(glowCanvas);
+        textures.push(glowTex);
+
+        nebulaGroup = new THREE.Group();
+        worldScroll.add(nebulaGroup);
+        [
+          { color: 0x63e6c9, x: -2.6, y: 1.4, z: -2.2, scale: 3.2 },
+          { color: 0x6aa9ff, x: 2.8, y: -1.2, z: -2.8, scale: 3.8 },
+          { color: 0xb48cff, x: 0.6, y: 2.6, z: -3.4, scale: 2.9 },
+        ].forEach((puff) => {
+          const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+              map: glowTex,
+              color: puff.color,
+              transparent: true,
+              opacity: 0.16,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+            })
+          );
+          sprite.position.set(puff.x, puff.y, puff.z);
+          sprite.scale.set(puff.scale, puff.scale, 1);
+          nebulaGroup?.add(sprite);
+        });
+      }
 
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
@@ -520,6 +611,10 @@ export function HeroBackground({
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
+        outerAtmosphere.rotation.y -= dt * 0.012;
+        galaxy.rotation.y -= dt * 0.009;
+        galaxy.rotation.x = Math.sin(t * 0.05) * 0.08;
+        if (nebulaGroup) nebulaGroup.rotation.y += dt * 0.004;
         stars.rotation.y += dt * 0.005;
 
         // Animate heavenly bodies in an arc

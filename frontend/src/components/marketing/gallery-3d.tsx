@@ -1,10 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useRef,
@@ -63,56 +60,38 @@ const GALLERY_IMAGES = [
 // dimensions on next/image preserves that ratio instead of cropping or stretching.
 const IMAGE_WIDTH = 2048;
 const IMAGE_HEIGHT = 1152;
-const IMAGE_SIZES = "(max-width: 640px) 78vw, (max-width: 1024px) 52vw, 560px";
-const STEP = 360 / GALLERY_IMAGES.length;
+const IMAGE_SIZES = "(max-width: 640px) 82vw, (max-width: 1024px) 52vw, 560px";
+const COUNT = GALLERY_IMAGES.length;
+const HALF = COUNT / 2;
 
-function circularDistance(index: number, active: number) {
-  const distance = Math.abs(index - active);
-  return Math.min(distance, GALLERY_IMAGES.length - distance);
+function relativeOffset(index: number, active: number) {
+  let diff = index - active;
+  if (diff > HALF) diff -= COUNT;
+  if (diff < -HALF) diff += COUNT;
+  return diff;
 }
 
 export function Gallery3D() {
   const [active, setActive] = useState(0);
-  const [rotation, setRotation] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const rotationRef = useRef(0);
-  const dragRef = useRef<{ startX: number; startRotation: number } | null>(null);
+  const dragRef = useRef<{ startX: number } | null>(null);
 
-  const applyRotation = useCallback((value: number) => {
-    rotationRef.current = value;
-    setRotation(value);
+  const goTo = useCallback((index: number) => {
+    setActive(((index % COUNT) + COUNT) % COUNT);
   }, []);
-
-  const goTo = useCallback(
-    (index: number) => {
-      const next = ((index % GALLERY_IMAGES.length) + GALLERY_IMAGES.length) % GALLERY_IMAGES.length;
-      setActive(next);
-
-      const target = -next * STEP;
-      const turns = Math.round((rotationRef.current - target) / 360);
-      applyRotation(target + turns * 360);
-    },
-    [applyRotation]
-  );
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
-    dragRef.current = { startX: event.clientX, startRotation: rotationRef.current };
-    setIsDragging(true);
+    dragRef.current = { startX: event.clientX };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
-    applyRotation(drag.startRotation + (event.clientX - drag.startX) * 0.28);
-  };
-
-  const finishDrag = () => {
-    if (!dragRef.current) return;
     dragRef.current = null;
-    setIsDragging(false);
-    goTo(Math.round(-rotationRef.current / STEP));
+    const delta = event.clientX - drag.startX;
+    if (delta < -45) goTo(active + 1);
+    else if (delta > 45) goTo(active - 1);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -127,7 +106,7 @@ export function Gallery3D() {
   };
 
   return (
-    <section data-scene="sea" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
+    <section data-scene="sea" data-depth className="relative overflow-hidden py-12 lg:py-16">
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/3 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8EE3D6] opacity-[0.07] blur-3xl"
@@ -151,7 +130,7 @@ export function Gallery3D() {
         </div>
 
         <div
-          className={`gallery-3d ${isDragging ? "is-dragging" : ""}`}
+          className="gallery-3d"
           role="group"
           aria-roledescription="3D gallery"
           aria-label="Conference photo gallery"
@@ -160,45 +139,45 @@ export function Gallery3D() {
             className="gallery-3d__stage"
             tabIndex={0}
             onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
             onPointerUp={finishDrag}
             onPointerCancel={finishDrag}
             onKeyDown={onKeyDown}
             aria-label="Drag horizontally or use the left and right arrow keys to browse photos"
           >
-            <div
-              className="gallery-3d__ring"
-              style={{
-                transform: `translateZ(calc(var(--gallery-radius) * -1)) rotateY(${rotation}deg)`,
-              }}
-            >
-              {GALLERY_IMAGES.map((image, index) => {
-                const distance = circularDistance(index, active);
-                const visibilityClass =
-                  distance === 0 ? "is-front" : distance === 1 ? "is-side" : "is-far";
+            {GALLERY_IMAGES.map((image, index) => {
+              const offset = relativeOffset(index, active);
+              const distance = Math.abs(offset);
+              const visibilityClass =
+                distance === 0 ? "is-front" : distance === 1 ? "is-side" : "is-hidden";
+              const style = {
+                "--gallery-x": `${offset * 26}%`,
+                "--gallery-z": `${-distance * 130}px`,
+                "--gallery-tilt": `${offset * -13}deg`,
+                "--gallery-scale": distance === 0 ? 1 : 0.82,
+              } as CSSProperties;
 
-                return (
-                  <figure
-                    key={image.src}
-                    className={`gallery-3d__panel ${visibilityClass}`}
-                    style={{ "--angle": `${index * STEP}deg` } as CSSProperties}
-                  >
-                    <div className="image-frame gallery-3d__frame">
-                      <Image
-                        src={image.src}
-                        alt={image.alt}
-                        width={IMAGE_WIDTH}
-                        height={IMAGE_HEIGHT}
-                        sizes={IMAGE_SIZES}
-                        draggable={false}
-                        className="block h-auto w-full"
-                      />
-                    </div>
-                    <figcaption className="gallery-3d__caption">{image.caption}</figcaption>
-                  </figure>
-                );
-              })}
-            </div>
+              return (
+                <figure
+                  key={image.src}
+                  className={`gallery-3d__panel ${visibilityClass}`}
+                  style={style}
+                  aria-hidden={distance > 1 ? true : undefined}
+                >
+                  <div className="image-frame gallery-3d__frame">
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={IMAGE_WIDTH}
+                      height={IMAGE_HEIGHT}
+                      sizes={IMAGE_SIZES}
+                      draggable={false}
+                      className="block h-auto w-full"
+                    />
+                  </div>
+                  <figcaption className="gallery-3d__caption">{image.caption}</figcaption>
+                </figure>
+              );
+            })}
           </div>
 
           <div className="gallery-3d__controls">

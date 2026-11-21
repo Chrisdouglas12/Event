@@ -629,72 +629,70 @@ export default function RegisterPage() {
       <Header />
 
       {/* Fixed globe on the left, registration on the right. */}
-      <section className="relative w-full overflow-hidden px-4 pb-20 pt-[360px] sm:px-8 sm:pt-[420px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-16">
+      <section className="relative w-full overflow-hidden px-4 pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
         <div className="fixed inset-0 z-0">
-          <HeroBackground align="left" desktopLift={10} shrinkOnScroll />
-          <div className="pointer-events-none absolute inset-0 bg-[#0E1020]/60 backdrop-blur-[2px]" />
+          <HeroBackground align="left" desktopLift={-10} shrinkOnScroll />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/10 to-[#0E1020]/35" />
         </div>
 
         <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 lg:grid-cols-12 lg:gap-8">
           <div className="hidden lg:block lg:col-span-5" />
           <div data-hero-content className="space-y-6 lg:col-span-7">
             {/* Form card */}
-            <div className="overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-              {/* All conference and registration details live inside the form. */}
-              <div className="border-b border-gray-100 p-6 sm:p-8 lg:px-10">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[#CDEFEA] bg-[#EAF9F7] px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#0E7A6E]">
-                    <span>IHGC 2026 Registration</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Image
-                      src={SITE_CONFIG.logo.src}
-                      alt="Horemow"
-                      width={110}
-                      height={34}
-                      className="h-7 w-auto object-contain"
-                      style={{ width: "auto" }}
-                    />
-                    <div className="flex items-center gap-1.5 rounded-full bg-[#F3F4F6] p-1">
-                      {CURRENCY_LIST.map((c) => {
-                        const isAvailable = configState === "ready" && currencyAvailable[c];
-                        return (
-                          <button
-                            key={c}
-                            type="button"
-                            disabled={configState !== "ready"}
-                            aria-pressed={currency === c}
-                            onClick={() => {
-                              setCurrency(c);
-                              clearErr("customNairaAmount");
-                            }}
-                            className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition-all ${
-                              currency === c
-                                ? "bg-white text-[#0E1020] shadow-xs"
-                                : configState !== "ready" || isAvailable
-                                  ? "text-gray-500 hover:text-black"
-                                  : "cursor-not-allowed text-gray-300 line-through"
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+            <div className="overflow-hidden rounded-[4px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+              {/* Compact, unique form header. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-[#0E1020] px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={SITE_CONFIG.logo.src}
+                    alt="Horemow"
+                    width={96}
+                    height={30}
+                    className="h-6 w-auto object-contain"
+                    style={{ width: "auto" }}
+                  />
+                  <span className="h-5 w-px bg-white/20" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
+                    Registration
+                  </span>
                 </div>
 
-                <h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-tight text-[#111320] sm:text-3xl xl:text-[34px]">
-                  Register For The 2026 General Conference
+                <div className="flex items-center gap-1.5 rounded-full bg-white/10 p-1">
+                  {CURRENCY_LIST.map((c) => {
+                    const isAvailable = configState === "ready" && currencyAvailable[c];
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        disabled={configState !== "ready"}
+                        aria-pressed={currency === c}
+                        onClick={() => {
+                          setCurrency(c);
+                          clearErr("customNairaAmount");
+                        }}
+                        className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all ${
+                          currency === c
+                            ? "bg-white text-[#0E1020] shadow-xs"
+                            : configState !== "ready" || isAvailable
+                              ? "text-white/60 hover:text-white"
+                              : "cursor-not-allowed text-white/30 line-through"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="px-5 pb-4 pt-4 sm:px-8">
+                <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[#111320] sm:text-2xl">
+                  Register For IHGC 2026
                 </h1>
-                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500 sm:text-sm">
-                  <span>8 – 11 Dec 2026</span>
-                  <span aria-hidden className="hidden h-3 w-px bg-gray-200 sm:block" />
-                  <span>Kwali, Abuja</span>
-                  <span aria-hidden className="hidden h-3 w-px bg-gray-200 sm:block" />
-                  <span>Instant QR Ticket</span>
-                </div>
+                <p className="mt-1.5 text-xs text-gray-500 sm:text-sm">
+                  8 – 11 Dec 2026 <span className="mx-1.5 text-gray-300">•</span> Kwali, Abuja
+                  <span className="mx-1.5 text-gray-300">•</span> Instant QR Ticket
+                </p>
               </div>
 
             {/* Form body */}
@@ -704,15 +702,14 @@ export default function RegisterPage() {
               onSubmit={handleSubmit}
               className="space-y-8 p-6 sm:p-8 lg:p-10"
             >
-              {/* Registration type */}
-              <div className="space-y-3">
-                <SectionTitle title="Registration type" note="Switching type clears the form." />
-                <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F3F4F6] p-1">
+              {/* Participant type */}
+              <div>
+                <div className="grid grid-cols-2 gap-3 rounded-[4px] bg-[#F3F4F6] p-1" role="group" aria-label="Registration type">
                   <button
                     type="button"
                     aria-pressed={!isGroup}
                     onClick={() => switchMode(false)}
-                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg py-3 text-xs font-bold transition-all sm:text-sm ${
+                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-[4px] py-3 text-xs font-bold transition-all sm:text-sm ${
                       !isGroup ? "bg-white text-[#0E1020] shadow-2xs" : "text-gray-500 hover:text-black"
                     }`}
                   >
@@ -724,7 +721,7 @@ export default function RegisterPage() {
                     type="button"
                     aria-pressed={isGroup}
                     onClick={() => switchMode(true)}
-                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg py-3 text-xs font-bold transition-all sm:text-sm ${
+                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-[4px] py-3 text-xs font-bold transition-all sm:text-sm ${
                       isGroup ? "bg-white text-[#0E1020] shadow-2xs" : "text-gray-500 hover:text-black"
                     }`}
                   >
@@ -1291,7 +1288,7 @@ export default function RegisterPage() {
 
           {/* Order summary (sticky on desktop) */}
           <aside>
-            <div className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
+            <div className="rounded-[4px] border border-gray-100 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order summary</h2>
 
               <dl className="mt-5 space-y-3 text-sm">
@@ -1390,7 +1387,9 @@ export default function RegisterPage() {
         </div>
       </section>
 
-      <Footer />
+      <div className="relative z-10">
+        <Footer />
+      </div>
     </div>
   );
 }
