@@ -58,6 +58,17 @@ export function Header() {
     { href: SITE_CONFIG.contact.whatsAppUrl, icon: <MessageCircle className="w-3.5 h-3.5" strokeWidth={1.5} />, label: "WhatsApp" },
   ];
 
+  const handleShare = () => {
+    if (!navigator.share) return;
+    navigator
+      .share({
+        title: SITE_CONFIG.eventTitle,
+        text: `${SITE_CONFIG.eventTitle} — Theme: "${SITE_CONFIG.theme}"`,
+        url: window.location.href,
+      })
+      .catch(() => {});
+  };
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-[60px]">
@@ -118,6 +129,13 @@ export function Header() {
                   {social.icon}
                 </a>
               ))}
+              <button
+                onClick={handleShare}
+                aria-label="Share"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+              </button>
             </div>
 
             <a
@@ -200,15 +218,7 @@ export function Header() {
           ))}
           <div className="w-px h-6 bg-gray-200 mx-1" />
           <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: SITE_CONFIG.eventTitle,
-                  text: `${SITE_CONFIG.eventTitle} — Theme: "${SITE_CONFIG.theme}"`,
-                  url: window.location.href,
-                }).catch(() => {});
-              }
-            }}
+            onClick={handleShare}
             aria-label="Share"
             className="w-9 h-9 rounded-full bg-gray-50 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
           >
