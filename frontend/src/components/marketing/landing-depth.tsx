@@ -283,8 +283,12 @@ export function LandingDepth() {
       ];
 
       // ---------- Scroll + section state ----------
-      let sections: HTMLElement[] = [];
+      // Cache section offsets and document height instead of reading layout on
+      // every scroll frame. getBoundingClientRect()/scrollHeight in a scroll
+      // handler forces synchronous layout and is the usual cause of jank.
+      let sectionMarks: { top: number; name: SceneName }[] = [];
       let sectionCount = 1;
+      let maxScroll = 1;
       let targetProgress = 0;
       let progress = 0;
       let activeScene: SceneName = "hero";
@@ -297,28 +301,28 @@ export function LandingDepth() {
       };
 
       const measure = () => {
-        sections = Array.from(document.querySelectorAll<HTMLElement>("section"));
+        const sections = Array.from(document.querySelectorAll<HTMLElement>("section"));
         sectionCount = Math.max(1, sections.length);
+        const pageY = window.scrollY;
+        sectionMarks = sections.map((section) => {
+          const declared = section.dataset.scene as SceneName | undefined;
+          return {
+            top: section.getBoundingClientRect().top + pageY,
+            name: declared && SCENES.includes(declared) ? declared : "hero",
+          };
+        });
+        maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
       };
 
       const readScroll = () => {
-        const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-        targetProgress = clamp01(window.scrollY / max);
-
-        const marker = window.innerHeight * 0.45;
+        targetProgress = clamp01(window.scrollY / maxScroll);
+        const marker = window.scrollY + window.innerHeight * 0.45;
         let index = 0;
-        for (let i = 0; i < sections.length; i++) {
-          const rect = sections[i].getBoundingClientRect();
-          if (rect.top <= marker && rect.bottom > marker) {
-            index = i;
-            break;
-          }
-          if (rect.top <= marker) index = i;
+        for (let i = 0; i < sectionMarks.length; i++) {
+          if (sectionMarks[i].top > marker) break;
+          index = i;
         }
-
-        const current = sections[index];
-        const declared = current?.dataset.scene as SceneName | undefined;
-        activeScene = declared && SCENES.includes(declared) ? declared : "hero";
+        activeScene = sectionMarks[index]?.name ?? "hero";
       };
 
       measure();
@@ -355,9 +359,20 @@ export function LandingDepth() {
 
       const ro = new ResizeObserver(layout);
       ro.observe(host);
+
+      const onLoad = () => {
+        if (disposed) return;
+        measure();
+        readScroll();
+      };
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", onResize);
       window.addEventListener("pointermove", onPointer, { passive: true });
+      window.addEventListener("load", onLoad);
+      document.fonts?.ready.then(onLoad).catch(() => {});
+      // Re-measure when deferred sections get their real size after render.
+      const bodyRO = new ResizeObserver(onLoad);
+      bodyRO.observe(document.body);
 
       // ---------- Realistic vehicles ----------
       const vehicles: Vehicle[] = [];
@@ -573,9 +588,11 @@ export function LandingDepth() {
         cancelAnimationFrame(raf);
         timer.dispose();
         ro.disconnect();
+        bodyRO.disconnect();
         window.removeEventListener("scroll", onScroll);
         window.removeEventListener("resize", onResize);
         window.removeEventListener("pointermove", onPointer);
+        window.removeEventListener("load", onLoad);
         document.removeEventListener("visibilitychange", onVisibility);
 
         const geometries = new Set<Three.BufferGeometry>();

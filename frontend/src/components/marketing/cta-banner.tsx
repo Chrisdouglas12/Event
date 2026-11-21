@@ -10,14 +10,13 @@ export function CtaBanner() {
   const { eventName, theme, datesText, venueAddress } = useLandingSettings();
 
   return (
-    <section data-scene="sea" className="relative w-full py-20 lg:py-24 overflow-hidden">
+    <section data-scene="sea" data-enter className="cv-auto relative w-full py-12 lg:py-16 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/crowd-bw_3.jpg"
           alt="Congregation worshipping"
           fill
-          priority
           className="object-cover opacity-15 mix-blend-overlay"
           sizes="100vw"
         />
@@ -35,19 +34,19 @@ export function CtaBanner() {
       />
 
       {/* Content */}
-      <div className="relative z-20 w-full px-[5px]">
-        <TiltCard intensity={4} className="floating-card rounded-[4px] px-8 py-12 sm:px-12 space-y-6 text-center">
+      <div className="relative z-20 w-full px-6 sm:px-10 lg:px-14">
+        <TiltCard intensity={0} className="px-8 py-12 sm:px-12 space-y-6 text-center">
           <RevealText
             as="h2"
             text={eventName}
             className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white leading-[1.12] tracking-tight"
-            stagger={0.035}
+            speed={14}
           />
           <RevealText
             as="p"
             text={`“${theme}” · ${datesText} · ${venueAddress}`}
             className="text-base sm:text-lg text-[#B9C4D4] max-w-xl mx-auto"
-            stagger={0.012}
+            speed={9}
           />
           <div className="pt-2">
             <Link

@@ -79,8 +79,8 @@ function SocialLink({
 export function MinisterCard({ name, role, bio, image, socials }: MinisterProps) {
   return (
     <TiltCard
-      intensity={5}
-      className="floating-card group grid grid-cols-1 overflow-hidden rounded-[4px] ring-1 ring-white/10 transition-shadow duration-300 hover:shadow-[0_34px_100px_rgba(0,0,0,0.5)] md:grid-cols-12"
+      intensity={0}
+      className="group grid grid-cols-1 overflow-hidden md:grid-cols-12"
     >
       {/* Portrait */}
       <div className="relative aspect-[4/5] overflow-hidden bg-[#0E1020] md:col-span-5 md:aspect-auto md:min-h-[400px] md:border-r md:border-white/10">
@@ -89,7 +89,6 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             src={image}
             alt={name}
             fill
-            priority
             className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
             sizes="(max-width: 768px) 100vw, 42vw"
           />
@@ -115,7 +114,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
               as="span"
               text={role}
               className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#8EE3D6]"
-              stagger={0.02}
+              speed={18}
             />
           </div>
 
@@ -123,14 +122,14 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             as="h3"
             text={name}
             className="mt-4 text-2xl font-bold leading-[1.15] tracking-tight text-white sm:text-3xl lg:text-4xl"
-            stagger={0.04}
+            speed={14}
           />
 
           <RevealText
             as="p"
             text={bio}
             className="mt-5 max-w-prose text-sm leading-relaxed text-[#B9C4D4] lg:text-[15px] lg:leading-7"
-            stagger={0.01}
+            speed={9}
           />
         </div>
 
@@ -168,8 +167,8 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
 export function MoreMinistersCard() {
   return (
     <TiltCard
-      intensity={4}
-      className="relative flex min-h-[300px] flex-col items-center justify-center space-y-5 overflow-hidden rounded-[4px] border-2 border-dashed border-[#3A404B] bg-[rgba(7,16,30,0.42)] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.34)] backdrop-blur-xl transition-colors duration-300 hover:border-[#8EE3D6]/40 md:min-h-[400px] lg:p-12"
+      intensity={0}
+      className="relative flex min-h-[300px] flex-col items-center justify-center space-y-5 overflow-hidden rounded-[4px] border-2 border-dashed border-[#3A404B] p-8 text-center transition-colors duration-300 hover:border-[#8EE3D6]/40 md:min-h-[400px] lg:p-12"
     >
       <div
         aria-hidden
@@ -185,13 +184,13 @@ export function MoreMinistersCard() {
           as="h4"
           text="More Ministers To Be Announced"
           className="text-xl font-bold text-white lg:text-2xl"
-          stagger={0.03}
+          speed={14}
         />
         <RevealText
           as="p"
           text="Additional minister names and profiles will appear here when supplied by the organizers."
           className="text-sm leading-relaxed text-[#B9C4D4]"
-          stagger={0.01}
+          speed={9}
         />
       </div>
 

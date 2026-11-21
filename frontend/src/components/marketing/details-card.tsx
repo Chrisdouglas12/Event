@@ -109,8 +109,8 @@ export function DetailsCard() {
   ];
 
   return (
-    <section data-scene="road" className="relative overflow-hidden py-20 lg:py-28">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
+    <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
+      <div className="px-6 sm:px-10 lg:px-14">
         {/* Header */}
         <div className="mb-12 text-center lg:mb-14">
           <div className="flex items-center justify-center gap-3">
@@ -119,7 +119,7 @@ export function DetailsCard() {
               as="span"
               text="Plan Your Journey"
               className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
-              stagger={0.02}
+              speed={18}
             />
             <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
           </div>
@@ -127,20 +127,17 @@ export function DetailsCard() {
             as="h2"
             text="Conference Details"
             className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
-            stagger={0.04}
+            speed={14}
           />
           <RevealText
             as="p"
             text="Essential dates, venue location, and session times"
             className="mx-auto mt-5 max-w-xl text-sm text-[#B9C4D4] lg:text-base"
-            stagger={0.012}
+            speed={9}
           />
         </div>
 
-        <TiltCard
-          intensity={4}
-          className="floating-card relative w-full overflow-hidden rounded-[4px] ring-1 ring-white/10"
-        >
+        <TiltCard intensity={0} className="relative w-full overflow-hidden">
           {/* Ambient glow */}
           <div
             aria-hidden
@@ -154,7 +151,6 @@ export function DetailsCard() {
                 src="/images/campground.jpg"
                 alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
                 fill
-                priority
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 42vw"
               />
@@ -168,19 +164,20 @@ export function DetailsCard() {
                   as="h3"
                   text={eventName}
                   className="max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-white sm:text-3xl lg:text-[34px]"
-                  stagger={0.03}
+                  speed={14}
                 />
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base lg:leading-7">
-                  Theme:{" "}
-                  <strong className="font-semibold text-white">
-                    &ldquo;{theme}&rdquo;
-                  </strong>
-                </p>
-                <p className="mt-3 text-sm text-[#8C99AC]">
-                  Registration:{" "}
-                  <strong className="font-semibold text-white">{registrationFeeLabel}</strong>{" "}
-                  per participant
-                </p>
+                <RevealText
+                  as="p"
+                  text={`Theme: “${theme}”`}
+                  className="mt-4 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base lg:leading-7"
+                  speed={9}
+                />
+                <RevealText
+                  as="p"
+                  text={`Registration: ${registrationFeeLabel} per participant`}
+                  className="mt-3 text-sm text-[#8C99AC]"
+                  speed={9}
+                />
               </div>
 
               {/* Info tiles */}

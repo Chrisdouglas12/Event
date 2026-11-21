@@ -47,34 +47,6 @@ h1, h2, h3, h4, h5, h6 {
   clip-path: polygon(0 0, calc(100% - 48px) 0, 100% 48px, 100% 100%, 0 100%);
 }
 
-/* Scroll reveal animations (restrained: fade + translate, 300-400ms ease-out) */
-.reveal {
-  opacity: 0;
-  transition: opacity 400ms ease-out, transform 400ms ease-out;
-  will-change: opacity, transform;
-}
-.reveal-up {
-  transform: translateY(24px);
-}
-.reveal-left {
-  transform: translateX(-24px);
-}
-.reveal-right {
-  transform: translateX(24px);
-}
-.reveal-visible {
-  opacity: 1;
-  transform: translate(0, 0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
 /* Gentle hover lift for cards */
 .hover-lift {
   transition: transform 250ms ease-out, box-shadow 250ms ease-out;
@@ -114,28 +86,26 @@ h1, h2, h3, h4, h5, h6 {
   background-position: 31px 47px, 118px 83px, 73px 193px;
 }
 
-.floating-card {
-  background: rgba(7, 16, 30, 0.42);
-  border: 1px solid rgba(142, 227, 214, 0.18);
-  box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
+/* Opaque-enough backgrounds instead of backdrop-filter: blurring every card
+   over the animating WebGL layer forces a full backdrop recomposite per frame. */
+.floating-card,
 .floating-card-dark {
-  background: rgba(7, 16, 30, 0.42);
+  background: rgba(7, 16, 30, 0.78);
   border: 1px solid rgba(142, 227, 214, 0.18);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
-/* Scroll-triggered typing animation. The invisible ghost keeps the final
-   layout stable while the visible layer is revealed one character at a time. */
+/* Skip layout/paint work for long sections until they are near the viewport.
+   `auto` remembers the measured size after the first visit, avoiding jumps. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* Typing reveal: the ghost reserves the final layout while the visible layer
+   is filled one character at a time by a single shared rAF loop. */
 .typing-text {
   position: relative;
   display: block;
@@ -175,6 +145,45 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Scroll-driven but compositor-only: no JS runs while scrolling. Browsers
+   without view-timeline support simply show the content normally. */
+@supports (animation-timeline: view()) {
+  [data-enter] {
+    animation: soft-enter linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 20%;
+  }
+
+  .parallax-soft {
+    animation: parallax-drift linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+}
+
+@keyframes soft-enter {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+.parallax-subtle { --parallax-drift: 28px; }
+.parallax-moderate { --parallax-drift: 38px; }
+.parallax-strong { --parallax-drift: 54px; }
+
+@keyframes parallax-drift {
+  from { transform: translate3d(0, var(--parallax-drift, 24px), 0); }
+  to { transform: translate3d(0, calc(var(--parallax-drift, 24px) * -1), 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-enter],
+  .parallax-soft {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 .depth-stage {
   perspective: 1400px;
   perspective-origin: 50% 45%;
@@ -182,6 +191,9 @@ h1, h2, h3, h4, h5, h6 {
 
 .depth-card {
   transform-style: preserve-3d;
+}
+
+.depth-card:hover {
   will-change: transform;
 }
 

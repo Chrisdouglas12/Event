@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -12,7 +12,7 @@ export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSocialBar, setShowSocialBar] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollY = useRef(0);
 
   const navLinks = [
     { label: "Home", href: "/" },
@@ -25,25 +25,31 @@ export function Header() {
     { label: "Contact", href: "/contact" },
   ];
 
-  // Handle scroll for the bottom social bar
+  // Hide the social bar on scroll-down, show it on scroll-up. Reading scroll
+  // in a rAF and keeping the previous value in a ref means no React render (and
+  // no listener churn) on every scroll event.
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY > lastScrollY && currentScrollY > 60) {
-        // Scrolling down -> Hide
-        setShowSocialBar(false);
-      } else {
-        // Scrolling up -> Show
-        setShowSocialBar(true);
-      }
-      
-      setLastScrollY(currentScrollY);
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      const current = window.scrollY;
+      const previous = lastScrollY.current;
+      lastScrollY.current = current;
+      const shouldShow = !(current > previous && current > 60);
+      setShowSocialBar((shown) => (shown === shouldShow ? shown : shouldShow));
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   const socials = [
     { href: SITE_CONFIG.socials.facebook, icon: <FacebookIcon className="w-3.5 h-3.5" />, label: "Facebook" },
@@ -96,8 +102,24 @@ export function Header() {
             </nav>
           </div>
 
-          {/* Right: Phone, Register, Mobile Menu */}
+          {/* Right: Desktop socials, Phone, Register, Mobile Menu */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/* Desktop: social bar lives in the header, right beside the phone icon. */}
+            <div className="hidden lg:flex items-center gap-1.5">
+              {socials.map((social) => (
+                <a
+                  key={`header-${social.label}`}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={social.label}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </div>
+
             <a
               href={SITE_CONFIG.contact.phoneTel}
               aria-label={`Call ${SITE_CONFIG.contact.phone}`}
@@ -159,7 +181,7 @@ export function Header() {
 
       {/* Bottom Floating Social Bar (Hidden on scroll down, reveals on scroll up) */}
       <div
-        className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
+        className={`lg:hidden fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
           showSocialBar ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
         }`}
       >

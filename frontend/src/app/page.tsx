@@ -9,8 +9,8 @@ import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { FlyerSection } from "@/components/marketing/flyer-section";
 import { Footer } from "@/components/marketing/footer";
-import { Reveal } from "@/components/ui/reveal";
 import { RevealText } from "@/components/ui/reveal-text";
+import { TimelineDivider } from "@/components/ui/timeline-divider";
 import { SITE_CONFIG } from "@/config/site";
 
 export default function HomePage() {
@@ -33,91 +33,83 @@ export default function HomePage() {
       name: SITE_CONFIG.ministry,
     },
   };
+
   return (
     <LandingSettingsProvider>
-    <div className="landing-navy min-h-screen flex flex-col">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }} />
-      {/* One scroll-synced WebGL layer for the whole page. */}
-      <LandingDepth />
-      <div className="relative z-10 flex flex-1 flex-col">
-      {/* 55px Slim Header */}
-      <Header />
+      <div className="landing-navy min-h-screen flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }}
+        />
+        {/* One scroll-synced WebGL layer for the whole page. */}
+        <LandingDepth />
+        <div className="relative z-10 flex flex-1 flex-col">
+          {/* 55px Slim Header */}
+          <Header />
 
-      {/* Hero with live countdown */}
-      <Hero />
+          {/* Hero with live countdown */}
+          <Hero />
 
-      {/* Why Attend Section with chamfered collage */}
-      <Reveal>
-        <WhyAttend />
-      </Reveal>
+          {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
+          <div className="joined-flow mx-4 border-x border-white/10 bg-[rgba(7,16,30,0.78)] shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:mx-6 lg:mx-10 xl:mx-auto xl:max-w-[1440px]">
+            <WhyAttend />
+            <TimelineDivider />
 
-      {/* Featured Ministers Section matching KILO instructor card layout */}
-      <Reveal>
-        <section data-scene="road" className="relative overflow-hidden py-20 lg:py-28">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
-            <div className="mx-auto mb-12 max-w-2xl text-center lg:mb-16">
-              <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
-              <RevealText
-                as="h2"
-                text="Featured Ministers"
-                className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
-                stagger={0.04}
-              />
-              <RevealText
-                as="p"
-                text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-                className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
-                stagger={0.012}
-              />
-            </div>
+            {/* Featured Ministers */}
+            <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
+              <div className="px-6 sm:px-10 lg:px-14">
+                <div className="mx-auto mb-10 max-w-2xl text-center lg:mb-12">
+                  <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
+                  <RevealText
+                    as="h2"
+                    text="Featured Ministers"
+                    className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
+                    speed={14}
+                  />
+                  <RevealText
+                    as="p"
+                    text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
+                    className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
+                    speed={12}
+                  />
+                </div>
 
-            <div className="space-y-8 lg:space-y-10">
-              {SITE_CONFIG.ministersInitial.map((minister) => (
-                <MinisterCard
-                  key={minister.id}
-                  name={minister.name}
-                  role={minister.role}
-                  bio={minister.bio}
-                  image={minister.image}
-                  socials={{
-                    youtube: SITE_CONFIG.socials.youtube,
-                    facebook: SITE_CONFIG.socials.facebook,
-                    x: SITE_CONFIG.socials.x,
-                  }}
-                />
-              ))}
+                <div className="space-y-8 lg:space-y-10">
+                  {SITE_CONFIG.ministersInitial.map((minister) => (
+                    <MinisterCard
+                      key={minister.id}
+                      name={minister.name}
+                      role={minister.role}
+                      bio={minister.bio}
+                      image={minister.image}
+                      socials={{
+                        youtube: SITE_CONFIG.socials.youtube,
+                        facebook: SITE_CONFIG.socials.facebook,
+                        x: SITE_CONFIG.socials.x,
+                      }}
+                    />
+                  ))}
 
-              {/* Designed "More ministers to be announced" card */}
-              <MoreMinistersCard />
-            </div>
+                  {/* Designed "More ministers to be announced" card */}
+                  <MoreMinistersCard />
+                </div>
+              </div>
+            </section>
+
+            <TimelineDivider />
+            <CtaBanner />
+            <TimelineDivider />
+            <DetailsCard />
+            <TimelineDivider />
+            <AboutPreview />
+            <TimelineDivider />
+            <FlyerSection />
           </div>
-        </section>
-      </Reveal>
 
-      {/* CTA Banner with diagonal triangles */}
-      <Reveal>
-        <CtaBanner />
-      </Reveal>
-
-      {/* Conference Details Card */}
-      <Reveal>
-        <DetailsCard />
-      </Reveal>
-
-      {/* About Horemow Preview with layered video thumbnail */}
-      <Reveal>
-        <AboutPreview />
-      </Reveal>
-
-      {/* Official Conference Flyer */}
-      <Reveal>
-        <FlyerSection />
-      </Reveal>
-
-      {/* Deep Navy Footer */}
-      <Footer />
+          {/* Deep Navy Footer */}
+          <Footer />
+        </div>
       </div>
-    </div>
     </LandingSettingsProvider>
   );
 }

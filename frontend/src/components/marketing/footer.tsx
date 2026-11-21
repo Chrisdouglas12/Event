@@ -19,7 +19,6 @@ export function Footer() {
                 alt={SITE_CONFIG.logo.alt}
                 width={130}
                 height={40}
-                priority
                 className="h-7 w-auto object-contain"
                 style={{ width: "auto" }}
               />
@@ -124,8 +123,7 @@ export function Footer() {
                   src="/images/conference_flyer.png"
                   alt="IHGC 2026 Conference Flyer"
                   fill
-                  priority
-                  className="object-contain"
+                    className="object-contain"
                   sizes="400px"
                   quality={95}
                 />

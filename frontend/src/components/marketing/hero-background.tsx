@@ -40,11 +40,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       const renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: false,
         alpha: true,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      // The globe is decorative; capping DPR avoids 2x/3x fill-rate cost.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
@@ -72,7 +73,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         roughness: 0.85,
         metalness: 0,
       });
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 96), earthMat);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 48, 48), earthMat);
       earthTilt.add(earth);
 
       const sources = [
@@ -103,7 +104,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
       // Atmosphere glow
       const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(2.22, 48, 48),
+        new THREE.SphereGeometry(2.22, 32, 32),
         new THREE.ShaderMaterial({
           transparent: true,
           side: THREE.BackSide,
@@ -197,7 +198,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
       // ---------- Constellations & Stars ----------
       // Background Starfield
-      const starCount = 800;
+      const starCount = 300;
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
         const r = 18 + Math.random() * 22;
@@ -322,11 +323,11 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
         if (w >= 1024) {
           if (w >= 1440) {
-            const s = Math.min((vh * 0.88) / FIT, (vw * 0.24) / FIT);
+            const s = Math.min((vh * 0.88) / FIT, (vw * 0.38) / FIT);
             world.scale.setScalar(s);
             world.position.set((align === "right" ? 1 : -1) * vw * 0.30, vh * 0.055, 0);
           } else {
-            const s = Math.min((vh * 0.86) / FIT, (vw * 0.26) / FIT);
+            const s = Math.min((vh * 0.86) / FIT, (vw * 0.36) / FIT);
             world.scale.setScalar(s);
             world.position.set((align === "right" ? 1 : -1) * vw * 0.28, vh * 0.055, 0);
           }
@@ -541,7 +542,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
         <div
           ref={posterRef}
-          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
+          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(36vw,620px)] lg:w-[min(36vw,620px)]"
         />
         <div ref={hostRef} className="absolute inset-0" />
       </div>

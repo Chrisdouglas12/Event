@@ -4,7 +4,6 @@ import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { SITE_CONFIG } from "@/config/site";
 import { Calendar, MapPin, Users, Download } from "lucide-react";
-import { Reveal } from "@/components/ui/reveal";
 import { Parallax } from "@/components/ui/parallax";
 
 export const metadata = {
@@ -37,7 +36,6 @@ export default function ConferencePage() {
         <div className="max-w-[1000px] mx-auto px-6 sm:px-8 space-y-16">
           
           {/* Key Facts Summary Cards */}
-          <Reveal>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-[#F8FAFC] rounded-[18px] p-6 border border-gray-100 flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center shrink-0">
@@ -72,10 +70,8 @@ export default function ConferencePage() {
               </div>
             </div>
           </div>
-          </Reveal>
 
           {/* Official Conference Flyer */}
-          <Reveal delay={100}>
           <div className="bg-[#F8FAFC] rounded-[24px] border border-gray-100 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <Parallax speed={0.15} className="relative aspect-[3/4] lg:aspect-auto lg:min-h-[560px] bg-[#0E1020]">
@@ -117,10 +113,8 @@ export default function ConferencePage() {
               </div>
             </div>
           </div>
-          </Reveal>
 
           {/* Theme exposition: organizer copy pending */}
-          <Reveal delay={150}>
           <div className="space-y-6">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
               The Theme: &ldquo;{SITE_CONFIG.theme}&rdquo;
@@ -129,10 +123,8 @@ export default function ConferencePage() {
               The theme is confirmed. An approved theme exposition has not yet been supplied by the organizers.
             </div>
           </div>
-          </Reveal>
 
           {/* Programme status */}
-          <Reveal delay={200}>
           <div className="space-y-6">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
               Programme
@@ -141,10 +133,8 @@ export default function ConferencePage() {
               The official programme booklet will be available at the conference on 8 December 2026. Session details have not been supplied.
             </div>
           </div>
-          </Reveal>
 
           {/* Important Notice: Accommodation & Food */}
-          <Reveal delay={250}>
           <div className="bg-[#EAF9F7] border border-[#CDEFEA] rounded-[20px] p-6 sm:p-8 space-y-3">
             <h3 className="text-lg font-bold text-[#0E1020]">
               Important Planning Notice for Participants
@@ -158,10 +148,8 @@ export default function ConferencePage() {
               </Link>
             </div>
           </div>
-          </Reveal>
 
           {/* Register CTA */}
-          <Reveal delay={300}>
           <div className="text-center pt-4">
             <Link
               href="/register"
@@ -170,7 +158,6 @@ export default function ConferencePage() {
               Proceed to Registration
             </Link>
           </div>
-          </Reveal>
 
         </div>
       </section>

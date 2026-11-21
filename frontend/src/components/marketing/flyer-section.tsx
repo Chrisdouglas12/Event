@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { RevealText } from "@/components/ui/reveal-text";
 import { Parallax } from "@/components/ui/parallax";
+import { RevealText } from "@/components/ui/reveal-text";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
 
 function DownloadIcon({ className }: { className?: string }) {
@@ -29,9 +29,9 @@ export function FlyerSection() {
   const { eventName, flyerDescription } = useLandingSettings();
 
   return (
-    <section data-scene="arrival" className="relative overflow-hidden py-16 lg:py-24">
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
-        <div className="floating-card relative overflow-hidden rounded-[4px] ring-1 ring-white/10">
+    <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
+      <div className="px-6 sm:px-10 lg:px-14">
+        <div className="relative overflow-hidden">
           {/* Ambient glow */}
           <div
             aria-hidden
@@ -66,7 +66,6 @@ export function FlyerSection() {
                     src="/images/conference_flyer.png"
                     alt={`Official flyer for ${eventName}`}
                     fill
-                    priority
                     className="object-contain"
                     quality={95}
                     sizes="(max-width: 1024px) 80vw, 380px"
@@ -83,7 +82,7 @@ export function FlyerSection() {
                   as="span"
                   text="Official Flyer"
                   className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
-                  stagger={0.02}
+                  speed={18}
                 />
               </div>
 
@@ -91,14 +90,14 @@ export function FlyerSection() {
                 as="h2"
                 text="Spread the Word — Share the Flyer"
                 className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[40px] xl:text-5xl"
-                stagger={0.03}
+                speed={14}
               />
 
               <RevealText
                 as="p"
                 text={flyerDescription}
                 className="mt-6 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base lg:leading-7"
-                stagger={0.01}
+                speed={9}
               />
 
               <div className="mt-9 flex flex-wrap items-center gap-4">

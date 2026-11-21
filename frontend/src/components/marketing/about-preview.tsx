@@ -7,9 +7,9 @@ import { TiltCard } from "@/components/ui/tilt-card";
 
 export function AboutPreview() {
   return (
-    <section data-scene="sea" className="relative py-20 lg:py-28 overflow-hidden">
-      <div className="w-full px-[5px]">
-        <TiltCard intensity={3} className="floating-card rounded-[4px] depth-stage">
+    <section data-scene="sea" data-enter className="cv-auto relative py-12 lg:py-16 overflow-hidden">
+      <div className="w-full px-6 sm:px-10 lg:px-14">
+        <TiltCard intensity={0} className="depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}
             <div className="lg:col-span-6 relative flex justify-center lg:justify-start order-2 lg:order-1 min-h-[440px] depth-stage">
@@ -23,7 +23,6 @@ export function AboutPreview() {
                     src="/images/about_us_1.jpg"
                     alt="Horemow ministry and fellowship"
                     fill
-                    priority
                     className="object-cover"
                     sizes="(max-width: 768px) 85vw, 480px"
                   />
@@ -35,7 +34,6 @@ export function AboutPreview() {
                     src="/images/about_us_2.jpg"
                     alt="Horemow conference interaction"
                     fill
-                    priority
                     className="object-cover"
                     sizes="(max-width: 768px) 55vw, 264px"
                   />
@@ -54,7 +52,6 @@ export function AboutPreview() {
                     src="/images/about_us_3.jpg"
                     alt="Conference video preview"
                     fill
-                    priority
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     sizes="(max-width: 640px) 144px, 176px"
                   />
@@ -73,28 +70,28 @@ export function AboutPreview() {
                 as="span"
                 text="About The Movement"
                 className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
-                stagger={0.02}
+                speed={18}
               />
 
               <RevealText
                 as="h2"
                 text="Holiness Revival Movement Worldwide"
                 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-white leading-[1.15] tracking-tight"
-                stagger={0.035}
+                speed={14}
               />
 
               <RevealText
                 as="p"
                 text="Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement operating across Christian denominations to revive biblical righteousness, inward and outward holiness, sanctification, and rapture readiness."
                 className="text-base text-[#B9C4D4] leading-relaxed"
-                stagger={0.01}
+                speed={9}
               />
 
               <RevealText
                 as="p"
                 text="With chapters spanning Nigeria, East and West Africa, North America, and across the globe, the movement treats the 66 books of the Holy Bible as its absolute and final working manual."
                 className="text-sm text-[#A9B4C6] leading-relaxed"
-                stagger={0.01}
+                speed={9}
               />
 
               <div className="pt-2">

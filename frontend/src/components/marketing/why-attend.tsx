@@ -29,7 +29,8 @@ export function WhyAttend() {
   return (
     <section
       data-scene="air"
-      className="relative overflow-hidden py-20 lg:py-28"
+      data-enter
+      className="cv-auto relative overflow-hidden py-12 lg:py-16"
       style={
         {
           "--wa-accent": "#8EE3D6",
@@ -43,8 +44,8 @@ export function WhyAttend() {
         } as React.CSSProperties
       }
     >
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
-        <TiltCard intensity={4} className="floating-card depth-stage rounded-[4px]">
+      <div className="px-6 sm:px-10 lg:px-14">
+        <TiltCard intensity={0} className="depth-stage">
           <div className="relative p-6 sm:p-10 lg:p-14 xl:p-16">
             {/* Ambient glow */}
             <div
@@ -67,7 +68,7 @@ export function WhyAttend() {
                     as="span"
                     text="Why Attend"
                     className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--wa-accent)]"
-                    stagger={0.02}
+                    speed={18}
                   />
                 </div>
 
@@ -75,14 +76,14 @@ export function WhyAttend() {
                   as="h2"
                   text="Why Attend This Conference?"
                   className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[var(--wa-text)] sm:text-4xl lg:text-[44px] xl:text-5xl"
-                  stagger={0.045}
+                  speed={14}
                 />
 
                 <RevealText
                   as="p"
                   text={whyAttendIntro}
                   className="mt-6 max-w-xl text-base leading-relaxed text-[var(--wa-muted)] lg:text-[17px]"
-                  stagger={0.012}
+                  speed={10}
                 />
 
                 <div className="mt-9">
@@ -140,7 +141,6 @@ export function WhyAttend() {
                         src="/images/conference_flyer.png"
                         alt="Official flyer for the International Holiness General Conference 2026"
                         fill
-                        priority
                         className="object-contain"
                         quality={95}
                         sizes="(max-width: 1024px) 70vw, 340px"
@@ -158,7 +158,6 @@ export function WhyAttend() {
                         src="/images/crowd-bw_2.jpg"
                         alt="Worshippers gathered for a conference service"
                         fill
-                        priority
                         quality={95}
                         className="object-cover"
                         sizes="(max-width: 1024px) 60vw, 300px"
@@ -194,15 +193,13 @@ export function WhyAttend() {
                       as="h3"
                       text={pt.title}
                       className="text-base font-semibold text-[var(--wa-text)] lg:text-lg"
-                      delay={idx * 0.08}
-                      stagger={0.03}
+                      speed={14}
                     />
                     <RevealText
                       as="p"
                       text={pt.description}
                       className="mt-1.5 text-sm leading-relaxed text-[var(--wa-subtle)]"
-                      delay={idx * 0.08 + 0.08}
-                      stagger={0.01}
+                      speed={9}
                     />
                   </div>
                 </div>

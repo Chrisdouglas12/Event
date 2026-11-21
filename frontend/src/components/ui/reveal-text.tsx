@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ElementType } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ElementType,
+} from "react";
 
 type RevealTextProps = {
   text: string;
@@ -12,16 +14,62 @@ type RevealTextProps = {
   className?: string;
   /** Seconds to wait after the section enters the viewport. */
   delay?: number;
-  /** Kept for backwards compatibility with the previous word-reveal call sites. */
-  stagger?: number;
-  /** Milliseconds per character. */
+  /** Milliseconds per character on capable devices. */
   speed?: number;
-  start?: string;
 };
 
+type Tick = (now: number) => void;
+
+// One shared rAF loop drives every active instance instead of one timer per
+// element. This keeps the typing effect cheap even on low-power hardware.
+const subscribers = new Set<Tick>();
+let tickerFrame = 0;
+
+const runTicker = (now: number) => {
+  tickerFrame = requestAnimationFrame(runTicker);
+  subscribers.forEach((subscriber) => subscriber(now));
+  if (!subscribers.size) {
+    cancelAnimationFrame(tickerFrame);
+    tickerFrame = 0;
+  }
+};
+
+const subscribe = (subscriber: Tick) => {
+  subscribers.add(subscriber);
+  if (!tickerFrame) tickerFrame = requestAnimationFrame(runTicker);
+  return () => {
+    subscribers.delete(subscriber);
+    if (!subscribers.size && tickerFrame) {
+      cancelAnimationFrame(tickerFrame);
+      tickerFrame = 0;
+    }
+  };
+};
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+const isLowPower = () => {
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: { saveData?: boolean };
+  };
+  return (
+    (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4) ||
+    (nav.deviceMemory ?? 8) <= 4 ||
+    nav.connection?.saveData === true ||
+    window.matchMedia("(pointer: coarse)").matches
+  );
+};
+
+const isHeading = (as: RevealTextProps["as"]) =>
+  as === "h1" || as === "h2" || as === "h3" || as === "h4";
+
 /**
- * Typewriter reveal. Text keeps its final layout via a hidden ghost node while
- * the visible copy is typed when the section scrolls into view.
+ * Typewriter reveal. The hidden ghost keeps the final layout stable while the
+ * visible copy is typed once the section scrolls into view.
+ *
+ * Full effect on capable devices. On reduced-motion or low-power devices only
+ * headings type (and much faster); all other copy renders as static text.
  */
 export function RevealText({
   text,
@@ -29,50 +77,75 @@ export function RevealText({
   className = "",
   delay = 0,
   speed = 16,
-  start = "top 88%",
 }: RevealTextProps) {
   const ref = useRef<HTMLElement>(null);
-  const [typedCount, setTypedCount] = useState(0);
-  const [typing, setTyping] = useState(false);
+  // Server markup is the final text: no-JS, crawlers and reduced-motion users
+  // always see content. Capable clients switch to the typing structure in a
+  // layout effect, i.e. before the first paint.
+  const [typedCount, setTypedCount] = useState(text.length);
+  const [done, setDone] = useState(true);
+  const heading = isHeading(as);
 
-  useEffect(() => {
-    setTypedCount(0);
-    setTyping(false);
-
+  useIsomorphicLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const low = reduced || isLowPower();
+
+    if (reduced || (low && !heading)) {
       setTypedCount(text.length);
+      setDone(true);
       return;
     }
 
+    // Set up the ghost structure before paint so the text never flashes full.
+    setTypedCount(0);
+    setDone(false);
+    const charTime = low ? Math.max(4, speed * 0.35) : speed;
     let startTimer = 0;
-    const trigger = ScrollTrigger.create({
-      trigger: el,
-      start,
-      once: true,
-      onEnter: () => {
-        startTimer = window.setTimeout(() => setTyping(true), Math.max(0, delay * 1000));
+    let unsubscribe = () => {};
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        startTimer = window.setTimeout(() => {
+          let typed = 0;
+          const startedAt = performance.now();
+          unsubscribe = subscribe((now) => {
+            const next = Math.min(text.length, Math.floor((now - startedAt) / charTime) + 1);
+            if (next === typed) return;
+            typed = next;
+            setTypedCount(typed);
+            if (typed >= text.length) {
+              unsubscribe();
+              setDone(true);
+            }
+          });
+        }, Math.max(0, delay * 1000));
       },
-    });
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 }
+    );
+
+    observer.observe(el);
 
     return () => {
+      observer.disconnect();
       if (startTimer) window.clearTimeout(startTimer);
-      trigger.kill();
+      unsubscribe();
     };
-  }, [text, start, delay]);
-
-  useEffect(() => {
-    if (!typing || typedCount >= text.length) return;
-    const timer = window.setTimeout(() => {
-      setTypedCount((count) => Math.min(text.length, count + 1));
-    }, speed);
-    return () => window.clearTimeout(timer);
-  }, [typing, typedCount, text.length, speed]);
+  }, [text, delay, speed, heading]);
 
   const Tag = as as ElementType;
-  const visibleText = text.slice(0, typedCount);
+
+  if (done) {
+    return (
+      <Tag ref={ref} className={className}>
+        {text}
+      </Tag>
+    );
+  }
 
   return (
     <Tag ref={ref} className={`typing-text ${className}`}>
@@ -81,8 +154,8 @@ export function RevealText({
         {text}
       </span>
       <span className="typing-current" aria-hidden="true">
-        {visibleText}
-        {typedCount < text.length && <span className="typing-caret" />}
+        {text.slice(0, typedCount)}
+        <span className="typing-caret" />
       </span>
     </Tag>
   );
