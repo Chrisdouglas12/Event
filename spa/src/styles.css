@@ -1,0 +1,5 @@
+/* Reuse the exact global styles from the existing frontend so the landing page
+   looks identical in the SPA. @source tells Tailwind where to find class names
+   now that the components live in the neighbouring workspace. */
+@import "../../frontend/src/styles/globals.css";
+@source "../../frontend/src/**/*.{ts,tsx}";
