@@ -141,32 +141,12 @@ export function WhyAttend() {
                 </div>
               </div>
 
-              {/* Right: aligned collage */}
+              {/* Right: single, centred conference flyer */}
               <div className="depth-stage lg:col-span-6">
-                <div className="relative mx-auto aspect-square w-full max-w-[540px] lg:ml-auto lg:mr-0">
-                  {/* Accent frame, top-right */}
-                  <div
-                    aria-hidden
-                    className="absolute right-0 top-0 h-[58%] w-[50%] rounded-[4px] border"
-                    style={{
-                      borderColor: "rgba(142,227,214,0.35)",
-                      transform: "translate(14px, -14px) translateZ(-30px)",
-                    }}
-                  />
-                  {/* Neutral frame, bottom-left */}
-                  <div
-                    aria-hidden
-                    className="absolute bottom-0 left-0 h-[40%] w-[44%] rounded-[4px] border-2"
-                    style={{
-                      borderColor: "var(--wa-frame)",
-                      transform: "translate(-14px, 14px) translateZ(-30px)",
-                    }}
-                  />
-
-                  {/* Flyer */}
+                <div className="mx-auto w-full max-w-[360px]">
                   <TiltCard
                     intensity={7}
-                    className="image-frame depth-card-left absolute left-0 top-0 z-10 aspect-[4/5] w-[58%] max-w-[300px] overflow-hidden bg-[var(--wa-ink)]"
+                    className="image-frame relative aspect-[4/5] w-full overflow-hidden bg-[var(--wa-ink)]"
                   >
                     <Parallax speed={0.18} className="absolute inset-0">
                       <Image
@@ -175,24 +155,7 @@ export function WhyAttend() {
                         fill
                         className="object-contain"
                         quality={95}
-                        sizes="(max-width: 1024px) 70vw, 340px"
-                      />
-                    </Parallax>
-                  </TiltCard>
-
-                  {/* Crowd */}
-                  <TiltCard
-                    intensity={9}
-                    className="image-frame depth-card-right clip-chamfer-tr absolute bottom-0 right-0 z-20 aspect-[3/4] w-[50%] max-w-[280px] overflow-hidden bg-[var(--wa-ink)]"
-                  >
-                    <Parallax speed={0.28} className="absolute inset-0">
-                      <Image
-                        src="/images/crowd-bw_2.jpg"
-                        alt="Worshippers gathered for a conference service"
-                        fill
-                        quality={95}
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 60vw, 300px"
+                        sizes="(max-width: 1024px) 70vw, 360px"
                       />
                     </Parallax>
                   </TiltCard>

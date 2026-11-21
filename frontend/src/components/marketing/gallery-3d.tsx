@@ -17,42 +17,34 @@ const GALLERY_IMAGES = [
   {
     src: "/gallery/pastor-paul-rika-on-pulpit.jpg",
     alt: "Pastor Paul Rika preaching at the pulpit",
-    caption: "Pastor Paul Rika at the pulpit",
   },
   {
     src: "/gallery/pastor-paul-rika-sitting.jpg",
     alt: "Pastor Paul Rika seated at the conference",
-    caption: "Pastor Paul Rika at conference",
   },
   {
     src: "/gallery/crowed-sitted.jpg",
     alt: "Conference congregation seated together",
-    caption: "The congregation gathered",
   },
   {
     src: "/gallery/water-baptism.jpg",
     alt: "Water baptism during the conference",
-    caption: "Water baptism",
   },
   {
     src: "/gallery/altar-call-scene.jpg",
     alt: "Altar call scene at the conference",
-    caption: "Altar call",
   },
   {
     src: "/gallery/mummy-linda-standing-on-pulpit.jpg",
     alt: "Evangelist Linda Paul Rika standing at the pulpit",
-    caption: "Evang. Linda Paul Rika at the pulpit",
   },
   {
     src: "/gallery/book-review-during-conference.jpg",
     alt: "Book review during the conference",
-    caption: "Book review",
   },
   {
     src: "/gallery/pastor-paul-rika-praying.jpg",
     alt: "Pastor Paul Rika praying",
-    caption: "Pastor Paul Rika in prayer",
   },
 ] as const;
 
@@ -174,7 +166,6 @@ export function Gallery3D() {
                       className="block h-auto w-full"
                     />
                   </div>
-                  <figcaption className="gallery-3d__caption">{image.caption}</figcaption>
                 </figure>
               );
             })}
@@ -197,7 +188,7 @@ export function Gallery3D() {
                   type="button"
                   className={`gallery-3d__dot ${index === active ? "is-active" : ""}`}
                   onClick={() => goTo(index)}
-                  aria-label={`Show photo ${index + 1}: ${image.caption}`}
+                  aria-label={`Show photo ${index + 1}: ${image.alt}`}
                   aria-current={index === active ? "true" : undefined}
                 />
               ))}

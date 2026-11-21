@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24,
     qualities: [75, 82, 90, 95], 
-    localPatterns: [{ pathname: "/images/**" }],
+    localPatterns: [{ pathname: "/images/**" }, { pathname: "/gallery/**" }],
   },
 };
 
