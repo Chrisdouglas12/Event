@@ -14,6 +14,9 @@ export function Hero() {
 
   return (
     <section className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden">
+      {/* Heavenly sun/halo behind the WebGL globe */}
+      <div aria-hidden className="hero-heaven absolute inset-0 pointer-events-none" />
+
       {/* Layer 1: Globe background (slowest / farthest) */}
       <ParallaxLayer speed={0.4} className="absolute inset-0">
         <HeroBackground />

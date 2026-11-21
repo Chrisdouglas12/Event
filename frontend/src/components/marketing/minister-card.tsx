@@ -82,22 +82,24 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
       intensity={0}
       className="group grid grid-cols-1 overflow-hidden md:grid-cols-12"
     >
-      {/* Portrait */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-[#0E1020] md:col-span-5 md:aspect-auto md:min-h-[400px] md:border-r md:border-white/10">
-        {image ? (
-          <Image
-            src={image}
-            alt={name}
-            fill
-            className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-            sizes="(max-width: 768px) 100vw, 42vw"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0E1020] p-6 text-center text-xs font-semibold uppercase tracking-wide text-[#8EE3D6]">
-            Photo needed: {name}, unique portrait for this page
-          </div>
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/55 via-transparent to-transparent" />
+      {/* Portrait: fixed, left-aligned and identical for every minister. */}
+      <div className="flex justify-start p-4 sm:p-6 md:col-span-5 md:p-8">
+        <div className="image-frame relative aspect-[4/5] w-[220px] max-w-full shrink-0 overflow-hidden bg-[#0E1020] sm:w-[260px] lg:w-[280px]">
+          {image ? (
+            <Image
+              src={image}
+              alt={name}
+              fill
+              className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+              sizes="(max-width: 640px) 220px, (max-width: 1024px) 260px, 280px"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#0E1020] p-6 text-center text-xs font-semibold uppercase tracking-wide text-[#8EE3D6]">
+              Photo needed: {name}, unique portrait for this page
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/55 via-transparent to-transparent" />
+        </div>
       </div>
 
       {/* Content */}

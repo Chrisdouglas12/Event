@@ -45,8 +45,8 @@ export const FLAGS: FlagDef[] = [
   { code: "BD", stripes: ["#006A4E"], dir: "h", emblem: { type: "circle", color: "#F42A41", r: 0.28 } },
 ];
 
-const W = 256;
-const H = 160;
+const W = 512;
+const H = 320;
 
 function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
   ctx.beginPath();
@@ -143,7 +143,26 @@ export function makeFlagTexture(THREE: Three, flag: FlagDef) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.ClampToEdgeWrapping;
   tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Soft heavenly sun glow used behind the flag globe. */
+export function makeSunTexture(THREE: Three) {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 512;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(256, 256, 12, 256, 256, 256);
+  g.addColorStop(0, "rgba(255,253,238,0.95)");
+  g.addColorStop(0.12, "rgba(255,231,170,0.72)");
+  g.addColorStop(0.34, "rgba(142,227,214,0.26)");
+  g.addColorStop(0.68, "rgba(72,152,214,0.08)");
+  g.addColorStop(1, "rgba(7,16,30,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 

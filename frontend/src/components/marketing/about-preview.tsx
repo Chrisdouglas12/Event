@@ -8,7 +8,7 @@ import { TiltCard } from "@/components/ui/tilt-card";
 export function AboutPreview() {
   return (
     <section data-scene="sea" data-enter className="cv-auto relative py-12 lg:py-16 overflow-hidden">
-      <div className="w-full px-6 sm:px-10 lg:px-14">
+      <div className="w-full px-6 sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}
@@ -18,7 +18,7 @@ export function AboutPreview() {
 
               <div className="relative z-10 w-full max-w-[480px]">
                 {/* Back Main Image */}
-                <TiltCard intensity={8} className="relative w-[85%] aspect-[4/5] rounded-[4px] overflow-hidden bg-[#0E1020] depth-photo depth-card-left">
+                <TiltCard intensity={8} className="image-frame relative w-[85%] max-w-[300px] aspect-[4/5] overflow-hidden bg-[#0E1020] depth-photo depth-card-left">
                   <Image
                     src="/images/about_us_1.jpg"
                     alt="Horemow ministry and fellowship"
@@ -29,7 +29,7 @@ export function AboutPreview() {
                 </TiltCard>
 
                 {/* Front Overlapping Image */}
-                <TiltCard intensity={11} className="absolute top-12 right-0 w-[55%] aspect-square rounded-[4px] overflow-hidden border-4 border-[#3A404B] bg-[#0E1020] depth-photo depth-card-right">
+                <TiltCard intensity={11} className="image-frame absolute top-12 right-0 w-[55%] max-w-[220px] aspect-square overflow-hidden bg-[#0E1020] depth-photo depth-card-right">
                   <Image
                     src="/images/about_us_2.jpg"
                     alt="Horemow conference interaction"
@@ -45,7 +45,7 @@ export function AboutPreview() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Watch Horemow video on YouTube"
-                  className="absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] rounded-[4px] overflow-hidden shadow-xl border-2 border-[#3A404B] group block cursor-pointer depth-card"
+                  className="image-frame absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] overflow-hidden group block cursor-pointer depth-card"
                   style={{ transform: "translateZ(40px)" }}
                 >
                   <Image

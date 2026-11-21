@@ -34,7 +34,7 @@ export function CtaBanner() {
       />
 
       {/* Content */}
-      <div className="relative z-20 w-full px-6 sm:px-10 lg:px-14">
+      <div className="relative z-20 w-full px-6 sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="px-8 py-12 sm:px-12 space-y-6 text-center">
           <RevealText
             as="h2"

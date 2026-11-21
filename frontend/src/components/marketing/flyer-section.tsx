@@ -30,7 +30,7 @@ export function FlyerSection() {
 
   return (
     <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-      <div className="px-6 sm:px-10 lg:px-14">
+      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
         <div className="relative overflow-hidden">
           {/* Ambient glow */}
           <div
@@ -60,7 +60,7 @@ export function FlyerSection() {
 
                 <Parallax
                   speed={0.15}
-                  className="relative z-10 aspect-[3/4] w-full overflow-hidden rounded-[4px] bg-[#0E1020] shadow-2xl ring-1 ring-white/10"
+                  className="image-frame relative z-10 aspect-[3/4] w-full max-w-[320px] overflow-hidden bg-[#0E1020]"
                 >
                   <Image
                     src="/images/conference_flyer.png"

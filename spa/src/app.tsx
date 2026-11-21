@@ -64,13 +64,13 @@ function LandingPage() {
           <Hero />
 
           {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
-          <div className="joined-flow mx-4 border-x border-white/10 bg-[rgba(7,16,30,0.78)] shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:mx-6 lg:mx-10 xl:mx-auto xl:max-w-[1440px]">
+          <div className="joined-flow mx-4 border-x border-white/10 bg-[rgba(7,16,30,0.78)] shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
             <WhyAttend />
             <TimelineDivider />
 
             {/* Featured Ministers */}
             <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-              <div className="px-6 sm:px-10 lg:px-14">
+              <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
                 <div className="mx-auto mb-10 max-w-2xl text-center lg:mb-12">
                   <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
                   <RevealText

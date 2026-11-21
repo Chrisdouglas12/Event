@@ -21,7 +21,6 @@ import {
  */
 export function HeroBackground({ align = "left" }: { align?: "left" | "right" }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const posterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -31,21 +30,26 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
     let cleanup = () => {};
 
     (async () => {
-      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
+      const [
+        THREE,
+        { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth, makeSunTexture },
+      ] = await Promise.all([
         import("three"),
         import("./flag-textures"),
       ]);
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const highEnd =
+        window.innerWidth >= 1024 && (navigator.hardwareConcurrency ?? 8) > 4 && !reduceMotion;
 
       const renderer = new THREE.WebGLRenderer({
-        antialias: false,
+        antialias: highEnd,
         alpha: true,
         powerPreference: "high-performance",
       });
-      // The globe is decorative; capping DPR avoids 2x/3x fill-rate cost.
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+      // Desktop gets a sharper globe; phones and low-core PCs stay cheap.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, highEnd ? 1.5 : 1));
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
@@ -73,7 +77,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         roughness: 0.85,
         metalness: 0,
       });
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 48, 48), earthMat);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 64), earthMat);
       earthTilt.add(earth);
 
       const sources = [
@@ -92,7 +96,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
           (tex) => {
             if (disposed) return;
             tex.colorSpace = THREE.SRGBColorSpace;
-            tex.anisotropy = 8;
+            tex.anisotropy = 16;
             earthMat.map = tex;
             earthMat.needsUpdate = true;
           },
@@ -104,7 +108,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
       // Atmosphere glow
       const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(2.22, 32, 32),
+        new THREE.SphereGeometry(2.18, 64, 48),
         new THREE.ShaderMaterial({
           transparent: true,
           side: THREE.BackSide,
@@ -125,6 +129,53 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         })
       );
       world.add(atmosphere);
+
+      // ---------- Heavenly sun glow behind the globe ----------
+      const sunTex = makeSunTexture(THREE);
+      const sunGlow = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: sunTex,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          opacity: 0.9,
+        })
+      );
+      sunGlow.position.set(0, 0.2, -2.6);
+      sunGlow.scale.set(9.5, 9.5, 1);
+      sunGlow.renderOrder = -5;
+      world.add(sunGlow);
+
+      // ---------- HOREMOW brand accent ----------
+      let logoTex: InstanceType<typeof THREE.Texture> | null = null;
+      const logoMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      });
+      const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), logoMat);
+      logoPlane.position.set(-2.95, 2.15, -1.2);
+      logoPlane.scale.set(1.5, 1.5, 1);
+      logoPlane.visible = false;
+      world.add(logoPlane);
+      new THREE.TextureLoader().load(
+        "/images/horemow_logo.png",
+        (tex) => {
+          if (disposed) {
+            tex.dispose();
+            return;
+          }
+          tex.colorSpace = THREE.SRGBColorSpace;
+          logoTex = tex;
+          logoMat.map = tex;
+          logoMat.needsUpdate = true;
+          logoPlane.visible = true;
+        },
+        undefined,
+        () => {}
+      );
 
       // Airliners circle above the globe. They are loaded from a local GLB and
       // share the scene lights, so they feel part of the same 3D world.
@@ -323,11 +374,11 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
         if (w >= 1024) {
           if (w >= 1440) {
-            const s = Math.min((vh * 0.88) / FIT, (vw * 0.38) / FIT);
+            const s = Math.min((vh * 0.95) / FIT, (vw * 0.42) / FIT);
             world.scale.setScalar(s);
             world.position.set((align === "right" ? 1 : -1) * vw * 0.30, vh * 0.055, 0);
           } else {
-            const s = Math.min((vh * 0.86) / FIT, (vw * 0.36) / FIT);
+            const s = Math.min((vh * 0.92) / FIT, (vw * 0.4) / FIT);
             world.scale.setScalar(s);
             world.position.set((align === "right" ? 1 : -1) * vw * 0.28, vh * 0.055, 0);
           }
@@ -420,7 +471,6 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       let raf = 0;
       let inView = true;
       let tabVisible = !document.hidden;
-      let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
 
       const frame = (timestamp?: number) => {
@@ -436,6 +486,11 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
         stars.rotation.y += dt * 0.005;
+        sunGlow.material.rotation += dt * 0.01;
+        if (logoPlane.visible) {
+          logoPlane.rotation.z = Math.sin(t * 0.25) * 0.035;
+          logoPlane.position.y = 2.15 + Math.sin(t * 0.35) * 0.08;
+        }
 
         // Animate heavenly bodies in an arc
         shootingStars.forEach((star, i) => {
@@ -473,10 +528,6 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
 
         renderer.render(scene, camera);
-        if (!posterHidden && posterRef.current) {
-          posterHidden = true;
-          posterRef.current.style.opacity = "0";
-        }
         schedule();
       };
       const schedule = () => {
@@ -519,6 +570,8 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         textures.forEach((t) => t.dispose());
         backdropTex?.dispose();
         earthMat.map?.dispose();
+        sunTex.dispose();
+        logoTex?.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       };
@@ -534,16 +587,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      {/* Preload the poster texture and hero airliner before JS asks for them. */}
+      {/* Preload the real textures and hero airliner before JS asks for them. */}
       <link rel="preload" as="image" href="/textures/earth.jpg" />
       <link rel="preload" as="image" href="/images/campground_2.jpg" />
       <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
 
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
-        <div
-          ref={posterRef}
-          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(36vw,620px)] lg:w-[min(36vw,620px)]"
-        />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
       <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />

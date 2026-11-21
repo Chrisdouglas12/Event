@@ -44,7 +44,7 @@ export function WhyAttend() {
         } as React.CSSProperties
       }
     >
-      <div className="px-6 sm:px-10 lg:px-14">
+      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="depth-stage">
           <div className="relative p-6 sm:p-10 lg:p-14 xl:p-16">
             {/* Ambient glow */}
@@ -134,7 +134,7 @@ export function WhyAttend() {
                   {/* Flyer */}
                   <TiltCard
                     intensity={7}
-                    className="depth-card-left absolute left-0 top-0 z-10 aspect-[4/5] w-[62%] overflow-hidden rounded-[4px] bg-[var(--wa-ink)] shadow-xl ring-1 ring-white/10"
+                    className="image-frame depth-card-left absolute left-0 top-0 z-10 aspect-[4/5] w-[58%] max-w-[300px] overflow-hidden bg-[var(--wa-ink)]"
                   >
                     <Parallax speed={0.18} className="absolute inset-0">
                       <Image
@@ -151,7 +151,7 @@ export function WhyAttend() {
                   {/* Crowd */}
                   <TiltCard
                     intensity={9}
-                    className="depth-card-right clip-chamfer-tr absolute bottom-0 right-0 z-20 aspect-[3/4] w-[54%] overflow-hidden rounded-[4px] bg-[var(--wa-ink)] shadow-2xl ring-1 ring-white/10"
+                    className="image-frame depth-card-right clip-chamfer-tr absolute bottom-0 right-0 z-20 aspect-[3/4] w-[50%] max-w-[280px] overflow-hidden bg-[var(--wa-ink)]"
                   >
                     <Parallax speed={0.28} className="absolute inset-0">
                       <Image

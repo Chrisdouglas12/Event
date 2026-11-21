@@ -118,7 +118,7 @@ export function Footer() {
 
             {/* Event Card 1: IHGC 2026 */}
             <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
-              <div className="relative aspect-[16/7] rounded-[10px] overflow-hidden bg-gray-900">
+              <div className="image-frame relative aspect-[16/7] overflow-hidden bg-gray-900">
                 <Image
                   src="/images/conference_flyer.png"
                   alt="IHGC 2026 Conference Flyer"

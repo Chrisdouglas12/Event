@@ -110,7 +110,7 @@ export function DetailsCard() {
 
   return (
     <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-      <div className="px-6 sm:px-10 lg:px-14">
+      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
         {/* Header */}
         <div className="mb-12 text-center lg:mb-14">
           <div className="flex items-center justify-center gap-3">
@@ -146,7 +146,7 @@ export function DetailsCard() {
 
           <div className="relative grid grid-cols-1 lg:grid-cols-12">
             {/* Photo */}
-            <div className="depth-photo relative aspect-[4/3] overflow-hidden bg-[#0E1020] lg:col-span-5 lg:aspect-auto lg:min-h-[440px] lg:border-r lg:border-white/10">
+            <div className="image-frame depth-photo relative aspect-[4/3] overflow-hidden bg-[#0E1020] lg:col-span-5 lg:aspect-auto lg:min-h-[380px]">
               <Image
                 src="/images/campground.jpg"
                 alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
