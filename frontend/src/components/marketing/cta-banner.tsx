@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { RevealText } from "@/components/ui/reveal-text";
 import { TiltCard } from "@/components/ui/tilt-card";
+import { useLandingSettings } from "@/components/marketing/landing-settings";
 
 export function CtaBanner() {
+  const { eventName, theme, datesText, venueAddress } = useLandingSettings();
+
   return (
     <section data-scene="sea" className="relative w-full py-20 lg:py-24 overflow-hidden">
       {/* Background Image */}
@@ -33,13 +38,13 @@ export function CtaBanner() {
         <TiltCard intensity={4} className="floating-card rounded-[4px] px-8 py-12 sm:px-12 space-y-6 text-center">
           <RevealText
             as="h2"
-            text="International Holiness General Conference 2026"
+            text={eventName}
             className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white leading-[1.12] tracking-tight"
             stagger={0.035}
           />
           <RevealText
             as="p"
-            text="“Man and Satan in Contention Against the Holy God” · 8–11 December · Kwali, Abuja"
+            text={`“${theme}” · ${datesText} · ${venueAddress}`}
             className="text-base sm:text-lg text-[#B9C4D4] max-w-xl mx-auto"
             stagger={0.012}
           />

@@ -32,6 +32,7 @@ export function proxy(request: NextRequest) {
       : `'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com`;
   const connectSource = [
     "'self'",
+    "blob:", // GLTFLoader's ImageBitmapLoader fetches embedded GLB textures from blob URLs
     apiOrigin(),
     "https://challenges.cloudflare.com",
     "https://api.paypal.com",

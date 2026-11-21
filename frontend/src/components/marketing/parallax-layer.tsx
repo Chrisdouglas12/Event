@@ -9,6 +9,11 @@ type ParallaxLayerProps = {
   children: ReactNode;
 };
 
+/**
+ * Subtle scroll parallax for small screens only.
+ * Desktop (lg+) deliberately renders a plain, static layer so scrolling stays
+ * fast and there is no scroll-linked transform work on the main thread.
+ */
 export function ParallaxLayer({
   speed = 0.1,
   className,
@@ -20,15 +25,25 @@ export function ParallaxLayer({
     const el = ref.current;
     if (!el) return;
 
-    // Respect users who turned off motion
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     let raf = 0;
 
+    const clear = () => {
+      el.style.transform = "";
+      el.style.willChange = "";
+    };
+
     const update = () => {
       raf = 0;
-      // Stop the effect once the hero is well out of view
+      if (desktop.matches || reduce.matches) {
+        clear();
+        return;
+      }
+      // Stop the effect once the hero is well out of view.
       const y = Math.min(window.scrollY, window.innerHeight * 1.5);
+      el.style.willChange = "transform";
       el.style.transform = `translate3d(0, ${y * speed}px, 0)`;
     };
 
@@ -36,17 +51,27 @@ export function ParallaxLayer({
       if (!raf) raf = requestAnimationFrame(update);
     };
 
+    const onModeChange = () => {
+      if (raf) cancelAnimationFrame(raf);
+      update();
+    };
+
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
+    desktop.addEventListener("change", onModeChange);
+    reduce.addEventListener("change", onModeChange);
 
     return () => {
       window.removeEventListener("scroll", onScroll);
+      desktop.removeEventListener("change", onModeChange);
+      reduce.removeEventListener("change", onModeChange);
       if (raf) cancelAnimationFrame(raf);
+      clear();
     };
   }, [speed]);
 
   return (
-    <div ref={ref} className={className} style={{ willChange: "transform" }}>
+    <div ref={ref} className={className}>
       {children}
     </div>
   );

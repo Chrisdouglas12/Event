@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2, AlertCircle, Plus, Trash2, GripVertical } from "lucide-react";
 
 type Settings = {
   eventName?: string;
   theme?: string;
+  datesText?: string;
+  heroDatesLabel?: string;
+  openingTimeLabel?: string;
+  registrationFeeLabel?: string;
+  whyAttendIntro?: string;
+  flyerDescription?: string;
   startsAt?: string;
   endsAt?: string;
   registrationDeadline?: string;
@@ -31,31 +37,86 @@ type Route = {
 
 type Price = { currency: string; amountMinor: number };
 
+type ProgrammeItem = {
+  id?: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  speakerOrLeader: string;
+  description: string;
+  sortOrder: number;
+};
+
 const CURRENCIES = ["NGN", "USD", "EUR", "GBP"] as const;
 const PROVIDERS = ["paystack", "paypal", "manual_transfer"] as const;
+
+const EMPTY_PROGRAMME: ProgrammeItem = {
+  eventDate: "",
+  startTime: "",
+  endTime: "",
+  title: "",
+  speakerOrLeader: "",
+  description: "",
+  sortOrder: 0,
+};
+
+function getStaffToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)staff_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function apiFetch(path: string, init: RequestInit = {}) {
+  const token = getStaffToken();
+  const res = await fetch(`/api${path}`, {
+    ...init,
+    headers: {
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers || {}),
+    },
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  return data;
+}
+
+function toLocalInput(value: unknown): string {
+  if (!value) return "";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 16);
+}
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Settings>({});
   const [routes, setRoutes] = useState<Route[]>([]);
   const [prices, setPrices] = useState<Price[]>([]);
+  const [programme, setProgramme] = useState<ProgrammeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingProgramme, setSavingProgramme] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/settings")
-      .then((r) => r.json())
+    apiFetch("/admin/settings")
       .then((d) => {
         if (d.settings) {
           const s = d.settings;
           setSettings({
             eventName: s.eventName,
             theme: s.theme,
-            startsAt: s.startsAt ? new Date(s.startsAt).toISOString().slice(0, 16) : "",
-            endsAt: s.endsAt ? new Date(s.endsAt).toISOString().slice(0, 16) : "",
-            registrationDeadline: s.registrationDeadline
-              ? new Date(s.registrationDeadline).toISOString().slice(0, 16)
-              : "",
+            datesText: s.datesText,
+            heroDatesLabel: s.heroDatesLabel,
+            openingTimeLabel: s.openingTimeLabel,
+            registrationFeeLabel: s.registrationFeeLabel,
+            whyAttendIntro: s.whyAttendIntro,
+            flyerDescription: s.flyerDescription,
+            startsAt: toLocalInput(s.startsAt),
+            endsAt: toLocalInput(s.endsAt),
+            registrationDeadline: toLocalInput(s.registrationDeadline),
             venueName: s.venueName,
             venueAddress: s.venueAddress,
             venueMapUrl: s.venueMapUrl || "",
@@ -65,20 +126,23 @@ export default function AdminSettingsPage() {
             bankAccountName: s.bankAccountName || "",
             bankAccountNumber: s.bankAccountNumber || "",
             capacityLimit: s.capacityLimit,
-            capacityAlertThresholds: s.capacityAlertThresholds,
+            capacityAlertThresholds: Array.isArray(s.capacityAlertThresholds)
+              ? s.capacityAlertThresholds.join(", ")
+              : s.capacityAlertThresholds,
           });
         }
         if (d.routes) setRoutes(d.routes);
         if (d.prices) setPrices(d.prices);
+        if (d.programme) setProgramme(d.programme);
       })
-      .catch(() => setMessage({ type: "error", text: "Failed to load settings." }))
+      .catch((err) => setMessage({ type: "error", text: err?.message || "Failed to load settings." }))
       .finally(() => setLoading(false));
   }, []);
 
-  const updateSetting = (key: keyof Settings, value: any) =>
+  const updateSetting = (key: keyof Settings, value: unknown) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
 
-  const updateRoute = (currency: string, field: keyof Route, value: any) =>
+  const updateRoute = (currency: string, field: keyof Route, value: unknown) =>
     setRoutes((prev) => {
       const existing = prev.find((r) => r.currency === currency);
       if (existing) {
@@ -115,27 +179,101 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/admin/settings", {
+      await apiFetch("/admin/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           settings: {
             ...settings,
-            capacityLimit: settings.capacityLimit === null || settings.capacityLimit === undefined || settings.capacityLimit === ("" as any)
-              ? null
-              : Number(settings.capacityLimit),
+            capacityLimit:
+              settings.capacityLimit === null ||
+              settings.capacityLimit === undefined ||
+              settings.capacityLimit === ("" as unknown)
+                ? null
+                : Number(settings.capacityLimit),
           },
           routes,
           prices,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Save failed");
       setMessage({ type: "success", text: "Settings saved successfully." });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "Failed to save settings." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateProgramme = (index: number, field: keyof ProgrammeItem, value: unknown) =>
+    setProgramme((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+
+  const addProgramme = () => {
+    const firstDay =
+      settings.startsAt && settings.startsAt.length >= 10
+        ? settings.startsAt.slice(0, 10)
+        : "";
+    setProgramme((prev) => [
+      ...prev,
+      { ...EMPTY_PROGRAMME, eventDate: firstDay, sortOrder: prev.length },
+    ]);
+  };
+
+  const removeProgramme = async (index: number) => {
+    const item = programme[index];
+    if (!item) return;
+    if (item.id) {
+      try {
+        await apiFetch(`/settings/programme/${item.id}`, { method: "DELETE" });
+      } catch (err: any) {
+        setMessage({ type: "error", text: err?.message || "Failed to delete programme item." });
+        return;
+      }
+    }
+    setProgramme((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveProgramme = async () => {
+    setSavingProgramme(true);
+    setMessage(null);
+    try {
+      let next = [...programme];
+      for (let i = 0; i < next.length; i++) {
+        const item = next[i];
+        if (!item.eventDate || !item.startTime || !item.title) {
+          throw new Error(`Programme row ${i + 1} needs a date, start time, and title.`);
+        }
+        const payload = {
+          eventDate: item.eventDate,
+          startTime: item.startTime,
+          endTime: item.endTime || null,
+          title: item.title,
+          speakerOrLeader: item.speakerOrLeader || null,
+          description: item.description || null,
+          sortOrder: item.sortOrder || i,
+        };
+        if (item.id) {
+          await apiFetch(`/settings/programme/${item.id}`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+        } else {
+          const data = await apiFetch("/settings/programme", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          next[i] = {
+            ...item,
+            id: data.programmeItem?._id || data.programmeItem?.id,
+          };
+        }
+      }
+      setProgramme(next);
+      setMessage({ type: "success", text: "Programme saved successfully." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "Failed to save programme." });
+    } finally {
+      setSavingProgramme(false);
     }
   };
 
@@ -211,6 +349,126 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* Landing Page Content */}
+        <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
+          <div>
+            <h2 className="text-lg font-bold text-[#111320]">Landing Page Content</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              These fields appear on the public landing page. Changes go live as soon as you save — no redeploy needed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Full Dates Text</label>
+              <input className={inputCls} value={settings.datesText || ""} onChange={(e) => updateSetting("datesText", e.target.value)} placeholder="Tuesday 8 December to Friday 11 December 2026" />
+            </div>
+            <div>
+              <label className={labelCls}>Short Date Badge</label>
+              <input className={inputCls} value={settings.heroDatesLabel || ""} onChange={(e) => updateSetting("heroDatesLabel", e.target.value)} placeholder="December 8 – 11, 2026" />
+            </div>
+            <div>
+              <label className={labelCls}>Opening Time</label>
+              <input className={inputCls} value={settings.openingTimeLabel || ""} onChange={(e) => updateSetting("openingTimeLabel", e.target.value)} placeholder="4:00 PM WAT" />
+            </div>
+            <div>
+              <label className={labelCls}>Registration Fee Label</label>
+              <input className={inputCls} value={settings.registrationFeeLabel || ""} onChange={(e) => updateSetting("registrationFeeLabel", e.target.value)} placeholder="₦5,000 / $20 / €20 / £20" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Why Attend — Intro Paragraph</label>
+              <textarea rows={3} className={inputCls} value={settings.whyAttendIntro || ""} onChange={(e) => updateSetting("whyAttendIntro", e.target.value)} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Official Flyer — Description</label>
+              <textarea rows={3} className={inputCls} value={settings.flyerDescription || ""} onChange={(e) => updateSetting("flyerDescription", e.target.value)} />
+            </div>
+          </div>
+        </section>
+
+        {/* Programme */}
+        <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#111320]">Conference Programme</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                Add and edit the schedule shown on the public programme page.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addProgramme}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-xs font-bold text-[#111320] hover:bg-gray-50 transition-colors cursor-pointer shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Session
+            </button>
+          </div>
+
+          {programme.length === 0 ? (
+            <div className="rounded-[12px] border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400">
+              No programme sessions yet. Click “Add Session” to create the first one.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {programme.map((item, index) => (
+                <div key={item.id || `new-${index}`} className="rounded-[14px] border border-gray-100 bg-[#FAFAFA] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      <GripVertical className="w-4 h-4" /> Session {index + 1}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeProgramme(index)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className={labelCls}>Date</label>
+                      <input type="date" className={inputCls} value={item.eventDate} onChange={(e) => updateProgramme(index, "eventDate", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Start</label>
+                      <input type="time" className={inputCls} value={item.startTime} onChange={(e) => updateProgramme(index, "startTime", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>End</label>
+                      <input type="time" className={inputCls} value={item.endTime} onChange={(e) => updateProgramme(index, "endTime", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Order</label>
+                      <input type="number" className={inputCls} value={item.sortOrder} onChange={(e) => updateProgramme(index, "sortOrder", Number(e.target.value))} />
+                    </div>
+                    <div className="col-span-2 sm:col-span-4">
+                      <label className={labelCls}>Session Title</label>
+                      <input className={inputCls} value={item.title} onChange={(e) => updateProgramme(index, "title", e.target.value)} placeholder="e.g. Opening Service" />
+                    </div>
+                    <div className="col-span-2 sm:col-span-4">
+                      <label className={labelCls}>Speaker / Leader (optional)</label>
+                      <input className={inputCls} value={item.speakerOrLeader} onChange={(e) => updateProgramme(index, "speakerOrLeader", e.target.value)} />
+                    </div>
+                    <div className="col-span-2 sm:col-span-4">
+                      <label className={labelCls}>Description (optional)</label>
+                      <textarea rows={2} className={inputCls} value={item.description} onChange={(e) => updateProgramme(index, "description", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSaveProgramme}
+            disabled={savingProgramme || programme.length === 0}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#0E1020] text-white text-xs font-bold hover:bg-[#1a1d33] transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {savingProgramme ? "Saving..." : "Save Programme"}
+          </button>
+        </section>
+
         {/* Venue & Contact */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-bold text-[#111320]">Venue & Contact</h2>
@@ -269,7 +527,7 @@ export default function AdminSettingsPage() {
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-gray-400">Amounts are per participant, flat rate. Stored in minor units (kobo/cents/pence).</p>
+          <p className="text-[11px] text-gray-400">Amounts are per participant, flat rate. Stored in minor units (kobo/cents/pence). The fee label on the landing page is edited separately above.</p>
         </section>
 
         {/* Provider Routing */}

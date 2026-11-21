@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ElementType } from "react";
+import { useEffect, useRef, useState, type ElementType } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -10,74 +10,80 @@ type RevealTextProps = {
   text: string;
   as?: "h1" | "h2" | "h3" | "h4" | "p" | "span" | "div";
   className?: string;
+  /** Seconds to wait after the section enters the viewport. */
   delay?: number;
+  /** Kept for backwards compatibility with the previous word-reveal call sites. */
   stagger?: number;
+  /** Milliseconds per character. */
+  speed?: number;
   start?: string;
 };
 
 /**
- * Word-by-word scroll reveal. Words begin below their clipping mask, blurred,
- * and rise into place as the section approaches the viewport.
+ * Typewriter reveal. Text keeps its final layout via a hidden ghost node while
+ * the visible copy is typed when the section scrolls into view.
  */
 export function RevealText({
   text,
   as = "p",
   className = "",
   delay = 0,
-  stagger = 0.035,
+  speed = 16,
   start = "top 88%",
 }: RevealTextProps) {
   const ref = useRef<HTMLElement>(null);
-  const words = text.split(/\s+/);
+  const [typedCount, setTypedCount] = useState(0);
+  const [typing, setTyping] = useState(false);
 
   useEffect(() => {
+    setTypedCount(0);
+    setTyping(false);
+
     const el = ref.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const words = el.querySelectorAll<HTMLElement>("[data-reveal-word]");
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        words,
-        {
-          yPercent: 115,
-          opacity: 0,
-          rotateX: -38,
-          filter: "blur(8px)",
-        },
-        {
-          yPercent: 0,
-          opacity: 1,
-          rotateX: 0,
-          filter: "blur(0px)",
-          duration: 0.9,
-          delay,
-          ease: "power3.out",
-          stagger,
-          scrollTrigger: {
-            trigger: el,
-            start,
-            toggleActions: "play none none reverse",
-          },
-        }
-      );
-    }, el);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setTypedCount(text.length);
+      return;
+    }
 
-    return () => ctx.revert();
-  }, [delay, stagger, start]);
+    let startTimer = 0;
+    const trigger = ScrollTrigger.create({
+      trigger: el,
+      start,
+      once: true,
+      onEnter: () => {
+        startTimer = window.setTimeout(() => setTyping(true), Math.max(0, delay * 1000));
+      },
+    });
+
+    return () => {
+      if (startTimer) window.clearTimeout(startTimer);
+      trigger.kill();
+    };
+  }, [text, start, delay]);
+
+  useEffect(() => {
+    if (!typing || typedCount >= text.length) return;
+    const timer = window.setTimeout(() => {
+      setTypedCount((count) => Math.min(text.length, count + 1));
+    }, speed);
+    return () => window.clearTimeout(timer);
+  }, [typing, typedCount, text.length, speed]);
 
   const Tag = as as ElementType;
+  const visibleText = text.slice(0, typedCount);
 
   return (
-    <Tag ref={ref} className={`reveal-text ${className}`}>
-      {words.map((word, index) => (
-        <span key={`${word}-${index}`} className="reveal-word-mask">
-          <span data-reveal-word className="reveal-word">
-            {word}
-            {index < words.length - 1 ? "\u00a0" : ""}
-          </span>
-        </span>
-      ))}
+    <Tag ref={ref} className={`typing-text ${className}`}>
+      <span className="sr-only">{text}</span>
+      <span className="typing-ghost" aria-hidden="true">
+        {text}
+      </span>
+      <span className="typing-current" aria-hidden="true">
+        {visibleText}
+        {typedCount < text.length && <span className="typing-caret" />}
+      </span>
     </Tag>
   );
 }

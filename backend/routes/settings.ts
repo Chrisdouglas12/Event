@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 
 // Point these to your exact schema files (based on your project structure)
 import { EventSettings, ProviderRoute, Minister, ProgrammeItem } from '../schema/settings.ts';
+import { TicketType } from '../schema/participants.ts';
 import { CURRENCIES, PAYMENT_PROVIDERS, FEE_POLICIES } from '../constants/enums.ts'; 
 
 import { authenticateStaff, requireRole } from './auth.ts';
@@ -54,6 +55,148 @@ function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+const EVENT_FIELDS = [
+  'eventName',
+  'theme',
+  'datesText',
+  'heroDatesLabel',
+  'openingTimeLabel',
+  'registrationFeeLabel',
+  'whyAttendIntro',
+  'flyerDescription',
+  'startsAt',
+  'endsAt',
+  'registrationDeadline',
+  'venueName',
+  'venueAddress',
+  'venueMapUrl',
+  'contactPhone',
+  'contactEmail',
+  'bankName',
+  'bankAccountName',
+  'bankAccountNumber',
+  'capacityLimit',
+  'capacityAlertThresholds',
+] as const;
+
+function buildEventPatch(body: any): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  for (const key of EVENT_FIELDS) {
+    if (body?.[key] !== undefined) patch[key] = body[key];
+  }
+  if (typeof patch.capacityAlertThresholds === 'string') {
+    patch.capacityAlertThresholds = String(patch.capacityAlertThresholds)
+      .split(',')
+      .map((v) => Number(v.trim()))
+      .filter((v) => Number.isFinite(v));
+  }
+  return patch;
+}
+
+function eventPatchError(patch: Record<string, unknown>): string | null {
+  if (patch.startsAt && patch.endsAt) {
+    if (new Date(String(patch.startsAt)) >= new Date(String(patch.endsAt))) {
+      return 'startsAt must be before endsAt';
+    }
+  }
+  if (patch.registrationDeadline && patch.startsAt) {
+    if (new Date(String(patch.registrationDeadline)) > new Date(String(patch.startsAt))) {
+      return 'registrationDeadline must not be after startsAt';
+    }
+  }
+  return null;
+}
+
+function routePatchError(patch: Record<string, unknown>): string | null {
+  if (patch.primaryProvider && !PAYMENT_PROVIDERS.includes(patch.primaryProvider as any)) {
+    return `primaryProvider must be one of: ${PAYMENT_PROVIDERS.join(', ')}`;
+  }
+  if (patch.fallbackProvider && !PAYMENT_PROVIDERS.includes(patch.fallbackProvider as any)) {
+    return `fallbackProvider must be one of: ${PAYMENT_PROVIDERS.join(', ')}`;
+  }
+  if (patch.feePolicy && !FEE_POLICIES.includes(patch.feePolicy as any)) {
+    return `feePolicy must be one of: ${FEE_POLICIES.join(', ')}`;
+  }
+  return null;
+}
+
+async function getStandardTicketType() {
+  const pinned = process.env.STANDARD_TICKET_TYPE_ID;
+  if (pinned && mongoose.isValidObjectId(pinned)) {
+    const byId = await TicketType.findById(pinned);
+    if (byId) return byId;
+  }
+  return (
+    (await TicketType.findOne({ isActive: true, name: /standard/i }).sort({ createdAt: 1 })) ||
+    (await TicketType.findOne({ isActive: true }).sort({ createdAt: 1 }))
+  );
+}
+
+/** Upsert the payment routes submitted by the aggregate admin settings form. */
+async function saveProviderRoutes(routes: any[]) {
+  for (const r of routes) {
+    if (!r || !CURRENCIES.includes(r.currency)) continue;
+    const error = routePatchError(r);
+    if (error) throw new Error(error);
+
+    await ProviderRoute.findByIdAndUpdate(
+      r.currency,
+      {
+        $set: compact({
+          primaryProvider: r.primaryProvider,
+          fallbackProvider: r.fallbackProvider,
+          isEnabled: r.isEnabled,
+          feePolicy: r.feePolicy,
+        }),
+        $setOnInsert: { _id: r.currency },
+      },
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+  }
+}
+
+/** Replace the prices on the standard ticket type with the submitted values. */
+async function saveTicketPrices(prices: any[]) {
+  const clean = (prices || [])
+    .filter(
+      (p) =>
+        p &&
+        CURRENCIES.includes(p.currency) &&
+        Number.isFinite(Number(p.amountMinor)) &&
+        Number(p.amountMinor) >= 0
+    )
+    .map((p) => ({
+      currency: p.currency as string,
+      amountMinor: Math.round(Number(p.amountMinor)),
+    }));
+  if (clean.length === 0) return;
+
+  let ticketType = await getStandardTicketType();
+  if (!ticketType) {
+    await TicketType.create({
+      name: 'Standard',
+      description: 'Standard conference registration',
+      isActive: true,
+      prices: clean,
+    });
+    return;
+  }
+
+  const existing = new Map<string, any>();
+  for (const p of ticketType.prices || []) existing.set(String(p.currency), p);
+
+  ticketType.prices = clean.map((p) => {
+    const old = existing.get(p.currency);
+    return {
+      currency: p.currency,
+      amountMinor: p.amountMinor,
+      createdAt: old?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+  });
+  await ticketType.save();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC — GET /api/settings/public
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,6 +218,12 @@ router.get('/settings/public', async (_req: Request, res: Response) => {
       event: {
         name: settings.eventName,
         theme: settings.theme,
+        datesText: settings.datesText,
+        heroDatesLabel: settings.heroDatesLabel,
+        openingTimeLabel: settings.openingTimeLabel,
+        registrationFeeLabel: settings.registrationFeeLabel,
+        whyAttendIntro: settings.whyAttendIntro,
+        flyerDescription: settings.flyerDescription,
         startsAt: settings.startsAt,
         endsAt: settings.endsAt,
         registrationDeadline: settings.registrationDeadline,
@@ -163,6 +312,113 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ADMIN — GET /api/admin/settings
+// Aggregate payload used by the admin settings screen (event + routes + prices
+// + programme) so the whole form can be loaded in a single request.
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get(
+  '/admin/settings',
+  authenticateStaff,
+  requireRole('admin'),
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const [settings, routes, ticketType, programme] = await Promise.all([
+        getEventSettings(),
+        ProviderRoute.find().lean(),
+        getStandardTicketType(),
+        ProgrammeItem.find()
+          .sort({ eventDate: 1, startTime: 1, sortOrder: 1 })
+          .lean(),
+      ]);
+
+      if (!settings) {
+        return res.status(500).json({ error: 'Settings unavailable' });
+      }
+
+      return res.json({
+        settings: settings.toObject ? settings.toObject() : settings,
+        routes: routes.map((r: any) => ({
+          currency: String(r._id),
+          primaryProvider: r.primaryProvider,
+          fallbackProvider: r.fallbackProvider || undefined,
+          isEnabled: r.isEnabled,
+          feePolicy: r.feePolicy,
+        })),
+        prices: (ticketType?.prices || []).map((p: any) => ({
+          currency: p.currency,
+          amountMinor: p.amountMinor,
+        })),
+        programme: programme.map((p: any) => ({
+          id: String(p._id),
+          eventDate: p.eventDate,
+          startTime: p.startTime,
+          endTime: p.endTime || '',
+          title: p.title,
+          speakerOrLeader: p.speakerOrLeader || '',
+          description: p.description || '',
+          sortOrder: p.sortOrder,
+        })),
+      });
+    } catch (err) {
+      console.error('[GET /admin/settings]', err);
+      return res.status(500).json({ error: 'Failed to load settings' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN — PUT /api/admin/settings
+// Persist the whole settings form. Each section is optional so partial saves
+// are safe; validation errors are returned before anything is written where
+// possible.
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.put(
+  '/admin/settings',
+  authenticateStaff,
+  requireRole('admin'),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const body = req.body || {};
+      const patch = buildEventPatch(body.settings);
+      const error = eventPatchError(patch);
+      if (error) return res.status(400).json({ error });
+
+      if (Array.isArray(body.routes)) await saveProviderRoutes(body.routes);
+      if (Array.isArray(body.prices)) await saveTicketPrices(body.prices);
+
+      let settings: unknown;
+      if (Object.keys(patch).length > 0) {
+        settings = await EventSettings.findOneAndUpdate(
+          { singleton: 'event' },
+          { $set: patch, $setOnInsert: { singleton: 'event' } },
+          {
+            upsert: true,
+            new: true,
+            runValidators: true,
+            setDefaultsOnInsert: true,
+          }
+        );
+      } else {
+        settings = await getEventSettings();
+      }
+
+      return res.json({ success: true, settings });
+    } catch (err: any) {
+      if (err?.name === 'ValidationError') {
+        return res.status(400).json({ error: err.message });
+      }
+      if (typeof err?.message === 'string' && err.message) {
+        return res.status(400).json({ error: err.message });
+      }
+      console.error('[PUT /admin/settings]', err);
+      return res.status(500).json({ error: 'Failed to save settings' });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STAFF — PUT /api/settings/event
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -172,50 +428,14 @@ router.put(
   requireRole('admin'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const allowed = [
-        'eventName',
-        'theme',
-        'startsAt',
-        'endsAt',
-        'registrationDeadline',
-        'venueName',
-        'venueAddress',
-        'venueMapUrl',
-        'contactPhone',
-        'contactEmail',
-        'bankName',
-        'bankAccountName',
-        'bankAccountNumber',
-        'capacityLimit',
-        'capacityAlertThresholds',
-      ] as const;
-
-      const body = req.body || {};
-      const patch: Record<string, unknown> = {};
-      for (const key of allowed) {
-        if (body[key] !== undefined) patch[key] = body[key];
-      }
+      const patch = buildEventPatch(req.body || {});
 
       if (Object.keys(patch).length === 0) {
         return res.status(400).json({ error: 'No updatable fields supplied' });
       }
 
-      // Cross-field date sanity.
-      if (patch.startsAt && patch.endsAt) {
-        if (new Date(String(patch.startsAt)) >= new Date(String(patch.endsAt))) {
-          return res.status(400).json({ error: 'startsAt must be before endsAt' });
-        }
-      }
-      if (patch.registrationDeadline && patch.startsAt) {
-        if (
-          new Date(String(patch.registrationDeadline)) >
-          new Date(String(patch.startsAt))
-        ) {
-          return res
-            .status(400)
-            .json({ error: 'registrationDeadline must not be after startsAt' });
-        }
-      }
+      const error = eventPatchError(patch);
+      if (error) return res.status(400).json({ error });
 
       const updated = await EventSettings.findOneAndUpdate(
         { singleton: 'event' },
@@ -268,27 +488,8 @@ router.put(
         return res.status(400).json({ error: 'No updatable fields supplied' });
       }
 
-      if (
-        patch.primaryProvider &&
-        !PAYMENT_PROVIDERS.includes(patch.primaryProvider as any)
-      ) {
-        return res.status(400).json({
-          error: `primaryProvider must be one of: ${PAYMENT_PROVIDERS.join(', ')}`,
-        });
-      }
-      if (
-        patch.fallbackProvider &&
-        !PAYMENT_PROVIDERS.includes(patch.fallbackProvider as any)
-      ) {
-        return res.status(400).json({
-          error: `fallbackProvider must be one of: ${PAYMENT_PROVIDERS.join(', ')}`,
-        });
-      }
-      if (patch.feePolicy && !FEE_POLICIES.includes(patch.feePolicy as any)) {
-        return res.status(400).json({
-          error: `feePolicy must be one of: ${FEE_POLICIES.join(', ')}`,
-        });
-      }
+      const error = routePatchError(patch);
+      if (error) return res.status(400).json({ error });
 
       const route = await ProviderRoute.findByIdAndUpdate(
         currency,

@@ -29,6 +29,50 @@ const eventSettingsSchema = new mongoose.Schema(
       default: 'Man and Satan in Contention Against the Holy God',
       trim: true,
     },
+    datesText: {
+      type: String,
+      required: true,
+      maxlength: 255,
+      default: 'Tuesday 8 December to Friday 11 December 2026',
+      trim: true,
+    },
+    heroDatesLabel: {
+      type: String,
+      required: true,
+      maxlength: 120,
+      default: 'December 8 – 11, 2026',
+      trim: true,
+    },
+    openingTimeLabel: {
+      type: String,
+      required: true,
+      maxlength: 80,
+      default: '4:00 PM WAT',
+      trim: true,
+    },
+    registrationFeeLabel: {
+      type: String,
+      required: true,
+      maxlength: 160,
+      default: '₦5,000 / $20 / €20 / £20',
+      trim: true,
+    },
+    whyAttendIntro: {
+      type: String,
+      required: true,
+      maxlength: 800,
+      default:
+        'The International Holiness General Conference 2026 takes place from 8 to 11 December at Holiness Campground, Kwali, Abuja.',
+      trim: true,
+    },
+    flyerDescription: {
+      type: String,
+      required: true,
+      maxlength: 1200,
+      default:
+        'Download the official International Holiness General Conference 2026 flyer and share it with your chapter/zone, cell groups, and social media. Registration is open now at ₦5,000 / $20 / €20 / £20.',
+      trim: true,
+    },
     startsAt: {
       type: Date,
       required: true,

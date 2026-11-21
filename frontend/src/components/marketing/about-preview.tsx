@@ -13,8 +13,8 @@ export function AboutPreview() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}
             <div className="lg:col-span-6 relative flex justify-center lg:justify-start order-2 lg:order-1 min-h-[440px] depth-stage">
-              {/* Mint outline frame background */}
-              <div className="absolute -top-4 -left-4 w-72 h-80 sm:w-80 sm:h-96 rounded-[4px] border-2 border-[#8EE3D6]/40 -z-0" />
+              {/* Graphite outline frame background */}
+              <div className="absolute -top-4 -left-4 w-72 h-80 sm:w-80 sm:h-96 rounded-[4px] border-2 border-[#3A404B] shadow-[0_18px_50px_rgba(0,0,0,0.35)] -z-0" />
 
               <div className="relative z-10 w-full max-w-[480px]">
                 {/* Back Main Image */}
@@ -29,7 +29,7 @@ export function AboutPreview() {
                 </TiltCard>
 
                 {/* Front Overlapping Image */}
-                <TiltCard intensity={11} className="absolute top-12 right-0 w-[55%] aspect-square rounded-[4px] overflow-hidden border-4 border-[#8EE3D6]/50 bg-[#0E1020] depth-photo depth-card-right">
+                <TiltCard intensity={11} className="absolute top-12 right-0 w-[55%] aspect-square rounded-[4px] overflow-hidden border-4 border-[#3A404B] bg-[#0E1020] depth-photo depth-card-right">
                   <Image
                     src="/images/about_us_2.jpg"
                     alt="Horemow conference interaction"
@@ -45,7 +45,7 @@ export function AboutPreview() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Watch Horemow video on YouTube"
-                  className="absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] rounded-[4px] overflow-hidden shadow-xl border-2 border-[#8EE3D6]/50 group block cursor-pointer depth-card"
+                  className="absolute -bottom-6 left-6 w-36 sm:w-44 aspect-[4/3] rounded-[4px] overflow-hidden shadow-xl border-2 border-[#3A404B] group block cursor-pointer depth-card"
                   style={{ transform: "translateZ(40px)" }}
                 >
                   <Image

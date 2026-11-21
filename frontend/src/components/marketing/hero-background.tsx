@@ -57,11 +57,6 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       world.rotation.x = BASE_TILT;
       scene.add(world);
 
-      // Scroll motion lives on its own group so it never fights the responsive
-      // layout applied to `world` by layout().
-      const worldScroll = new THREE.Group();
-      world.add(worldScroll);
-
       // ---------- Lights ----------
       scene.add(new THREE.AmbientLight(0xffffff, 1.0));
       const sun = new THREE.DirectionalLight(0xffffff, 2.0);
@@ -70,7 +65,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
       // ---------- Earth ----------
       const earthTilt = new THREE.Group();
-      worldScroll.add(earthTilt);
+      world.add(earthTilt);
 
       const earthMat = new THREE.MeshStandardMaterial({
         map: makeFallbackEarth(THREE),
@@ -128,12 +123,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
             }`,
         })
       );
-      worldScroll.add(atmosphere);
+      world.add(atmosphere);
 
       // Airliners circle above the globe. They are loaded from a local GLB and
       // share the scene lights, so they feel part of the same 3D world.
       const heroAircraftGroup = new THREE.Group();
-      worldScroll.add(heroAircraftGroup);
+      world.add(heroAircraftGroup);
       const heroAircraft: {
         group: InstanceType<typeof THREE.Group>;
         angle: number;
@@ -248,7 +243,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
         tiltGroup.rotation.set(ring.rot[0], ring.rot[1], ring.rot[2]);
-        worldScroll.add(tiltGroup);
+        world.add(tiltGroup);
 
         const spinner = new THREE.Group();
         tiltGroup.add(spinner);
@@ -418,8 +413,9 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       window.addEventListener("pointermove", onPointer, { passive: true });
 
       // ---------- Loop ----------
-      const timer = new THREE.Timer();
-      timer.connect(document);
+      // Plain clock instead of THREE.Timer: fewer API assumptions, no type issues.
+      let last = performance.now();
+      let elapsed = 0;
       let raf = 0;
       let inView = true;
       let tabVisible = !document.hidden;
@@ -429,9 +425,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
-        timer.update(timestamp);
-        const dt = Math.min(timer.getDelta(), 0.05) * motion;
-        const t = timer.getElapsed();
+        const now = timestamp ?? performance.now();
+        const delta = Math.min((now - last) / 1000, 0.05);
+        last = now;
+        elapsed += delta;
+        const dt = delta * motion;
+        const t = elapsed;
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
@@ -463,20 +462,12 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
         world.rotation.x += (BASE_TILT + pointer.y * 0.05 - world.rotation.x) * 0.04;
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;
 
-        // Scroll: the globe settles back into the page as the next section
-        // arrives, handing off to the page-wide depth layer.
-        const scrollT = Math.min(1, Math.max(0, window.scrollY / Math.max(1, window.innerHeight)));
-        worldScroll.scale.setScalar(1 - scrollT * 0.22);
-        worldScroll.position.set(0, -scrollT * 1.4, -scrollT * 2.5);
-        worldScroll.rotation.z = scrollT * 0.18;
-        stars.position.y = -scrollT * 1.5;
-
-        // Backdrop: fade in, drift, and shift opposite to the globe for depth
+        // Backdrop: fade in and drift gently with the pointer (no scroll parallax)
         const u = backdropMat.uniforms;
         u.uTime.value = t * motion;
         if (backdropTex) u.uOpacity.value = Math.min(1, u.uOpacity.value + dt * 0.7);
         backdrop.position.x += (-pointer.x * 0.7 - backdrop.position.x) * 0.03;
-        backdrop.position.y += (pointer.y * 0.4 - scrollT * 2 - backdrop.position.y) * 0.03;
+        backdrop.position.y += (pointer.y * 0.4 - backdrop.position.y) * 0.03;
         backdrop.rotation.y += (pointer.x * 0.05 - backdrop.rotation.y) * 0.03;
         backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
 
@@ -494,7 +485,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       const io = new IntersectionObserver(([entry]) => {
         inView = entry.isIntersecting;
         if (inView) {
-          timer.reset();
+          last = performance.now();
           schedule();
         }
       });
@@ -503,7 +494,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       const onVis = () => {
         tabVisible = !document.hidden;
         if (tabVisible) {
-          timer.reset();
+          last = performance.now();
           schedule();
         }
       };
@@ -513,7 +504,6 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
 
       cleanup = () => {
         cancelAnimationFrame(raf);
-        timer.dispose();
         ro.disconnect();
         io.disconnect();
         window.removeEventListener("pointermove", onPointer);

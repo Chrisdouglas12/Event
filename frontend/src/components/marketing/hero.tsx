@@ -1,12 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar } from "lucide-react";
 import { Countdown } from "@/components/ui/countdown";
 import { HeroBackground } from "@/components/marketing/hero-background";
 import { ParallaxLayer } from "@/components/marketing/parallax-layer";
+import { useLandingSettings } from "@/components/marketing/landing-settings";
 import { SITE_CONFIG } from "@/config/site";
 
 export function Hero() {
+  const { theme, heroDatesLabel, startsAt, endsAt } = useLandingSettings();
+
   return (
     <section className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden">
       {/* Layer 1: Globe background (slowest / farthest) */}
@@ -26,7 +31,7 @@ export function Hero() {
               style={{ animationDelay: "0.05s" }}
             >
               <Calendar className="w-3.5 h-3.5 text-[#8EE3D6]" strokeWidth={1.8} />
-              <span>December 8 – 11, 2026</span>
+              <span>{heroDatesLabel}</span>
             </div>
           </ParallaxLayer>
 
@@ -53,7 +58,7 @@ export function Hero() {
                   </div>
                 </div>
 
-                {/* BOTTOM BOX (Mint) - Theme Marquee */}
+                {/* BOTTOM BOX (Mint) - Static Theme */}
                 <div 
                   className="hero-fade w-full bg-[#8EE3D6] relative overflow-hidden py-4 sm:py-5"
                   style={{ 
@@ -66,16 +71,12 @@ export function Hero() {
                       THEME
                     </span>
                   </div>
-                  
-                  {/* Marquee Animation for the Quote */}
-                  <div className="mt-4 sm:mt-5 flex w-max animate-[hero-marquee_25s_linear_infinite]">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="flex items-center shrink-0 pr-12">
-                        <span className="text-[13px] sm:text-xl md:text-2xl text-black font-extrabold leading-none tracking-tight whitespace-nowrap">
-                          &ldquo;{SITE_CONFIG.theme}&rdquo;
-                        </span>
-                      </div>
-                    ))}
+
+                  {/* Static theme quote — no marquee */}
+                  <div className="mt-4 sm:mt-5 pr-16 sm:pr-24">
+                    <span className="text-[13px] sm:text-xl md:text-2xl text-black font-extrabold leading-snug tracking-tight">
+                      &ldquo;{theme}&rdquo;
+                    </span>
                   </div>
                 </div>
               </div>
@@ -110,7 +111,7 @@ export function Hero() {
           {/* Layer 4: Countdown */}
           <ParallaxLayer speed={0.16}>
             <div className="hero-fade pt-1 pb-1" style={{ animationDelay: "0.8s" }}>
-              <Countdown />
+              <Countdown startsAt={startsAt} endsAt={endsAt} />
             </div>
           </ParallaxLayer>
 

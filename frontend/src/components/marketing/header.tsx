@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Phone, Mail, Menu, X, MessageCircle, Share2 } from "lucide-react";
 import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
 import { SITE_CONFIG } from "@/config/site";
 
 export function Header() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSocialBar, setShowSocialBar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -55,9 +57,9 @@ export function Header() {
       <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-[60px]">
         <div className="max-w-[1440px] mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
           
-          {/* Left: Logo + Brand */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
+          {/* Left: Logo + desktop navigation */}
+          <div className="flex items-center gap-6 xl:gap-10">
+            <Link href="/" className="flex shrink-0 items-center gap-2">
               <Image
                 src={SITE_CONFIG.logo.src}
                 alt={SITE_CONFIG.logo.alt}
@@ -67,15 +69,35 @@ export function Header() {
                 style={{ width: "auto" }}
                 priority
               />
-              {/* Always visible now, on mobile and desktop */}
               <span className="text-xs sm:text-sm font-black tracking-widest text-[#0E1020] uppercase">
                 Events
               </span>
             </Link>
+
+            <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-3 xl:gap-5">
+              {navLinks.map((link) => {
+                const active = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative whitespace-nowrap text-[11px] xl:text-xs font-semibold transition-colors ${
+                      active ? "text-[#0E1020]" : "text-gray-600 hover:text-[#0E1020]"
+                    }`}
+                  >
+                    {link.label}
+                    {active && (
+                      <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-[#8EE3D6]" />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
           {/* Right: Phone, Register, Mobile Menu */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <a
               href={SITE_CONFIG.contact.phoneTel}
               aria-label={`Call ${SITE_CONFIG.contact.phone}`}

@@ -36,16 +36,18 @@ export function Reveal({ children, delay = 0, direction = "up", animateOnMount =
     const offset = DIR_OFFSET[direction] ?? DIR_OFFSET.up;
 
     const ctx = gsap.context(() => {
+      // Play once on entry instead of scrubbing to the scrollbar. Scroll-linked
+      // tweens force work on every frame and make the page feel heavy; a short
+      // one-shot entrance keeps scrolling smooth and responsive.
       const trigger = {
         trigger: el,
         start: "top 92%",
-        end: "top 48%",
-        scrub: 0.65,
+        once: true,
         invalidateOnRefresh: true,
       };
       const entrance = animateOnMount
         ? { duration: 0.9, ease: "power3.out", delay: delay / 1000 }
-        : { ease: "power2.out", scrollTrigger: trigger };
+        : { duration: 0.6, ease: "power2.out", scrollTrigger: trigger };
 
       gsap.fromTo(
         el,
@@ -75,7 +77,7 @@ export function Reveal({ children, delay = 0, direction = "up", animateOnMount =
             filter: "blur(0px)",
             stagger: animateOnMount ? 0.13 : 0.055,
             delay: animateOnMount ? delay / 1000 + 0.12 : 0,
-            ...(animateOnMount ? { duration: 0.75 } : { ease: "power2.out", scrollTrigger: trigger }),
+            ...(animateOnMount ? { duration: 0.75 } : { duration: 0.6, ease: "power2.out", scrollTrigger: trigger }),
           }
         );
       }
@@ -91,7 +93,7 @@ export function Reveal({ children, delay = 0, direction = "up", animateOnMount =
             y: 0,
             stagger: animateOnMount ? 0.14 : 0.07,
             delay: animateOnMount ? delay / 1000 + 0.2 : 0,
-            ...(animateOnMount ? { duration: 1.1, ease: "power3.out" } : { ease: "power2.out", scrollTrigger: trigger }),
+            ...(animateOnMount ? { duration: 1.1, ease: "power3.out" } : { duration: 0.7, ease: "power2.out", scrollTrigger: trigger }),
           }
         );
       }
