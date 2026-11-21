@@ -37,17 +37,10 @@ router.get(
     try {
       const empty = {
         totalPaidParticipants: 0,
-        individualPaidParticipants: 0,
-        groupPaidParticipants: 0,
-        paidOrders: 0,
-        individualOrders: 0,
-        groupOrders: 0,
         attendanceTotals: { physically: 0, online: 0, not_sure: 0 },
         genderTotals: { male: 0, female: 0 },
         firstTimeTotals: { yes: 0, no: 0 },
         children: 0,
-        groupInvitees: 0,
-        groupOrdersWithChildren: 0,
         qrScans: 0,
         scannedParticipants: 0,
         checkedInParticipants: 0,
@@ -69,7 +62,6 @@ router.get(
               firstTime: { $eq: ['$firstTime', true] },
               firstTimeCounts: { $ifNull: ['$firstTimeCounts', {}] },
               isMinor: { $eq: ['$isMinor', true] },
-              inviteeCount: { $ifNull: ['$inviteeCount', 0] },
               hasChildren: { $eq: ['$hasChildren', true] },
               childCount: { $ifNull: ['$childCount', 0] },
               country: { $ifNull: ['$country', 'Unknown'] },
@@ -79,16 +71,7 @@ router.get(
           {
             $group: {
               _id: null,
-              paidOrders: { $sum: 1 },
               totalPaidParticipants: { $sum: '$seats' },
-              individualPaidParticipants: {
-                $sum: { $cond: ['$isGroup', 0, '$seats'] },
-              },
-              groupPaidParticipants: {
-                $sum: { $cond: ['$isGroup', '$seats', 0] },
-              },
-              individualOrders: { $sum: { $cond: ['$isGroup', 0, 1] } },
-              groupOrders: { $sum: { $cond: ['$isGroup', 1, 0] } },
               physically: {
                 $sum: {
                   $cond: [
@@ -161,10 +144,6 @@ router.get(
                   ],
                 },
               },
-              groupInvitees: { $sum: { $cond: ['$isGroup', '$inviteeCount', 0] } },
-              groupOrdersWithChildren: {
-                $sum: { $cond: [{ $and: ['$isGroup', '$hasChildren'] }, 1, 0] },
-              },
             },
           },
         ]),
@@ -231,11 +210,6 @@ router.get(
       return res.json({
         ...empty,
         totalPaidParticipants: Number(kpi.totalPaidParticipants) || 0,
-        individualPaidParticipants: Number(kpi.individualPaidParticipants) || 0,
-        groupPaidParticipants: Number(kpi.groupPaidParticipants) || 0,
-        paidOrders: Number(kpi.paidOrders) || 0,
-        individualOrders: Number(kpi.individualOrders) || 0,
-        groupOrders: Number(kpi.groupOrders) || 0,
         attendanceTotals: {
           physically: Number(kpi.physically) || 0,
           online: Number(kpi.online) || 0,
@@ -250,8 +224,6 @@ router.get(
           no: Number(kpi.firstNo) || 0,
         },
         children: Number(kpi.children) || 0,
-        groupInvitees: Number(kpi.groupInvitees) || 0,
-        groupOrdersWithChildren: Number(kpi.groupOrdersWithChildren) || 0,
         qrScans: Number(scans.qrScans) || 0,
         scannedParticipants: Number(scans.scannedParticipants) || 0,
         checkedInParticipants: Number(scans.scannedParticipants) || checkedInCount || 0,

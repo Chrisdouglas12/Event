@@ -1,16 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import {
-  Baby,
-  CheckCircle2,
-  Globe2,
-  MapPin,
-  Receipt,
-  ScanLine,
-  Sparkles,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { CheckCircle2, Globe2, MapPin, ScanLine, Sparkles, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +10,10 @@ type RankedLocation = { name: string; total: number };
 
 type DashboardStats = {
   totalPaidParticipants: number;
-  individualPaidParticipants: number;
-  groupPaidParticipants: number;
-  paidOrders: number;
-  individualOrders: number;
-  groupOrders: number;
   attendanceTotals: { physically: number; online: number; not_sure: number };
   genderTotals: { male: number; female: number };
   firstTimeTotals: { yes: number; no: number };
   children: number;
-  groupInvitees: number;
-  groupOrdersWithChildren: number;
   qrScans: number;
   scannedParticipants: number;
   checkedInParticipants: number;
@@ -40,17 +23,10 @@ type DashboardStats = {
 
 const EMPTY_STATS: DashboardStats = {
   totalPaidParticipants: 0,
-  individualPaidParticipants: 0,
-  groupPaidParticipants: 0,
-  paidOrders: 0,
-  individualOrders: 0,
-  groupOrders: 0,
   attendanceTotals: { physically: 0, online: 0, not_sure: 0 },
   genderTotals: { male: 0, female: 0 },
   firstTimeTotals: { yes: 0, no: 0 },
   children: 0,
-  groupInvitees: 0,
-  groupOrdersWithChildren: 0,
   qrScans: 0,
   scannedParticipants: 0,
   checkedInParticipants: 0,
@@ -108,6 +84,59 @@ function BreakdownCard({
         {value.toLocaleString()}
       </div>
       {detail && <div className="mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">{detail}</div>}
+    </div>
+  );
+}
+
+type ChartSegment = {
+  label: string;
+  value: number;
+  color: string;
+};
+
+function DistributionBar({
+  title,
+  subtitle,
+  segments,
+}: {
+  title: string;
+  subtitle: string;
+  segments: ChartSegment[];
+}) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:space-y-4 sm:rounded-[20px] sm:p-6">
+      <div className="space-y-0.5">
+        <h2 className="text-sm font-bold text-[#111320] sm:text-base">{title}</h2>
+        <p className="text-[11px] text-gray-400 sm:text-xs">{subtitle}</p>
+      </div>
+
+      <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+        {segments.map((segment) => (
+          <div
+            key={segment.label}
+            className={segment.color}
+            style={{
+              width: total > 0 ? `${Math.max(segment.value > 0 ? 2 : 0, (segment.value / total) * 100)}%` : "0%",
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {segments.map((segment) => (
+          <div key={segment.label} className="flex items-center gap-2 rounded-lg bg-gray-50 px-2.5 py-2">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${segment.color}`} />
+            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-gray-500 sm:text-xs">
+              {segment.label}
+            </span>
+            <span className="shrink-0 text-xs font-black text-[#111320] sm:text-sm">
+              {segment.value.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -225,27 +254,27 @@ export default async function AdminDashboardPage() {
         <MetricCard
           label="Total Paid Participants"
           value={stats.totalPaidParticipants}
-          note={`${stats.individualPaidParticipants} individual · ${stats.groupPaidParticipants} group`}
+          note="Verified registrations only"
           icon={Users}
         />
         <MetricCard
           label="Checked In At Camp"
           value={checkedIn}
-          note={`${awaitingArrival} paid seats not yet scanned`}
+          note={`${awaitingArrival} paid participants not yet scanned`}
           icon={CheckCircle2}
           tone="blue"
         />
         <MetricCard
-          label="First-Time Attendees"
+          label="First-Time Participants"
           value={stats.firstTimeTotals.yes}
-          note={`${stats.firstTimeTotals.no} returning`}
+          note={`${stats.firstTimeTotals.no} returning participant${stats.firstTimeTotals.no === 1 ? "" : "s"}`}
           icon={Sparkles}
           tone="violet"
         />
         <MetricCard
           label="QR Scans At Camp"
           value={stats.qrScans}
-          note={`${stats.scannedParticipants} seats scanned`}
+          note={`${stats.scannedParticipants} participants scanned`}
           icon={ScanLine}
           tone="amber"
         />
@@ -255,61 +284,58 @@ export default async function AdminDashboardPage() {
         <div className="space-y-0.5">
           <h2 className="text-sm font-bold text-[#111320] sm:text-base">Attendance &amp; Participant Mix</h2>
           <p className="text-[11px] text-gray-400 sm:text-xs">
-            Every count is derived from verified paid registrations. Group counts include children.
+            Every count is derived from verified paid registrations and includes children.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
-          <BreakdownCard label="Physically Attending" value={stats.attendanceTotals.physically} detail="paid seats" />
-          <BreakdownCard label="Online" value={stats.attendanceTotals.online} detail="paid seats" />
-          <BreakdownCard label="Not Sure" value={stats.attendanceTotals.not_sure} detail="paid seats" />
-          <BreakdownCard label="Male" value={stats.genderTotals.male} detail="paid seats including children" />
-          <BreakdownCard label="Female" value={stats.genderTotals.female} detail="paid seats including children" />
+          <BreakdownCard label="Physically Attending" value={stats.attendanceTotals.physically} detail="paid participants" />
+          <BreakdownCard label="Online" value={stats.attendanceTotals.online} detail="paid participants" />
+          <BreakdownCard label="Not Sure" value={stats.attendanceTotals.not_sure} detail="paid participants" />
+          <BreakdownCard label="Male" value={stats.genderTotals.male} detail="participants including children" />
+          <BreakdownCard label="Female" value={stats.genderTotals.female} detail="participants including children" />
           <BreakdownCard label="Children" value={stats.children} detail="included in totals above" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:rounded-[16px]">
-          <Users className="h-5 w-5 shrink-0 text-[#0E7A6E]" />
-          <div>
-            <div className="text-[10px] font-semibold text-gray-500">Group Invitees</div>
-            <div className="text-lg font-black text-[#111320]">{stats.groupInvitees.toLocaleString()}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:rounded-[16px]">
-          <UserRound className="h-5 w-5 shrink-0 text-[#0E7A6E]" />
-          <div>
-            <div className="text-[10px] font-semibold text-gray-500">Group Paid Seats</div>
-            <div className="text-lg font-black text-[#111320]">{stats.groupPaidParticipants.toLocaleString()}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:rounded-[16px]">
-          <Baby className="h-5 w-5 shrink-0 text-[#0E7A6E]" />
-          <div>
-            <div className="text-[10px] font-semibold text-gray-500">Groups With Children</div>
-            <div className="text-lg font-black text-[#111320]">{stats.groupOrdersWithChildren.toLocaleString()}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:rounded-[16px]">
-          <Receipt className="h-5 w-5 shrink-0 text-[#0E7A6E]" />
-          <div>
-            <div className="text-[10px] font-semibold text-gray-500">Paid Orders</div>
-            <div className="text-lg font-black text-[#111320]">{stats.paidOrders.toLocaleString()}</div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3 sm:gap-4">
+        <DistributionBar
+          title="Attendance Mode"
+          subtitle="Paid participants by planned attendance."
+          segments={[
+            { label: "Physically", value: stats.attendanceTotals.physically, color: "bg-[#0E7A6E]" },
+            { label: "Online", value: stats.attendanceTotals.online, color: "bg-[#7FB6D9]" },
+            { label: "Not sure", value: stats.attendanceTotals.not_sure, color: "bg-amber-400" },
+          ]}
+        />
+        <DistributionBar
+          title="Gender Split"
+          subtitle="Paid participants, including children."
+          segments={[
+            { label: "Male", value: stats.genderTotals.male, color: "bg-violet-500" },
+            { label: "Female", value: stats.genderTotals.female, color: "bg-[#8EE3D6]" },
+          ]}
+        />
+        <DistributionBar
+          title="First-Time Participants"
+          subtitle="First-time participants versus returning participants."
+          segments={[
+            { label: "First-time", value: stats.firstTimeTotals.yes, color: "bg-[#0E7A6E]" },
+            { label: "Returning", value: stats.firstTimeTotals.no, color: "bg-gray-400" },
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2 sm:gap-4">
         <RankedList
           title="Attendance By State"
-          subtitle="Nigerian states ranked by paid seats, highest first."
+          subtitle="Nigerian states ranked by paid participants, highest first."
           rows={stats.byState}
           icon={MapPin}
         />
         <RankedList
           title="Attendance By Nation"
-          subtitle="Countries ranked by paid seats, highest first."
+          subtitle="Countries ranked by paid participants, highest first."
           rows={stats.byNation}
           icon={Globe2}
         />

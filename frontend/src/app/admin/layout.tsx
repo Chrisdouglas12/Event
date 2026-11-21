@@ -21,7 +21,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen flex bg-[#F4F5F7] text-[#111320]">
       {/* Dense Operational Sidebar */}
-      <aside className="w-64 bg-[#0E1020] text-gray-300 flex flex-col justify-between shrink-0 hidden md:flex border-r border-white/5">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col justify-between border-r border-white/5 bg-[#0E1020] text-gray-300 md:flex">
         <div>
           {/* Top Admin Brand */}
           <div className="p-5 border-b border-white/10 flex items-center justify-between">
