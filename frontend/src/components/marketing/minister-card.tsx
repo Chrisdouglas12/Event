@@ -69,7 +69,7 @@ function SocialLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-[#A9B4C6] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8EE3D6] hover:bg-[#8EE3D6]/15 hover:text-white"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#EAF9F7] hover:text-[#0E7A6E]"
     >
       {children}
     </a>
@@ -80,7 +80,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
   return (
     <TiltCard
       intensity={0}
-      className="group grid grid-cols-1 overflow-hidden md:grid-cols-12"
+      className="landing-card group grid grid-cols-1 overflow-hidden md:grid-cols-12"
     >
       {/* Portrait: fixed, left-aligned and identical for every minister. */}
       <div className="flex justify-start p-4 sm:p-6 md:col-span-5 md:p-8">
@@ -111,11 +111,11 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
 
         <div className="relative">
           <div className="flex items-center gap-3">
-            <span aria-hidden className="h-px w-6 bg-[#8EE3D6]" />
+            <span aria-hidden className="h-px w-6 bg-[#0E7A6E]" />
             <RevealText
               as="span"
               text={role}
-              className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#8EE3D6]"
+              className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]"
               speed={18}
             />
           </div>
@@ -123,20 +123,20 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
           <RevealText
             as="h3"
             text={name}
-            className="mt-4 text-2xl font-bold leading-[1.15] tracking-tight text-white sm:text-3xl lg:text-4xl"
+            className="mt-4 text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl lg:text-4xl"
             speed={14}
           />
 
           <RevealText
             as="p"
             text={bio}
-            className="mt-5 max-w-prose text-sm leading-relaxed text-[#B9C4D4] lg:text-[15px] lg:leading-7"
+            className="mt-5 max-w-prose text-sm leading-relaxed text-[#4B5563] lg:text-[15px] lg:leading-7"
             speed={9}
           />
         </div>
 
         {/* Socials */}
-        <div className="relative mt-8 flex items-center gap-2.5 border-t border-white/10 pt-6">
+        <div className="relative mt-8 flex items-center gap-2.5 border-t border-[#E5E7EB] pt-6">
           {socials?.youtube && (
             <SocialLink href={socials.youtube} label={`${name} YouTube`}>
               <YoutubeIcon className="h-4 w-4" />
@@ -157,7 +157,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
               <GlobeIcon className="h-4 w-4" />
             </SocialLink>
           )}
-          <span className="pl-1.5 text-xs font-medium text-[#8C99AC]">
+          <span className="pl-1.5 text-xs font-medium text-[#6B7280]">
             Horemow social channel
           </span>
         </div>
@@ -170,14 +170,14 @@ export function MoreMinistersCard() {
   return (
     <TiltCard
       intensity={0}
-      className="relative flex min-h-[300px] flex-col items-center justify-center space-y-5 overflow-hidden rounded-[4px] border-2 border-dashed border-[#3A404B] p-8 text-center transition-colors duration-300 hover:border-[#8EE3D6]/40 md:min-h-[400px] lg:p-12"
+      className="relative flex min-h-[300px] flex-col items-center justify-center space-y-5 overflow-hidden rounded-[4px] border-2 border-dashed border-[#CBD5E1] bg-white/95 p-8 text-center transition-colors duration-300 hover:border-[#0E7A6E]/40 md:min-h-[400px] lg:p-12"
     >
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-0 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8EE3D6] opacity-[0.08] blur-3xl"
       />
 
-      <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#8EE3D6]/30 bg-[#8EE3D6]/10 text-[#8EE3D6]">
+      <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
         <SparkleIcon className="h-6 w-6" />
       </div>
 
@@ -185,18 +185,18 @@ export function MoreMinistersCard() {
         <RevealText
           as="h4"
           text="More Ministers To Be Announced"
-          className="text-xl font-bold text-white lg:text-2xl"
+          className="text-xl font-bold text-[#0E1020] lg:text-2xl"
           speed={14}
         />
         <RevealText
           as="p"
           text="Additional minister names and profiles will appear here when supplied by the organizers."
-          className="text-sm leading-relaxed text-[#B9C4D4]"
+          className="text-sm leading-relaxed text-[#4B5563]"
           speed={9}
         />
       </div>
 
-      <div className="relative inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#8EE3D6]">
+      <div className="relative inline-flex items-center rounded-full border border-[#E5E7EB] bg-[#F3F4F6] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#0E7A6E]">
         Information pending
       </div>
     </TiltCard>

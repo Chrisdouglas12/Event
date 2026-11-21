@@ -134,18 +134,18 @@ export function Gallery3D() {
       />
 
       <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
-        <div className="mx-auto mb-8 max-w-2xl text-center lg:mb-10">
-          <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
+        <div className="landing-card mx-auto mb-8 max-w-2xl px-6 py-7 text-center lg:mb-10">
+          <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#0E7A6E]" />
           <RevealText
             as="h2"
             text="Moments From the Conference"
-            className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
+            className="text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
             speed={14}
           />
           <RevealText
             as="p"
             text="Drag the gallery or use the arrows to move through these moments in 3D."
-            className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
+            className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
             speed={12}
           />
         </div>

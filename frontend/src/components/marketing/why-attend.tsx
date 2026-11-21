@@ -33,19 +33,19 @@ export function WhyAttend() {
       className="cv-auto relative overflow-hidden py-12 lg:py-16"
       style={
         {
-          "--wa-accent": "#8EE3D6",
-          "--wa-accent-hover": "#7BD4C7",
+          "--wa-accent": "#0E7A6E",
+          "--wa-accent-hover": "#0C6A60",
           "--wa-ink": "#0E1020",
-          "--wa-text": "#FFFFFF",
-          "--wa-muted": "#B9C4D4",
-          "--wa-subtle": "#A9B4C6",
-          "--wa-line": "rgba(255,255,255,0.10)",
-          "--wa-frame": "#3A404B",
+          "--wa-text": "#0E1020",
+          "--wa-muted": "#4B5563",
+          "--wa-subtle": "#6B7280",
+          "--wa-line": "rgba(14,16,32,0.10)",
+          "--wa-frame": "#D1D5DB",
         } as React.CSSProperties
       }
     >
       <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
-        <TiltCard intensity={0} className="depth-stage">
+        <TiltCard intensity={0} className="landing-card depth-stage">
           <div className="relative p-6 sm:p-10 lg:p-14 xl:p-16">
             {/* Ambient glow */}
             <div

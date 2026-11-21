@@ -112,32 +112,32 @@ export function DetailsCard() {
     <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
       <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
         {/* Header */}
-        <div className="mb-12 text-center lg:mb-14">
+        <div className="landing-card mx-auto mb-12 max-w-2xl px-6 py-7 text-center lg:mb-14">
           <div className="flex items-center justify-center gap-3">
-            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
+            <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
             <RevealText
               as="span"
               text="Plan Your Journey"
-              className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+              className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
               speed={18}
             />
-            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
+            <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
           </div>
           <RevealText
             as="h2"
             text="Conference Details"
-            className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
+            className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
             speed={14}
           />
           <RevealText
             as="p"
             text="Essential dates, venue location, and session times"
-            className="mx-auto mt-5 max-w-xl text-sm text-[#B9C4D4] lg:text-base"
+            className="mx-auto mt-5 max-w-xl text-sm text-[#4B5563] lg:text-base"
             speed={9}
           />
         </div>
 
-        <TiltCard intensity={0} className="relative w-full overflow-hidden">
+        <TiltCard intensity={0} className="landing-card relative w-full overflow-hidden">
           {/* Ambient glow */}
           <div
             aria-hidden
@@ -163,19 +163,19 @@ export function DetailsCard() {
                 <RevealText
                   as="h3"
                   text={eventName}
-                  className="max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-white sm:text-3xl lg:text-[34px]"
+                  className="max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl lg:text-[34px]"
                   speed={14}
                 />
                 <RevealText
                   as="p"
                   text={`Theme: “${theme}”`}
-                  className="mt-4 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base lg:leading-7"
+                  className="mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
                   speed={9}
                 />
                 <RevealText
                   as="p"
                   text={`Registration: ${registrationFeeLabel} per participant`}
-                  className="mt-3 text-sm text-[#8C99AC]"
+                  className="mt-3 text-sm text-[#6B7280]"
                   speed={9}
                 />
               </div>
@@ -185,26 +185,26 @@ export function DetailsCard() {
                 {info.map(({ icon: Icon, title, note }) => (
                   <div
                     key={note}
-                    className="flex min-w-0 flex-col gap-3 rounded-[4px] border border-white/10 bg-white/[0.03] p-4 transition-colors duration-200 hover:border-[#8EE3D6]/30 lg:p-5"
+                    className="flex min-w-0 flex-col gap-3 rounded-[4px] border border-[#E5E7EB] bg-white/80 p-4 transition-colors duration-200 hover:border-[#0E7A6E]/40 lg:p-5"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#8EE3D6]/30 bg-[#8EE3D6]/10 text-[#8EE3D6]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold leading-snug text-white">{title}</div>
-                      <div className="mt-1 text-xs leading-snug text-[#8C99AC]">{note}</div>
+                      <div className="text-sm font-bold leading-snug text-[#0E1020]">{title}</div>
+                      <div className="mt-1 text-xs leading-snug text-[#6B7280]">{note}</div>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Footer actions */}
-              <div className="mt-8 flex items-center justify-between gap-4 border-t border-white/10 pt-6 lg:mt-auto lg:pt-8">
+              <div className="mt-8 flex items-center justify-between gap-4 border-t border-[#E5E7EB] pt-6 lg:mt-auto lg:pt-8">
                 <button
                   type="button"
                   onClick={handleShare}
                   aria-label="Share Conference Details"
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-[#A9B4C6] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8EE3D6] hover:bg-[#8EE3D6]/15 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8EE3D6]"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#EAF9F7] hover:text-[#0E7A6E] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
                 >
                   <ShareIcon className="h-4 w-4" />
                 </button>

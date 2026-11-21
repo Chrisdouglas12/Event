@@ -17,10 +17,10 @@ export function CtaBanner() {
           src="/images/crowd-bw_3.jpg"
           alt="Congregation worshipping"
           fill
-          className="object-cover opacity-15 mix-blend-overlay"
+          className="object-cover opacity-10 mix-blend-multiply"
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#07101e]/92 via-[#0A1D24]/80 to-[#07101e]/92" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-[#EAF9F7]/85 to-white/90" />
       </div>
 
       {/* Decorative Triangles matching KILO inspiration */}
@@ -35,17 +35,17 @@ export function CtaBanner() {
 
       {/* Content */}
       <div className="relative z-20 w-full px-6 sm:px-8 lg:px-8 xl:px-10">
-        <TiltCard intensity={0} className="px-8 py-12 sm:px-12 space-y-6 text-center">
+        <TiltCard intensity={0} className="landing-card px-8 py-12 sm:px-12 space-y-6 text-center">
           <RevealText
             as="h2"
             text={eventName}
-            className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white leading-[1.12] tracking-tight"
+            className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0E1020] leading-[1.12] tracking-tight"
             speed={14}
           />
           <RevealText
             as="p"
             text={`“${theme}” · ${datesText} · ${venueAddress}`}
-            className="text-base sm:text-lg text-[#B9C4D4] max-w-xl mx-auto"
+            className="text-base sm:text-lg text-[#4B5563] max-w-xl mx-auto"
             speed={9}
           />
           <div className="pt-2">

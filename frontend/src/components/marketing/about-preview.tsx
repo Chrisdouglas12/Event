@@ -9,7 +9,7 @@ export function AboutPreview() {
   return (
     <section data-scene="sea" data-enter className="cv-auto relative py-12 lg:py-16 overflow-hidden">
       <div className="w-full px-6 sm:px-8 lg:px-8 xl:px-10">
-        <TiltCard intensity={0} className="depth-stage">
+        <TiltCard intensity={0} className="landing-card depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}
             <div className="lg:col-span-6 relative flex justify-center lg:justify-start order-2 lg:order-1 min-h-[440px] depth-stage">
@@ -69,28 +69,28 @@ export function AboutPreview() {
               <RevealText
                 as="span"
                 text="About The Movement"
-                className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+                className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
                 speed={18}
               />
 
               <RevealText
                 as="h2"
                 text="Holiness Revival Movement Worldwide"
-                className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-white leading-[1.15] tracking-tight"
+                className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#0E1020] leading-[1.15] tracking-tight"
                 speed={14}
               />
 
               <RevealText
                 as="p"
                 text="Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement operating across Christian denominations to revive biblical righteousness, inward and outward holiness, sanctification, and rapture readiness."
-                className="text-base text-[#B9C4D4] leading-relaxed"
+                className="text-base text-[#4B5563] leading-relaxed"
                 speed={9}
               />
 
               <RevealText
                 as="p"
                 text="With chapters spanning Nigeria, East and West Africa, North America, and across the globe, the movement treats the 66 books of the Holy Bible as its absolute and final working manual."
-                className="text-sm text-[#A9B4C6] leading-relaxed"
+                className="text-sm text-[#6B7280] leading-relaxed"
                 speed={9}
               />
 

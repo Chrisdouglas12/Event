@@ -38,9 +38,9 @@ export function FlyerSection() {
             className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#8EE3D6] opacity-[0.10] blur-3xl"
           />
 
-          <div className="relative grid grid-cols-1 items-stretch lg:grid-cols-12">
+          <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
             {/* Left: flyer stage */}
-            <div className="relative flex items-center justify-center bg-[#0E1020]/60 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-white/10 lg:p-14">
+            <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-14">
               <div className="relative w-full max-w-[380px]">
                 {/* Accent frame, top-right */}
                 <div
@@ -81,7 +81,7 @@ export function FlyerSection() {
                 <RevealText
                   as="span"
                   text="Official Flyer"
-                  className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+                  className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
                   speed={18}
                 />
               </div>
@@ -89,14 +89,14 @@ export function FlyerSection() {
               <RevealText
                 as="h2"
                 text="Spread the Word — Share the Flyer"
-                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[40px] xl:text-5xl"
+                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
                 speed={14}
               />
 
               <RevealText
                 as="p"
                 text={flyerDescription}
-                className="mt-6 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base lg:leading-7"
+                className="mt-6 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
                 speed={9}
               />
 

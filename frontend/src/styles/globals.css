@@ -56,16 +56,46 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============ LANDING TRAVEL DEPTH ============ */
-/* The landing page is navy from the hero to the footer. Sections are mostly
-   transparent so the shared travel scene can be seen between the cards. */
+/* A fixed camp drone photo sits behind the page. The vertical gradient blends
+   from deep navy at the hero, through a lighter middle where the 3D scene is
+   visible, back into navy at the footer. The photo is its own layer so scroll
+   altitude can pull it back without detaching the page-long gradient. */
 .landing-navy {
   position: relative;
   isolation: isolate;
   background-color: #07101e;
   background-image:
-    radial-gradient(circle at 15% 12%, rgba(14, 122, 110, 0.2), transparent 32%),
-    radial-gradient(circle at 82% 68%, rgba(32, 78, 110, 0.22), transparent 34%),
-    linear-gradient(180deg, #080d1a 0%, #07101e 55%, #060c17 100%);
+    linear-gradient(
+      180deg,
+      rgba(5, 10, 20, 0.95) 0%,
+      rgba(7, 16, 30, 0.86) 16%,
+      rgba(7, 16, 30, 0.48) 45%,
+      rgba(7, 16, 30, 0.52) 68%,
+      rgba(5, 10, 20, 0.9) 100%
+    ),
+    radial-gradient(circle at 82% 34%, rgba(14, 122, 110, 0.18), transparent 32%),
+    radial-gradient(circle at 12% 62%, rgba(32, 78, 110, 0.18), transparent 36%);
+  box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.35);
+}
+
+.landing-backdrop {
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/images/camp-drone-shot.jpg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  transform: translate3d(0, var(--drone-lift, 0%), 0) scale(var(--drone-scale, 1.1));
+  transform-origin: center 45%;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-backdrop {
+    transform: none;
+  }
 }
 
 /* A lightweight, fixed star texture that continues behind every section.
@@ -75,15 +105,27 @@ h1, h2, h3, h4, h5, h6 {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
-  opacity: 0.58;
+  opacity: 0.32;
   background-image:
     radial-gradient(circle, rgba(142, 227, 214, 0.72) 0 0.7px, transparent 1px),
     radial-gradient(circle, rgba(255, 255, 255, 0.46) 0 0.55px, transparent 0.9px),
     radial-gradient(circle, rgba(127, 182, 217, 0.42) 0 0.6px, transparent 1px);
   background-size: 173px 173px, 241px 241px, 311px 311px;
   background-position: 31px 47px, 118px 83px, 73px 193px;
+}
+
+/* White content surfaces float above the photo + 3D depth layer. Keeping them
+   slightly translucent lets the atmosphere through without hurting legibility. */
+.landing-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(14, 16, 32, 0.08);
+  border-radius: 4px;
+  box-shadow:
+    0 24px 70px rgba(2, 8, 18, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--color-ink);
 }
 
 /* Opaque-enough backgrounds instead of backdrop-filter: blurring every card
@@ -528,7 +570,7 @@ h1, h2, h3, h4, h5, h6 {
 .hero-static-fallback {
   background-image:
     linear-gradient(90deg, rgba(14, 16, 32, 0.18), rgba(14, 16, 32, 0.72)),
-    url("/images/campground_2.jpg");
+    url("/images/camp-drone-shot.jpg");
   background-position: center;
   background-size: cover;
 }

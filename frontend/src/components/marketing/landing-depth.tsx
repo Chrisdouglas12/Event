@@ -16,7 +16,9 @@ import {
  * this layer eases into a travel "chapter": aircraft over the hero/why section,
  * cars on a road through the people sections, and ships on a sea lane around
  * the CTA/about sections. All motion uses the same damped scroll value and one
- * clock, so vehicles, route guides and the camera stay in time.
+ * clock, so vehicles, route guides and the camera stay in time. Scrolling down
+ * also lifts the camera like a rising drone, shrinking the whole scene; scrolling
+ * up brings it back to normal size.
  */
 
 type SceneName = "hero" | "air" | "road" | "sea" | "arrival";
@@ -90,6 +92,10 @@ const SCENE_CAMERA: Record<SceneName, { x: number; y: number; z: number }> = {
   sea: { x: 1.4, y: -1.2, z: 12.5 },
   arrival: { x: 0, y: 0.7, z: 11.5 },
 };
+
+// Scrolling down lifts the virtual drone: the camera pulls back and rises, so
+// every 3D element shrinks and slips behind. Scrolling up restores the altitude.
+const DRONE_ASCENT = { z: 8.5, y: 2.4, lookY: 0.6 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const smooth = (v: number) => {
@@ -466,10 +472,16 @@ export function LandingDepth() {
         const targetSpread = mix(a.spread, b.spread, blend) * (1 + progress * 0.35);
         const spin = mix(a.spin, b.spin, blend);
 
+        const altitude = smooth(progress);
+
         starLayers.forEach((layer) => {
           layer.points.rotation.y += step * layer.speed;
           layer.points.rotation.z += step * layer.speed * 0.3;
-          layer.points.position.y = mix(layer.points.position.y, progress * layer.depth * 4, damp(3));
+          layer.points.position.y = mix(
+            layer.points.position.y,
+            -altitude * layer.depth * 4,
+            damp(3)
+          );
         });
 
         core.position.x = mix(core.position.x, targetX, damp(3));
@@ -522,9 +534,17 @@ export function LandingDepth() {
           { x: 0, y: 0, z: 0 }
         );
         camera.position.x = mix(camera.position.x, camTarget.x + pointer.x * 0.35, damp(2));
-        camera.position.y = mix(camera.position.y, camTarget.y + pointer.y * 0.3, damp(2));
-        camera.position.z = mix(camera.position.z, camTarget.z - progress * 1.2, damp(2));
-        camera.lookAt(0, 0, 0);
+        camera.position.y = mix(
+          camera.position.y,
+          camTarget.y + pointer.y * 0.3 + altitude * DRONE_ASCENT.y,
+          damp(2)
+        );
+        camera.position.z = mix(
+          camera.position.z,
+          camTarget.z + altitude * DRONE_ASCENT.z,
+          damp(2)
+        );
+        camera.lookAt(0, altitude * DRONE_ASCENT.lookY, 0);
 
         const envelope =
           smooth((progress - 0.01) / 0.08) *
@@ -624,7 +644,7 @@ export function LandingDepth() {
   }, []);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[2]">
       <div ref={hostRef} className="h-full w-full" />
     </div>
   );

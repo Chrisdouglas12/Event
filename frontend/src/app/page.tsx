@@ -1,5 +1,6 @@
 import { Header } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
+import { LandingBackdrop } from "@/components/marketing/landing-backdrop";
 import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { WhyAttend } from "@/components/marketing/why-attend";
@@ -42,7 +43,8 @@ export default function HomePage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(eventStructuredData) }}
         />
-        {/* One scroll-synced WebGL layer for the whole page. */}
+        {/* Fixed camp photo plus one scroll-synced WebGL layer for the whole page. */}
+        <LandingBackdrop />
         <LandingDepth />
         <div className="relative z-10 flex flex-1 flex-col">
           {/* 55px Slim Header */}
@@ -52,25 +54,25 @@ export default function HomePage() {
           <Hero />
 
           {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
-          <div className="joined-flow mx-4 border-x border-white/10 bg-[rgba(7,16,30,0.78)] shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
+          <div className="joined-flow mx-4 border-x border-white/15 bg-white/[0.02] shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
             <WhyAttend />
             <TimelineDivider />
 
             {/* Featured Ministers */}
             <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
               <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
-                <div className="mx-auto mb-10 max-w-2xl text-center lg:mb-12">
-                  <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
+                <div className="landing-card mx-auto mb-10 max-w-2xl px-6 py-7 text-center lg:mb-12">
+                  <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#0E7A6E]" />
                   <RevealText
                     as="h2"
                     text="Featured Ministers"
-                    className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
+                    className="text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
                     speed={14}
                   />
                   <RevealText
                     as="p"
                     text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-                    className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
+                    className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
                     speed={12}
                   />
                 </div>

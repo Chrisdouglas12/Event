@@ -434,10 +434,10 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
       const ro = new ResizeObserver(layout);
       ro.observe(host);
 
-      // Load the campground photo (public/images/campground_2.jpg)
+      // Load the camp drone photo used across the landing page
       // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
       new THREE.TextureLoader().load(
-        "/images/campground_2.jpg",
+        "/images/camp-drone-shot.jpg",
         (tex) => {
           if (disposed) {
             tex.dispose();
