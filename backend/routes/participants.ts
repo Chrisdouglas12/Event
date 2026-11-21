@@ -152,6 +152,18 @@ function phonesMatch(a: unknown, b: unknown): boolean {
   return da.length >= 10 && db.length >= 10 && da.slice(-10) === db.slice(-10);
 }
 
+/** Match an indexed phone field by exact E.164 or legacy last-10 storage. */
+function phoneFieldMatch(
+  field: string,
+  exact: string | null,
+  last10: string
+): { $or: Record<string, unknown>[] } {
+  const clauses: Record<string, unknown>[] = [];
+  if (exact) clauses.push({ [field]: exact });
+  clauses.push({ [field]: { $regex: `${last10}$` } });
+  return { $or: clauses };
+}
+
 function attendanceModeOrFallback(value: unknown): AttendanceMode {
   return typeof value === 'string' && (ATTENDANCE_MODES as readonly string[]).includes(value)
     ? value as AttendanceMode
@@ -882,6 +894,134 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[POST /checkout/initialize] error:', error);
     return res.status(503).json({ error: 'Checkout is unavailable right now.' });
+  }
+});
+
+/**
+ * Phone-based ticket recovery. Returns only paid tickets tied to the submitted
+ * number (payer, participant, guardian or group leader) with enough metadata to
+ * identify each QR. Sensitive: rate limited per IP + phone in server.ts.
+ */
+router.post('/tickets/lookup', async (req: Request, res: Response) => {
+  try {
+    const rawPhone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
+    const digits = rawPhone.replace(/\D/g, '');
+    if (digits.length < 10) {
+      return res.status(400).json({ error: 'Enter the phone number you registered with.' });
+    }
+
+    const exact = toE164(rawPhone);
+    const last10 = digits.slice(-10);
+    const payerMatch = phoneFieldMatch('payerPhoneE164', exact, last10);
+
+    const payerOrders: any[] = await Order.find({
+      status: PAID_STATUS,
+      ...payerMatch,
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const participantRows: any[] = await Participant.find({
+      deletedAt: null,
+      $or: [
+        ...phoneFieldMatch('phoneE164', exact, last10).$or,
+        ...phoneFieldMatch('guardianPhoneE164', exact, last10).$or,
+      ],
+    })
+      .select('orderId')
+      .limit(200)
+      .lean();
+
+    const leaderGroups: any[] = await Group.find(
+      phoneFieldMatch('leaderPhoneE164', exact, last10)
+    )
+      .select('orderId')
+      .limit(50)
+      .lean();
+
+    const orderIds = new Set<string>();
+    payerOrders.forEach((order) => orderIds.add(String(order._id)));
+    participantRows.forEach((row) => {
+      if (row.orderId) orderIds.add(String(row.orderId));
+    });
+    leaderGroups.forEach((group) => {
+      if (group.orderId) orderIds.add(String(group.orderId));
+    });
+
+    const objectIds = [...orderIds].filter((id) => mongoose.isValidObjectId(id));
+    const extraOrders: any[] = objectIds.length
+      ? await Order.find({ _id: { $in: objectIds }, status: PAID_STATUS })
+          .sort({ createdAt: -1 })
+          .limit(50)
+          .lean()
+      : [];
+
+    const ordersById = new Map<string, any>();
+    [...extraOrders, ...payerOrders].forEach((order) => ordersById.set(String(order._id), order));
+
+    const bundles = await Promise.all(
+      [...ordersById.values()].slice(0, 50).map((order) => loadTickets(order))
+    );
+
+    const tickets: any[] = [];
+    for (const bundle of bundles) {
+      // Never expose the group management token in a phone-only recovery.
+      const safeBundle = {
+        order: bundle.order,
+        participants: bundle.participants,
+        group: bundle.group
+          ? {
+              id: bundle.group.id,
+              totalSeats: bundle.group.totalSeats,
+              claimedSeats: bundle.group.claimedSeats,
+              qrToken: bundle.group.qrToken,
+            }
+          : null,
+      };
+
+      if (bundle.group) {
+        tickets.push({
+          id: bundle.group.id,
+          kind: 'group',
+          name: bundle.order.groupName || `${bundle.order.reference} Group`,
+          reference: bundle.order.reference,
+          identifier: `${bundle.group.totalSeats} paid seats`,
+          note: 'One scan checks in the whole group',
+          qrToken: bundle.group.qrToken,
+          bundle: safeBundle,
+        });
+      }
+
+      for (const participant of bundle.participants) {
+        tickets.push({
+          id: participant.id,
+          kind: 'individual',
+          name: participant.name,
+          reference: bundle.order.reference,
+          identifier: participant.refCode,
+          note: bundle.order.isGroup ? 'Group seat' : 'Individual ticket',
+          qrToken: participant.qrToken,
+          bundle: safeBundle,
+        });
+      }
+    }
+
+    tickets.sort((a, b) => {
+      if (a.reference !== b.reference) return b.reference.localeCompare(a.reference);
+      if (a.kind !== b.kind) return a.kind === 'group' ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    return res.json({
+      status: 'ok',
+      phone: exact,
+      count: tickets.length,
+      tickets,
+    });
+  } catch (error) {
+    console.error('[POST /tickets/lookup] error:', error);
+    return res.status(502).json({ error: 'Could not look up tickets right now. Please retry.' });
   }
 });
 

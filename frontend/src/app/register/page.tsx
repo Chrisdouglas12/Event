@@ -244,7 +244,7 @@ function SearchableSelect({
   value,
   options,
   onChange,
-  onQueryChange,
+  onTyping,
   placeholder,
   disabled = false,
   emptyMessage = "No matches found",
@@ -256,7 +256,7 @@ function SearchableSelect({
   value: string;
   options: readonly string[];
   onChange: (value: string) => void;
-  onQueryChange?: (value: string) => void;
+  onTyping?: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   emptyMessage?: string;
@@ -312,7 +312,6 @@ function SearchableSelect({
 
   const resetToValue = () => {
     setQuery(value);
-    onQueryChange?.(value);
     setOpen(false);
   };
 
@@ -352,7 +351,7 @@ function SearchableSelect({
       className="relative"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setOpen(false);
+          resetToValue();
         }
       }}
     >
@@ -379,7 +378,7 @@ function SearchableSelect({
         onChange={(event) => {
           const next = event.target.value;
           setQuery(next);
-          onQueryChange?.(next);
+          onTyping?.(next);
           setOpen(true);
           setActiveIndex(0);
         }}
@@ -874,8 +873,7 @@ export default function RegisterPage() {
           placeholder="Search countries..."
           emptyMessage="No countries match your search"
           inputProps={fp("country", "pl-10 pr-10")}
-          onQueryChange={(next) => {
-            setCountry(next);
+          onTyping={() => {
             clearErr("country");
             clearErr("state");
           }}
@@ -922,10 +920,7 @@ export default function RegisterPage() {
             "state",
             "pl-10 pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
           )}
-          onQueryChange={(next) => {
-            setState(next);
-            clearErr("state");
-          }}
+          onTyping={() => clearErr("state")}
           onChange={(next) => {
             setState(next);
             clearErr("state");

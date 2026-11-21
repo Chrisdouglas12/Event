@@ -128,6 +128,17 @@ app.use(
   })
 );
 app.use(
+  "/api/tickets/lookup",
+  rateLimitSensitive({
+    name: "ticket_lookup",
+    limit: 8,
+    windowMs: 15 * 60_000,
+    key: (req) => String(req.body?.phone || "").replace(/\D/g, "").slice(-10),
+    failureWeights: { 400: 2 },
+    violationWeight: 2,
+  })
+);
+app.use(
   "/api/admin",
   rateLimitSensitive({
     name: "admin_api",

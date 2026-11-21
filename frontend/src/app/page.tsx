@@ -7,6 +7,7 @@ import { LandingSettingsProvider } from "@/components/marketing/landing-settings
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
+import { TicketLookup } from "@/components/marketing/ticket-lookup";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { Gallery3D } from "@/components/marketing/gallery-3d";
@@ -100,6 +101,8 @@ export default function HomePage() {
 
             <TimelineDivider />
             <CtaBanner />
+            <TimelineDivider />
+            <TicketLookup />
             <TimelineDivider />
             <DetailsCard />
             <TimelineDivider />

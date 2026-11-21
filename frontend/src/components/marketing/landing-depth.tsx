@@ -81,6 +81,7 @@ const VEHICLE_LANES: {
 }[] = [
   { kind: "aircraft", scene: "air", count: 3, y: 2.4, z: -1.5, size: 2.5, speed: 0.045, wobble: 0.24 },
   { kind: "car", scene: "road", count: 4, y: -1.9, z: 2.4, size: 1.35, speed: 0.085, wobble: 0.02 },
+  { kind: "trekker", scene: "road", count: 5, y: -1.45, z: 2.9, size: 0.85, speed: 0.028, wobble: 0.05 },
   { kind: "ship", scene: "sea", count: 2, y: -2.2, z: -1.2, size: 2.4, speed: 0.035, wobble: 0.12 },
   { kind: "aircraft", scene: "arrival", count: 2, y: 1.2, z: 0.5, size: 2.2, speed: 0.05, wobble: 0.2, reverse: true },
 ];
@@ -133,12 +134,10 @@ export function LandingDepth() {
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
-      const lowPower =
-        reduceMotion ||
-        saveData ||
-        window.innerWidth < 1024 ||
-        (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4);
-      if (lowPower) return;
+      // Only genuinely unavailable/save-data/reduced-motion environments skip
+      // the layer. The scene is capped at 30fps below, so ordinary desktops and
+      // phones still get the travel animation.
+      if (reduceMotion || saveData) return;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
@@ -182,17 +181,71 @@ export function LandingDepth() {
       };
 
       // ---------- Depth layers ----------
-      const starLayers: { points: Three.Points; depth: number; speed: number }[] = [];
+      const starLayers: {
+        points: Three.Points;
+        lines: Three.LineSegments;
+        depth: number;
+        speed: number;
+      }[] = [];
       STAR_LAYERS.forEach((cfg) => {
+        const positions = shellPoints(cfg.count, cfg.rMin, cfg.rMax);
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.BufferAttribute(shellPoints(cfg.count, cfg.rMin, cfg.rMax), 3));
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         const mat = track(
           new THREE.PointsMaterial({ color: 0x8ee3d6, size: cfg.size, sizeAttenuation: true, opacity: cfg.opacity }),
           cfg.opacity
         );
         const points = new THREE.Points(geo, mat);
         scene.add(points);
-        starLayers.push({ points, depth: cfg.depth, speed: cfg.speed });
+
+        // Link nearby stars into drifting constellations. Each segment comes from
+        // the same shell, so the lines travel with their own star layer.
+        const vertices: number[] = [];
+        const used = new Set<number>();
+        const maxSegments = Math.floor(cfg.count * 0.18);
+        const maxDistance = Math.max(2.5, (cfg.rMax - cfg.rMin) * 0.55);
+        let segments = 0;
+
+        for (let i = 0; i < cfg.count && segments < maxSegments; i++) {
+          if (used.has(i)) continue;
+          let nearest = -1;
+          let bestDistanceSq = maxDistance * maxDistance;
+
+          for (let j = 0; j < cfg.count; j++) {
+            if (j === i || used.has(j)) continue;
+            const dx = positions[i * 3] - positions[j * 3];
+            const dy = positions[i * 3 + 1] - positions[j * 3 + 1];
+            const dz = positions[i * 3 + 2] - positions[j * 3 + 2];
+            const distanceSq = dx * dx + dy * dy + dz * dz;
+            if (distanceSq < bestDistanceSq) {
+              bestDistanceSq = distanceSq;
+              nearest = j;
+            }
+          }
+
+          if (nearest < 0) continue;
+          vertices.push(
+            positions[i * 3],
+            positions[i * 3 + 1],
+            positions[i * 3 + 2],
+            positions[nearest * 3],
+            positions[nearest * 3 + 1],
+            positions[nearest * 3 + 2]
+          );
+          used.add(i);
+          used.add(nearest);
+          segments += 1;
+        }
+
+        const linkGeo = new THREE.BufferGeometry();
+        linkGeo.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+        const linkMat = track(
+          new THREE.LineBasicMaterial({ color: 0x8ee3d6, opacity: cfg.opacity * 0.5 }),
+          cfg.opacity * 0.5
+        );
+        const lines = new THREE.LineSegments(linkGeo, linkMat);
+        scene.add(lines);
+        starLayers.push({ points, lines, depth: cfg.depth, speed: cfg.speed });
       });
 
       // ---------- Core formation (kept subtle behind the cards) ----------
@@ -409,6 +462,10 @@ export function LandingDepth() {
         const results = await Promise.all(
           kinds.map(async (kind) => {
             try {
+              // Trekkers are procedural silhouettes; no GLB download needed.
+              if (kind === "trekker") {
+                return [kind, createFallbackModel(THREE, kind)] as const;
+              }
               return [kind, await loadTravelModel(THREE, kind)] as const;
             } catch (error) {
               console.warn(`[LandingDepth] ${kind} model unavailable, using fallback:`, error);
@@ -432,6 +489,12 @@ export function LandingDepth() {
             .forEach((vehicle) => {
               const model = createModelInstance(THREE, source, lane.size);
               if (vehicle.reverse) model.rotation.y += Math.PI;
+              const limbs: Three.Object3D[] = [];
+              model.traverse((child) => {
+                const limb = (child as Three.Object3D).userData?.trekkerLimb;
+                if (limb === "left" || limb === "right") limbs.push(child);
+              });
+              if (limbs.length === 2) vehicle.group.userData.trekkerLimbs = limbs;
               vehicle.group.add(model);
             });
         });
@@ -482,6 +545,12 @@ export function LandingDepth() {
             -altitude * layer.depth * 4,
             damp(3)
           );
+
+          // Constellations ride their star shell, with a slight independent
+          // drift so the line work feels alive instead of glued on.
+          layer.lines.rotation.copy(layer.points.rotation);
+          layer.lines.rotation.y += Math.sin(time * 0.2 + layer.depth * 8) * 0.08;
+          layer.lines.position.copy(layer.points.position);
         });
 
         core.position.x = mix(core.position.x, targetX, damp(3));
@@ -518,6 +587,14 @@ export function LandingDepth() {
           );
           vehicle.group.position.z = mix(vehicle.group.position.z, vehicle.z, damp(6));
           vehicle.group.rotation.z = Math.cos(travel * Math.PI * 2) * 0.06 * vehicle.wobble * 8;
+
+          const limbs = vehicle.group.userData.trekkerLimbs as Three.Object3D[] | undefined;
+          if (limbs && limbs.length === 2) {
+            const stride = Math.sin(time * 6 + vehicle.phase * 10) * 0.55;
+            limbs[0].rotation.z = stride;
+            limbs[1].rotation.z = -stride;
+          }
+
           const scale = Math.max(0.001, weight);
           vehicle.group.scale.setScalar(scale);
         });
@@ -546,9 +623,9 @@ export function LandingDepth() {
         );
         camera.lookAt(0, altitude * DRONE_ASCENT.lookY, 0);
 
-        const envelope =
-          smooth((progress - 0.01) / 0.08) *
-          (1 - smooth((progress - 0.95) / 0.05));
+        // Stay visible from the very top (including the Find My Tickets card)
+        // and only fade out as the footer arrives.
+        const envelope = 1 - smooth((progress - 0.94) / 0.06);
 
         currentColor.copy(darkColor);
         tracked.forEach(({ mat, base, scene }) => {
