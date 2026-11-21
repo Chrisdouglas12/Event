@@ -15,8 +15,8 @@ export function Hero() {
 
   return (
     <section className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden">
-      {/* Heavenly sun/halo behind the WebGL globe */}
-      <div aria-hidden className="hero-heaven absolute inset-0 pointer-events-none" />
+      {/* Heavenly sun/halo behind the WebGL globe (mobile only; hidden on desktop) */}
+      <div aria-hidden className="hero-heaven absolute inset-0 pointer-events-none lg:hidden" />
 
       {/* Layer 1: Globe background (slowest / farthest) */}
       <ParallaxLayer speed={0.4} className="absolute inset-0">
@@ -26,7 +26,7 @@ export function Hero() {
       <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-8 pt-[350px] sm:pt-[390px] pb-14 lg:py-20 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         <div className="hidden lg:block lg:col-span-5" />
 
-        <div className="lg:col-span-7 flex flex-col items-start space-y-5 sm:space-y-8 text-left w-full">
+        <div data-hero-content className="lg:col-span-7 flex flex-col items-start space-y-5 sm:space-y-8 text-left w-full">
           
           {/* Layer 2: Date badge */}
           <ParallaxLayer speed={0.04}>
