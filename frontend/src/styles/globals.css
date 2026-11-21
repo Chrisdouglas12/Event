@@ -146,6 +146,14 @@ h1, h2, h3, h4, h5, h6 {
   contain-intrinsic-size: auto 900px;
 }
 
+/* Landing sections recede subtly as they move away from the viewport centre.
+   The scale lives in a variable so the view-timeline enter animation below can
+   keep animating transform without losing the depth effect. */
+.landing-navy [data-enter] {
+  transform-origin: center 40%;
+  transform: perspective(1400px) scale(var(--section-scale, 1));
+}
+
 /* Typing reveal: the ghost reserves the final layout while the visible layer
    is filled one character at a time by a single shared rAF loop. */
 .typing-text {
@@ -204,8 +212,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes soft-enter {
-  from { opacity: 0; transform: translate3d(0, 24px, 0); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: perspective(1400px) translate3d(0, 24px, 0) scale(var(--section-scale, 1));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) scale(var(--section-scale, 1));
+  }
 }
 
 .parallax-subtle { --parallax-drift: 28px; }
@@ -570,7 +584,7 @@ h1, h2, h3, h4, h5, h6 {
 .hero-static-fallback {
   background-image:
     linear-gradient(90deg, rgba(14, 16, 32, 0.18), rgba(14, 16, 32, 0.72)),
-    url("/images/camp-drone-shot.jpg");
+    url("/images/campground_2.jpg");
   background-position: center;
   background-size: cover;
 }

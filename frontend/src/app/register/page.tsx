@@ -625,82 +625,77 @@ export default function RegisterPage() {
     loading || configState !== "ready" || !currencyAvailable[currency] || !registrationOpen || totalMinor === null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F9FAFB]">
+    <div className="flex min-h-screen flex-col bg-[#07101e]">
       <Header />
 
-      {/* Hero with overlapping registration card */}
-      <section className="relative w-full overflow-hidden bg-[#0E1020] px-6 pb-28 pt-14 text-white sm:px-8 lg:pb-40 lg:pt-20">
-        <div className="absolute inset-0 z-0">
-          <HeroBackground align="left" desktopLift={10} />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/25 to-[#0E1020]/75" />
+      {/* Fixed globe on the left, registration on the right. */}
+      <section className="relative w-full overflow-hidden px-4 pb-20 pt-[360px] sm:px-8 sm:pt-[420px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-16">
+        <div className="fixed inset-0 z-0">
+          <HeroBackground align="left" desktopLift={10} shrinkOnScroll />
+          <div className="pointer-events-none absolute inset-0 bg-[#0E1020]/60 backdrop-blur-[2px]" />
         </div>
 
-        <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 items-center gap-8 lg:grid-cols-12">
+        <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 lg:grid-cols-12 lg:gap-8">
           <div className="hidden lg:block lg:col-span-5" />
-          <div data-hero-content className="space-y-4 text-left lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#8EE3D6]">
-              <span>IHGC 2026 Registration</span>
-            </div>
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-[42px] xl:text-5xl">
-              Register For The 2026 General Conference
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-xs text-gray-400 lg:text-sm">
-              <div>• 8 – 11 Dec 2026</div>
-              <div>• Kwali, Abuja</div>
-              <div>• Instant QR Ticket</div>
-            </div>
-          </div>
-        </div>
-      </section>
+          <div data-hero-content className="space-y-6 lg:col-span-7">
+            {/* Form card */}
+            <div className="overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+              {/* All conference and registration details live inside the form. */}
+              <div className="border-b border-gray-100 p-6 sm:p-8 lg:px-10">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#CDEFEA] bg-[#EAF9F7] px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#0E7A6E]">
+                    <span>IHGC 2026 Registration</span>
+                  </div>
 
-      {/* Form + summary */}
-      <section className="relative z-20 -mt-20 w-full px-4 pb-20 sm:px-8 lg:-mt-28 lg:pb-28">
-        <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-          {/* Form card */}
-          <div className="overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)] lg:col-span-8">
-            {/* Card top brand header */}
-            <div className="flex flex-col justify-between gap-4 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:p-8 lg:px-10">
-              <div className="flex items-center gap-3">
-                <Image
-                  src={SITE_CONFIG.logo.src}
-                  alt="Horemow"
-                  width={120}
-                  height={38}
-                  className="h-8 w-auto object-contain"
-                  style={{ width: "auto" }}
-                />
-                <div className="h-6 w-px bg-gray-200" />
-                <div className="text-xs font-bold uppercase tracking-wider text-[#111320]">Registration Portal</div>
-              </div>
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src={SITE_CONFIG.logo.src}
+                      alt="Horemow"
+                      width={110}
+                      height={34}
+                      className="h-7 w-auto object-contain"
+                      style={{ width: "auto" }}
+                    />
+                    <div className="flex items-center gap-1.5 rounded-full bg-[#F3F4F6] p-1">
+                      {CURRENCY_LIST.map((c) => {
+                        const isAvailable = configState === "ready" && currencyAvailable[c];
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            disabled={configState !== "ready"}
+                            aria-pressed={currency === c}
+                            onClick={() => {
+                              setCurrency(c);
+                              clearErr("customNairaAmount");
+                            }}
+                            className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition-all ${
+                              currency === c
+                                ? "bg-white text-[#0E1020] shadow-xs"
+                                : configState !== "ready" || isAvailable
+                                  ? "text-gray-500 hover:text-black"
+                                  : "cursor-not-allowed text-gray-300 line-through"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
 
-              {/* Currency selector */}
-              <div className="flex items-center gap-1.5 self-start rounded-full bg-[#F3F4F6] p-1 sm:self-auto">
-                {CURRENCY_LIST.map((c) => {
-                  const isAvailable = configState === "ready" && currencyAvailable[c];
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      disabled={configState !== "ready"}
-                      aria-pressed={currency === c}
-                      onClick={() => {
-                        setCurrency(c);
-                        clearErr("customNairaAmount");
-                      }}
-                      className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition-all ${
-                        currency === c
-                          ? "bg-white text-[#0E1020] shadow-xs"
-                          : configState !== "ready" || isAvailable
-                            ? "text-gray-500 hover:text-black"
-                            : "cursor-not-allowed text-gray-300 line-through"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  );
-                })}
+                <h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-tight text-[#111320] sm:text-3xl xl:text-[34px]">
+                  Register For The 2026 General Conference
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500 sm:text-sm">
+                  <span>8 – 11 Dec 2026</span>
+                  <span aria-hidden className="hidden h-3 w-px bg-gray-200 sm:block" />
+                  <span>Kwali, Abuja</span>
+                  <span aria-hidden className="hidden h-3 w-px bg-gray-200 sm:block" />
+                  <span>Instant QR Ticket</span>
+                </div>
               </div>
-            </div>
 
             {/* Form body */}
             <form
@@ -1295,7 +1290,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Order summary (sticky on desktop) */}
-          <aside className="lg:col-span-4">
+          <aside>
             <div className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order summary</h2>
 
@@ -1391,6 +1386,7 @@ export default function RegisterPage() {
               </button>
             </div>
           </aside>
+          </div>
         </div>
       </section>
 

@@ -25,18 +25,23 @@ import {
  * oval; the lens shift keeps it a perfect circle. The globe is centred in the
  * free space between the screen edge and the hero text column
  * ([data-hero-content]), so the gap to the screen edge equals the gap to the boxes.
- * `desktopLift` nudges the globe upward in pixels on desktop only.
+ * `desktopLift` nudges the globe upward in pixels on desktop only. With
+ * `shrinkOnScroll`, the globe keeps shrinking over the full page like a drone
+ * rising, instead of only reacting to the first viewport.
  */
 
 // Visual radius of the globe + rings, in world units (outer ring 2.44 + flag depth)
 const R_VIS = 2.55;
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 export function HeroBackground({
   align = "left",
   desktopLift = 0,
+  shrinkOnScroll = false,
 }: {
   align?: "left" | "right";
   desktopLift?: number;
+  shrinkOnScroll?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -441,10 +446,10 @@ export function HeroBackground({
       const ro = new ResizeObserver(layout);
       ro.observe(host);
 
-      // Load the camp drone photo used across the landing page
+      // Load the campground photo used behind the hero globe.
       // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
       new THREE.TextureLoader().load(
-        "/images/camp-drone-shot.jpg",
+        "/images/campground_2.jpg",
         (tex) => {
           if (disposed) {
             tex.dispose();
@@ -544,12 +549,15 @@ export function HeroBackground({
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;
 
         // Scroll: the globe settles back into the page as the next section
-        // arrives, handing off to the page-wide depth layer.
-        const scrollT = Math.min(1, Math.max(0, window.scrollY / Math.max(1, window.innerHeight)));
-        worldScroll.scale.setScalar(1 - scrollT * 0.22);
-        worldScroll.position.set(0, -scrollT * 1.4, -scrollT * 2.5);
-        worldScroll.rotation.z = scrollT * 0.18;
-        stars.position.y = -scrollT * 1.5;
+        // arrives. On the registration page it is fixed, so the shrink is tied
+        // to the full document height to keep the drone-ascent feel throughout.
+        const scrollT = shrinkOnScroll
+          ? clamp01(window.scrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight))
+          : clamp01(window.scrollY / Math.max(1, window.innerHeight));
+        worldScroll.scale.setScalar(1 - scrollT * (shrinkOnScroll ? 0.42 : 0.22));
+        worldScroll.position.set(0, -scrollT * (shrinkOnScroll ? 3.4 : 1.4), -scrollT * 2.5);
+        worldScroll.rotation.z = scrollT * (shrinkOnScroll ? 0.28 : 0.18);
+        stars.position.y = -scrollT * (shrinkOnScroll ? 2.6 : 1.5);
 
         // Backdrop: fade in, drift, and shift opposite to the globe for depth
         const u = backdropMat.uniforms;
@@ -619,7 +627,7 @@ export function HeroBackground({
       disposed = true;
       cleanup();
     };
-  }, [align, desktopLift]);
+  }, [align, desktopLift, shrinkOnScroll]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">

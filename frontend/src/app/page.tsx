@@ -2,6 +2,7 @@ import { Header } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
 import { LandingBackdrop } from "@/components/marketing/landing-backdrop";
 import { LandingDepth } from "@/components/marketing/landing-depth";
+import { LandingSectionDepth } from "@/components/marketing/landing-section-depth";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard, MoreMinistersCard } from "@/components/marketing/minister-card";
@@ -46,6 +47,7 @@ export default function HomePage() {
         {/* Fixed camp photo plus one scroll-synced WebGL layer for the whole page. */}
         <LandingBackdrop />
         <LandingDepth />
+        <LandingSectionDepth />
         <div className="relative z-10 flex flex-1 flex-col">
           {/* 55px Slim Header */}
           <Header />
