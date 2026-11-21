@@ -8,7 +8,7 @@ import { TiltCard } from "@/components/ui/tilt-card";
 export function AboutPreview() {
   return (
     <section data-scene="sea" data-enter className="cv-auto relative py-12 lg:py-16 overflow-hidden">
-      <div className="w-full px-6 sm:px-8 lg:px-8 xl:px-10">
+      <div className="w-full px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="landing-card depth-stage">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center p-6 sm:p-10 lg:p-14">
             {/* Left Column: Asymmetric Image Collage with real depth layers */}

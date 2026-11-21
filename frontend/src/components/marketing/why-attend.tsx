@@ -44,7 +44,7 @@ export function WhyAttend() {
         } as React.CSSProperties
       }
     >
-      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
+      <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="landing-card depth-stage">
           <div className="relative p-6 sm:p-10 lg:p-14 xl:p-16">
             {/* Ambient glow */}

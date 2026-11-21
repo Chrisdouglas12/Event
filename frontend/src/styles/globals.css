@@ -106,16 +106,37 @@ h1, h2, h3, h4, h5, h6 {
 .landing-navy::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -12%;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.32;
+  opacity: 0.42;
   background-image:
-    radial-gradient(circle, rgba(142, 227, 214, 0.72) 0 0.7px, transparent 1px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.46) 0 0.55px, transparent 0.9px),
-    radial-gradient(circle, rgba(127, 182, 217, 0.42) 0 0.6px, transparent 1px);
-  background-size: 173px 173px, 241px 241px, 311px 311px;
-  background-position: 31px 47px, 118px 83px, 73px 193px;
+    radial-gradient(circle, rgba(142, 227, 214, 0.85) 0 0.8px, transparent 1.2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.6) 0 0.6px, transparent 1px),
+    radial-gradient(circle, rgba(127, 182, 217, 0.5) 0 0.7px, transparent 1.1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.85) 0 1px, transparent 1.6px);
+  background-size: 173px 173px, 241px 241px, 311px 311px, 467px 467px;
+  background-position: 31px 47px, 118px 83px, 73px 193px, 210px 260px;
+  animation: starfield-float 64s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes starfield-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.38;
+  }
+  50% {
+    transform: translate3d(1.4%, -1.1%, 0);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-navy::before {
+    animation: none;
+  }
 }
 
 /* White content surfaces float above the photo + 3D depth layer. Keeping them

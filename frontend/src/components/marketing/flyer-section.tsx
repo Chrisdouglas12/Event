@@ -30,7 +30,7 @@ export function FlyerSection() {
 
   return (
     <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
+      <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <div className="relative overflow-hidden">
           {/* Ambient glow */}
           <div

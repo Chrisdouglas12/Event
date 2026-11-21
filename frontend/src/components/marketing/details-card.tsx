@@ -110,7 +110,7 @@ export function DetailsCard() {
 
   return (
     <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
+      <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         {/* Header */}
         <div className="landing-card mx-auto mb-12 max-w-2xl px-6 py-7 text-center lg:mb-14">
           <div className="flex items-center justify-center gap-3">

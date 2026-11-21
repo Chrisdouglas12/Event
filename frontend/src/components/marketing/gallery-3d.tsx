@@ -112,7 +112,7 @@ export function Gallery3D() {
         className="pointer-events-none absolute left-1/2 top-1/3 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8EE3D6] opacity-[0.07] blur-3xl"
       />
 
-      <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
+      <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <div className="landing-card mx-auto mb-8 max-w-2xl px-6 py-7 text-center lg:mb-10">
           <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#0E7A6E]" />
           <RevealText

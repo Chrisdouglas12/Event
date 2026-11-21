@@ -15,6 +15,12 @@ import {
   findCountry,
   findNigerianState,
 } from "@/config/countries";
+import {
+  countryCurrencyBadge,
+  countryDialCode,
+  countryFlag,
+  phoneWithCountryDial,
+} from "@/config/country-meta";
 import { HeroBackground } from "@/components/marketing/hero-background";
 import { Countdown } from "@/components/ui/countdown";
 
@@ -243,6 +249,8 @@ function SearchableSelect({
   disabled = false,
   emptyMessage = "No matches found",
   inputProps,
+  renderOption,
+  renderLeading,
 }: {
   id: string;
   value: string;
@@ -253,6 +261,8 @@ function SearchableSelect({
   disabled?: boolean;
   emptyMessage?: string;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  renderOption?: (option: string) => React.ReactNode;
+  renderLeading?: (value: string) => React.ReactNode;
 }) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
@@ -347,10 +357,8 @@ function SearchableSelect({
       }}
     >
       <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-        {disabled ? (
-          <LockIcon className="h-4 w-4" />
-        ) : (
-          <SearchIcon className="h-4 w-4" />
+        {renderLeading?.(value) ?? (
+          disabled ? <LockIcon className="h-4 w-4" /> : <SearchIcon className="h-4 w-4" />
         )}
       </div>
 
@@ -424,7 +432,7 @@ function SearchableSelect({
                   index === activeIndex ? "bg-[#E8F7F4] text-[#0E7A6E]" : "text-[#111320] hover:bg-gray-50"
                 } ${option === value ? "font-semibold" : ""}`}
               >
-                {option}
+                {renderOption ? renderOption(option) : option}
               </div>
             ))
           )}
@@ -475,9 +483,11 @@ export default function RegisterPage() {
   const [state, setState] = useState("");
   const [chapterZone, setChapterZone] = useState("");
   const [groupName, setGroupName] = useState("");
-  // Kept as a string so clearing the field to type "50" does not snap to 2.
-  const [seatsInput, setSeatsInput] = useState("5");
-  const seatsCount = Math.max(2, Number.parseInt(seatsInput, 10) || 2);
+  // Kept as a string so the group leader types the count manually. Submission
+  // is blocked until it is at least 2 (the backend enforces the same rule).
+  const [seatsInput, setSeatsInput] = useState("0");
+  const parsedSeats = Number.parseInt(seatsInput, 10);
+  const seatsCount = Number.isFinite(parsedSeats) ? Math.min(500, Math.max(0, parsedSeats)) : 0;
   const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
   const [gender, setGender] = useState<"male" | "female">("male");
   const [firstTime, setFirstTime] = useState<"yes" | "no">("no");
@@ -505,6 +515,9 @@ export default function RegisterPage() {
   const matchedCountry = findCountry(country);
   const matchedState = findNigerianState(state);
   const isNigeria = matchedCountry === NIGERIA || country.trim().toLowerCase() === "nigeria";
+  const selectedCountry = findCountry(country) ?? country;
+  const selectedDial = countryDialCode(selectedCountry);
+  const selectedFlag = countryFlag(selectedCountry);
   const inviteeNumber = hasInvitees ? Number(inviteeCount) || 0 : 0;
   const returningCount = Math.max(0, seatsCount - inviteeNumber);
 
@@ -528,7 +541,7 @@ export default function RegisterPage() {
     setState("");
     setChapterZone("");
     setGroupName("");
-    setSeatsInput("5");
+    setSeatsInput("0");
     setAttendanceMode("physically");
     setGender("male");
     setFirstTime("no");
@@ -695,7 +708,6 @@ export default function RegisterPage() {
 
   const validate = (): FieldErrors => {
     const errs: FieldErrors = {};
-    const parsedSeats = Number.parseInt(seatsInput, 10);
     const seatsValid = Number.isInteger(parsedSeats) && parsedSeats >= 2 && parsedSeats <= 500;
 
     if (isGroup) {
@@ -720,7 +732,7 @@ export default function RegisterPage() {
 
     if (!payerName.trim()) errs.payerName = "Enter your full name.";
     if (!toE164Phone(payerPhone)) {
-      errs.payerPhone = "Enter a valid phone number, e.g. +234 801 234 5678 or 08012345678.";
+      errs.payerPhone = `Enter a valid phone number with country code, e.g. ${selectedDial} 801 234 5678.`;
     }
     if (!EMAIL_RE.test(payerEmail.trim())) {
       errs.payerEmail = "Enter a valid email address, e.g. name@example.com.";
@@ -857,7 +869,97 @@ export default function RegisterPage() {
 
   const groupAttendanceTotal = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
   const submitDisabled =
-    loading || configState !== "ready" || !currencyAvailable[currency] || !registrationOpen || totalMinor === null;
+    loading ||
+    configState !== "ready" ||
+    !currencyAvailable[currency] ||
+    !registrationOpen ||
+    totalMinor === null ||
+    (isGroup && (!Number.isInteger(parsedSeats) || parsedSeats < 2 || parsedSeats > 500));
+
+  const handleCountryChange = (next: string) => {
+    setCountry(next);
+    setPayerPhone((prev) => phoneWithCountryDial(prev, countryDialCode(next)));
+    clearErr("country");
+    clearErr("state");
+    clearErr("payerPhone");
+    if (findCountry(next) !== NIGERIA) setState("");
+  };
+
+  const locationFields = (
+    <>
+      <Field
+        htmlFor="field-country"
+        label={isGroup ? "Group Nation / Country *" : "Country of Residence *"}
+        error={fieldErrors.country}
+        hint={isGroup ? "Applied to every participant in this group." : undefined}
+      >
+        <SearchableSelect
+          id="field-country"
+          value={country}
+          options={COUNTRIES}
+          placeholder="Search countries..."
+          emptyMessage="No countries match your search"
+          inputProps={fp("country", "pl-10 pr-10")}
+          onQueryChange={(next) => {
+            setCountry(next);
+            clearErr("country");
+            clearErr("state");
+          }}
+          onChange={handleCountryChange}
+          renderLeading={(value) => (
+            <span className="text-base leading-none" aria-hidden>
+              {countryFlag(value)}
+            </span>
+          )}
+          renderOption={(option) => {
+            const flag = countryFlag(option);
+            const badge = countryCurrencyBadge(option);
+            return (
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="text-base leading-none">{flag}</span>
+                <span className="min-w-0 truncate">{option}</span>
+                <span aria-hidden className="ml-auto text-sm text-gray-400">{badge}</span>
+              </span>
+            );
+          }}
+        />
+      </Field>
+
+      <Field
+        htmlFor="field-state"
+        label={`${isGroup ? "Group State" : "State of Residence"}${isNigeria ? " *" : ""}`}
+        error={fieldErrors.state}
+        hint={
+          isNigeria
+            ? isGroup
+              ? "Applied to every participant in this group."
+              : undefined
+            : "Enabled when your country is Nigeria."
+        }
+      >
+        <SearchableSelect
+          id="field-state"
+          value={state}
+          options={NIGERIAN_STATES}
+          placeholder={isNigeria ? "Search Nigerian states..." : "Select Nigeria first"}
+          emptyMessage="No states match your search"
+          disabled={!isNigeria}
+          inputProps={fp(
+            "state",
+            "pl-10 pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+          )}
+          onQueryChange={(next) => {
+            setState(next);
+            clearErr("state");
+          }}
+          onChange={(next) => {
+            setState(next);
+            clearErr("state");
+          }}
+        />
+      </Field>
+    </>
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07101e]">
@@ -885,7 +987,7 @@ export default function RegisterPage() {
                     alt="Horemow"
                     width={96}
                     height={30}
-                    className="h-6 w-auto object-contain"
+                    className="h-6 w-auto translate-y-[10px] object-contain"
                     style={{ width: "auto" }}
                   />
                   <span className="h-5 w-px bg-white/20" />
@@ -977,14 +1079,13 @@ export default function RegisterPage() {
 
                 {/* Group extra fields */}
                 {isGroup && (
-                  <div className="animate-in fade-in space-y-4 rounded-[16px] border border-[#CDEFEA] bg-[#EAF9F7] p-5 duration-200">
+                  <div className="mt-6 animate-in fade-in space-y-4 rounded-[16px] border border-[#CDEFEA] bg-[#EAF9F7] p-5 duration-200">
                     <div className="space-y-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
                         Group Configuration
                       </div>
                       <p className="text-[11px] text-gray-500">
-                        Country and state are collected in the group leader details below and counted for every
-                        participant in this group.
+                        Country and state are counted for every participant in this group and set the phone code below.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1001,6 +1102,8 @@ export default function RegisterPage() {
                         />
                       </Field>
 
+                      {locationFields}
+
                       <Field htmlFor="field-seats" label="Number of Participants *" error={fieldErrors.seats}>
                         <input
                           type="number"
@@ -1016,7 +1119,7 @@ export default function RegisterPage() {
                           }}
                           onBlur={() => {
                             const parsed = Number.parseInt(seatsInput, 10);
-                            setSeatsInput(String(Math.min(500, Math.max(2, Number.isFinite(parsed) ? parsed : 2))));
+                            setSeatsInput(String(Math.min(500, Math.max(0, Number.isFinite(parsed) ? parsed : 0))));
                           }}
                           {...fp("seats")}
                         />
@@ -1215,6 +1318,8 @@ export default function RegisterPage() {
                 <SectionTitle title={isGroup ? "Group leader details" : "Personal information"} />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {!isGroup && locationFields}
+
                   <Field htmlFor="field-payerName" label="Full Name *" error={fieldErrors.payerName}>
                     <input
                       type="text"
@@ -1229,11 +1334,16 @@ export default function RegisterPage() {
                     />
                   </Field>
 
-                  <Field htmlFor="field-payerPhone" label="Phone Number *" error={fieldErrors.payerPhone}>
+                  <Field
+                    htmlFor="field-payerPhone"
+                    label="Phone Number *"
+                    error={fieldErrors.payerPhone}
+                    hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
+                  >
                     <input
                       type="tel"
                       autoComplete="tel"
-                      placeholder="+234 801 234 5678"
+                      placeholder={`${selectedDial} 801 234 5678`}
                       value={payerPhone}
                       onChange={(e) => {
                         setPayerPhone(e.target.value);
@@ -1254,67 +1364,6 @@ export default function RegisterPage() {
                         clearErr("payerEmail");
                       }}
                       {...fp("payerEmail")}
-                    />
-                  </Field>
-
-                  <Field
-                    htmlFor="field-country"
-                    label={isGroup ? "Group Nation / Country *" : "Country of Residence *"}
-                    error={fieldErrors.country}
-                    hint={isGroup ? "Applied to every participant in this group." : undefined}
-                  >
-                    <SearchableSelect
-                      id="field-country"
-                      value={country}
-                      options={COUNTRIES}
-                      placeholder="Search countries..."
-                      emptyMessage="No countries match your search"
-                      inputProps={fp("country", "pl-10 pr-10")}
-                      onQueryChange={(next) => {
-                        setCountry(next);
-                        clearErr("country");
-                        clearErr("state");
-                      }}
-                      onChange={(next) => {
-                        setCountry(next);
-                        clearErr("country");
-                        clearErr("state");
-                        if (next !== NIGERIA) setState("");
-                      }}
-                    />
-                  </Field>
-
-                  <Field
-                    htmlFor="field-state"
-                    label={`${isGroup ? "Group State" : "State of Residence"}${isNigeria ? " *" : ""}`}
-                    error={fieldErrors.state}
-                    hint={
-                      isNigeria
-                        ? isGroup
-                          ? "Applied to every participant in this group."
-                          : undefined
-                        : "Enabled when your country is Nigeria."
-                    }
-                  >
-                    <SearchableSelect
-                      id="field-state"
-                      value={state}
-                      options={NIGERIAN_STATES}
-                      placeholder={isNigeria ? "Search Nigerian states..." : "Select Nigeria first"}
-                      emptyMessage="No states match your search"
-                      disabled={!isNigeria}
-                      inputProps={fp(
-                        "state",
-                        "pl-10 pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-                      )}
-                      onQueryChange={(next) => {
-                        setState(next);
-                        clearErr("state");
-                      }}
-                      onChange={(next) => {
-                        setState(next);
-                        clearErr("state");
-                      }}
                     />
                   </Field>
 

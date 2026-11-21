@@ -56,13 +56,13 @@ export default function HomePage() {
           <Hero />
 
           {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
-          <div className="joined-flow mx-[2px] border-x-0 border-white/15 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 sm:border-x lg:mx-4 xl:mx-6 2xl:mx-8">
+          <div className="joined-flow mx-[3px] border-x-0 border-white/15 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 sm:border-x lg:mx-4 xl:mx-6 2xl:mx-8">
             <WhyAttend />
             <TimelineDivider />
 
             {/* Featured Ministers */}
             <section data-scene="road" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
-              <div className="px-6 sm:px-8 lg:px-8 xl:px-10">
+              <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
                 <div className="landing-card mx-auto mb-10 max-w-2xl px-6 py-7 text-center lg:mb-12">
                   <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#0E7A6E]" />
                   <RevealText
