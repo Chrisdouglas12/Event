@@ -630,9 +630,9 @@ export default function RegisterPage() {
       <Header />
 
       {/* Fixed globe on the left, registration on the right. */}
-      <section className="relative w-full overflow-hidden px-4 pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
+      <section className="relative w-full overflow-hidden px-[2px] pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
         <div className="fixed inset-0 z-0 opacity-60">
-          <HeroBackground align="left" desktopLift={-10} shrinkOnScroll richAtmosphere />
+          <HeroBackground align="left" desktopLift={-10} mobileLift={-10} shrinkOnScroll richAtmosphere />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/20 to-[#0E1020]/50" />
         </div>
 
@@ -640,9 +640,11 @@ export default function RegisterPage() {
           <div className="hidden lg:block lg:col-span-5" />
           <div data-hero-content className="space-y-6 lg:col-span-7">
             {/* Form card */}
-            <div className="overflow-hidden rounded-[4px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+            <div className="relative rounded-[4px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+              {/* Sticky form header: freezes 10px below the site header. */}
+              <div className="sticky top-[70px] z-20 rounded-t-[4px]">
               {/* Compact, unique form header. */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-[#0E1020] px-5 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-[#0E1020] px-3 py-3 sm:px-5">
                 <div className="flex items-center gap-3">
                   <Image
                     src={SITE_CONFIG.logo.src}
@@ -686,14 +688,15 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#151829] px-5 py-2 sm:px-8">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#151829] px-3 py-2 sm:px-8">
                 <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
                   Conference starts in
                 </span>
                 <Countdown compact />
               </div>
+              </div>
 
-              <div className="px-5 pb-4 pt-4 sm:px-8">
+              <div className="px-3 pb-4 pt-4 sm:px-8">
                 <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[#111320] sm:text-2xl">
                   Register For IHGC 2026
                 </h1>
@@ -708,7 +711,7 @@ export default function RegisterPage() {
               id="register-form"
               noValidate
               onSubmit={handleSubmit}
-              className="space-y-8 p-6 sm:p-8 lg:p-10"
+              className="space-y-6 p-4 sm:space-y-8 sm:p-8 lg:p-10"
             >
               {/* Participant type */}
               <div>
@@ -1296,7 +1299,7 @@ export default function RegisterPage() {
 
           {/* Order summary (sticky on desktop) */}
           <aside>
-            <div className="rounded-[4px] border border-gray-100 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
+            <div className="rounded-[4px] border border-gray-100 bg-white p-4 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order summary</h2>
 
               <dl className="mt-5 space-y-3 text-sm">

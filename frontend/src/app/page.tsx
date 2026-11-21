@@ -56,7 +56,7 @@ export default function HomePage() {
           <Hero />
 
           {/* One joined surface: Why Attend through the Flyer, flush with hero/footer. */}
-          <div className="joined-flow mx-4 border-x border-white/15 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 lg:mx-4 xl:mx-6 2xl:mx-8">
+          <div className="joined-flow mx-[2px] border-x-0 border-white/15 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:mx-6 sm:border-x lg:mx-4 xl:mx-6 2xl:mx-8">
             <WhyAttend />
             <TimelineDivider />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import {
   createFallbackModel,
   createModelInstance,
@@ -37,11 +37,14 @@ const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 export function HeroBackground({
   align = "left",
   desktopLift = 0,
+  mobileLift = 0,
   shrinkOnScroll = false,
   richAtmosphere = false,
 }: {
   align?: "left" | "right";
   desktopLift?: number;
+  /** Pixel shift on small screens. Negative moves the globe down. */
+  mobileLift?: number;
   shrinkOnScroll?: boolean;
   /** Extra galaxy/nebula depth. Off on the landing hero, which has its own scene. */
   richAtmosphere?: boolean;
@@ -512,7 +515,8 @@ export function HeroBackground({
           camera.clearViewOffset();
           const s = Math.min((vw * 0.98) / FIT, (vh * 0.98) / FIT);
           world.scale.setScalar(s);
-          world.position.set(0, 0, 0);
+          // Small screens have no lens shift, so move the world itself.
+          world.position.set(0, mobileLift / Math.max(1, h / vh), 0);
           if (atmosphereMat.uniforms.uGlow) atmosphereMat.uniforms.uGlow.value = 1;
 
           if (poster) {
@@ -733,7 +737,7 @@ export function HeroBackground({
       disposed = true;
       cleanup();
     };
-  }, [align, desktopLift, shrinkOnScroll, richAtmosphere]);
+  }, [align, desktopLift, mobileLift, shrinkOnScroll, richAtmosphere]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
@@ -745,6 +749,7 @@ export function HeroBackground({
         <div
           ref={posterRef}
           className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
+          style={{ translate: mobileLift ? `0 ${mobileLift}px` : undefined } as CSSProperties}
         />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
