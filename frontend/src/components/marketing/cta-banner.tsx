@@ -17,6 +17,7 @@ export function CtaBanner() {
           src="/images/crowd-bw_3.jpg"
           alt="Congregation worshipping"
           fill
+          priority
           className="object-cover opacity-15 mix-blend-overlay"
           sizes="100vw"
         />

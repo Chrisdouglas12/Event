@@ -17,7 +17,12 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
+const shareImage = "/images/conference_flyer.png";
+
 export const metadata: Metadata = {
+  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+    : undefined,
   manifest: "/manifest.json",
   title: {
     template: "%s | IHGC 2026 — Horemow",
@@ -29,6 +34,13 @@ export const metadata: Metadata = {
     description: `Theme: "${SITE_CONFIG.theme}". ${SITE_CONFIG.datesText}.`,
     type: "website",
     locale: "en_NG",
+    images: [{ url: shareImage, alt: `Official flyer for ${SITE_CONFIG.eventTitle}` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_CONFIG.eventTitle,
+    description: `Theme: "${SITE_CONFIG.theme}". ${SITE_CONFIG.datesText}.`,
+    images: [shareImage],
   },
 };
 
@@ -51,4 +63,3 @@ export default function RootLayout({
     </html>
   );
 }
-

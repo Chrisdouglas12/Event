@@ -61,9 +61,9 @@ const FORMATIONS: Formation[] = [
 ];
 
 const STAR_LAYERS = [
-  { count: 420, rMin: 32, rMax: 52, size: 0.12, opacity: 0.42, depth: 0.08, speed: 0.008 },
-  { count: 320, rMin: 19, rMax: 32, size: 0.18, opacity: 0.5, depth: 0.18, speed: -0.014 },
-  { count: 180, rMin: 10, rMax: 17, size: 0.28, opacity: 0.6, depth: 0.32, speed: 0.022 },
+  { count: 220, rMin: 32, rMax: 52, size: 0.12, opacity: 0.36, depth: 0.08, speed: 0.006 },
+  { count: 180, rMin: 19, rMax: 32, size: 0.18, opacity: 0.42, depth: 0.18, speed: -0.01 },
+  { count: 100, rMin: 10, rMax: 17, size: 0.28, opacity: 0.52, depth: 0.32, speed: 0.016 },
 ];
 
 const VEHICLE_LANES: {
@@ -126,13 +126,20 @@ export function LandingDepth() {
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+      const lowPower =
+        reduceMotion ||
+        saveData ||
+        window.innerWidth < 1024 ||
+        (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4);
+      if (lowPower) return;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
-        antialias: true,
+        antialias: false,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth >= 1440 ? 1.25 : 1));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.15;
@@ -219,7 +226,7 @@ export function LandingDepth() {
       }
 
       const particleGeo = new THREE.BufferGeometry();
-      particleGeo.setAttribute("position", new THREE.BufferAttribute(shellPoints(650, 5, 13), 3));
+      particleGeo.setAttribute("position", new THREE.BufferAttribute(shellPoints(360, 5, 13), 3));
       const particleMat = track(
         new THREE.PointsMaterial({ color: 0x8ee3d6, size: 0.09, sizeAttenuation: true, opacity: 0.42 }),
         0.42
@@ -421,6 +428,9 @@ export function LandingDepth() {
       let raf = 0;
       let tabVisible = !document.hidden;
 
+      let lastRender = 0;
+      const renderInterval = 1000 / 30;
+
       const update = (time: number, step: number, damp: (k: number) => number) => {
         progress = mix(progress, targetProgress, damp(6));
         SCENES.forEach((name) => {
@@ -528,6 +538,12 @@ export function LandingDepth() {
       const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
+        if (timestamp && timestamp - lastRender < renderInterval) {
+          schedule();
+          return;
+        }
+        lastRender = timestamp || performance.now();
+
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05);
         const step = reduceMotion ? 0 : dt;

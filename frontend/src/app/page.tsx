@@ -53,50 +53,45 @@ export default function HomePage() {
 
       {/* Featured Ministers Section matching KILO instructor card layout */}
       <Reveal>
-      <section data-scene="road" className="relative py-20 lg:py-24 overflow-hidden">
-        <div className="w-full px-[5px]">
-          <div className="text-center max-w-2xl mx-auto px-4 mb-14 space-y-2">
-            <RevealText
-              as="span"
-              text="Featured Ministers"
-              className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
-              stagger={0.02}
-            />
-            <RevealText
-              as="h2"
-              text="Featured Ministers"
-              className="text-3xl sm:text-4xl font-bold text-white tracking-tight"
-              stagger={0.04}
-            />
-            <RevealText
-              as="p"
-              text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-              className="text-sm text-[#A9B4C6]"
-              stagger={0.012}
-            />
-          </div>
-
-          <div className="space-y-10">
-            {SITE_CONFIG.ministersInitial.map((minister) => (
-              <MinisterCard
-                key={minister.id}
-                name={minister.name}
-                role={minister.role}
-                bio={minister.bio}
-                image={minister.image}
-                socials={{
-                  youtube: SITE_CONFIG.socials.youtube,
-                  facebook: SITE_CONFIG.socials.facebook,
-                  x: SITE_CONFIG.socials.x,
-                }}
+        <section data-scene="road" className="relative overflow-hidden py-20 lg:py-28">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto mb-12 max-w-2xl text-center lg:mb-16">
+              <span aria-hidden className="mx-auto mb-5 block h-px w-12 bg-[#8EE3D6]" />
+              <RevealText
+                as="h2"
+                text="Featured Ministers"
+                className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
+                stagger={0.04}
               />
-            ))}
+              <RevealText
+                as="p"
+                text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
+                className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
+                stagger={0.012}
+              />
+            </div>
 
-            {/* Designed "More ministers to be announced" card */}
-            <MoreMinistersCard />
+            <div className="space-y-8 lg:space-y-10">
+              {SITE_CONFIG.ministersInitial.map((minister) => (
+                <MinisterCard
+                  key={minister.id}
+                  name={minister.name}
+                  role={minister.role}
+                  bio={minister.bio}
+                  image={minister.image}
+                  socials={{
+                    youtube: SITE_CONFIG.socials.youtube,
+                    facebook: SITE_CONFIG.socials.facebook,
+                    x: SITE_CONFIG.socials.x,
+                  }}
+                />
+              ))}
+
+              {/* Designed "More ministers to be announced" card */}
+              <MoreMinistersCard />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       </Reveal>
 
       {/* CTA Banner with diagonal triangles */}

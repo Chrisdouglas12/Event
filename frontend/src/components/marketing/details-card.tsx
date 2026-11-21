@@ -154,6 +154,7 @@ export function DetailsCard() {
                 src="/images/campground.jpg"
                 alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
                 fill
+                priority
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 42vw"
               />

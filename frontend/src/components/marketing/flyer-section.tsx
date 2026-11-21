@@ -66,6 +66,7 @@ export function FlyerSection() {
                     src="/images/conference_flyer.png"
                     alt={`Official flyer for ${eventName}`}
                     fill
+                    priority
                     className="object-contain"
                     quality={95}
                     sizes="(max-width: 1024px) 80vw, 380px"

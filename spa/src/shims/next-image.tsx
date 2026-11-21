@@ -5,6 +5,7 @@ type NextImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   alt: string;
   fill?: boolean;
   priority?: boolean;
+  fetchPriority?: "high" | "low" | "auto";
   quality?: number;
   unoptimized?: boolean;
 };
@@ -19,6 +20,7 @@ export default function Image({
   alt,
   fill,
   priority,
+  fetchPriority,
   quality: _quality,
   unoptimized: _unoptimized,
   style,
@@ -28,15 +30,20 @@ export default function Image({
   const fillStyle: CSSProperties | undefined = fill
     ? { position: "absolute", inset: 0, width: "100%", height: "100%", ...style }
     : style;
+  const resolvedFetchPriority = fetchPriority ?? (priority ? "high" : undefined);
 
   return (
-    <img
-      src={resolved}
-      alt={alt}
-      loading={priority ? "eager" : "lazy"}
-      decoding="async"
-      style={fillStyle}
-      {...rest}
-    />
+    <>
+      {priority ? <link rel="preload" as="image" href={resolved} /> : null}
+      <img
+        src={resolved}
+        alt={alt}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={resolvedFetchPriority}
+        style={fillStyle}
+        {...rest}
+      />
+    </>
   );
 }

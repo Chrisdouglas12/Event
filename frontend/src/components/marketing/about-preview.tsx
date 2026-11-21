@@ -23,6 +23,7 @@ export function AboutPreview() {
                     src="/images/about_us_1.jpg"
                     alt="Horemow ministry and fellowship"
                     fill
+                    priority
                     className="object-cover"
                     sizes="(max-width: 768px) 85vw, 480px"
                   />
@@ -34,6 +35,7 @@ export function AboutPreview() {
                     src="/images/about_us_2.jpg"
                     alt="Horemow conference interaction"
                     fill
+                    priority
                     className="object-cover"
                     sizes="(max-width: 768px) 55vw, 264px"
                   />
@@ -52,6 +54,7 @@ export function AboutPreview() {
                     src="/images/about_us_3.jpg"
                     alt="Conference video preview"
                     fill
+                    priority
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     sizes="(max-width: 640px) 144px, 176px"
                   />

@@ -6,7 +6,7 @@ import { SITE_CONFIG } from "@/config/site";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[#0E1020] text-gray-300">
+    <footer className="w-full bg-[#0E1020]/85 text-gray-300">
       {/* 3-Column Main Footer */}
       <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
@@ -19,6 +19,7 @@ export function Footer() {
                 alt={SITE_CONFIG.logo.alt}
                 width={130}
                 height={40}
+                priority
                 className="h-7 w-auto object-contain"
                 style={{ width: "auto" }}
               />
@@ -123,6 +124,7 @@ export function Footer() {
                   src="/images/conference_flyer.png"
                   alt="IHGC 2026 Conference Flyer"
                   fill
+                  priority
                   className="object-contain"
                   sizes="400px"
                   quality={95}

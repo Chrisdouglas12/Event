@@ -87,11 +87,31 @@ h1, h2, h3, h4, h5, h6 {
 /* The landing page is navy from the hero to the footer. Sections are mostly
    transparent so the shared travel scene can be seen between the cards. */
 .landing-navy {
+  position: relative;
+  isolation: isolate;
   background-color: #07101e;
   background-image:
     radial-gradient(circle at 15% 12%, rgba(14, 122, 110, 0.2), transparent 32%),
     radial-gradient(circle at 82% 68%, rgba(32, 78, 110, 0.22), transparent 34%),
     linear-gradient(180deg, #080d1a 0%, #07101e 55%, #060c17 100%);
+}
+
+/* A lightweight, fixed star texture that continues behind every section.
+   Unlike a second WebGL scene, this CSS layer is visible through the footer
+   and adds essentially no scroll or frame cost. */
+.landing-navy::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.58;
+  background-image:
+    radial-gradient(circle, rgba(142, 227, 214, 0.72) 0 0.7px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.46) 0 0.55px, transparent 0.9px),
+    radial-gradient(circle, rgba(127, 182, 217, 0.42) 0 0.6px, transparent 1px);
+  background-size: 173px 173px, 241px 241px, 311px 311px;
+  background-position: 31px 47px, 118px 83px, 73px 193px;
 }
 
 .floating-card {
@@ -308,6 +328,14 @@ h1, h2, h3, h4, h5, h6 {
   animation:
     hero-word-in 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
     hero-shimmer 5s linear 1.5s infinite;
+}
+
+.hero-static-fallback {
+  background-image:
+    linear-gradient(90deg, rgba(14, 16, 32, 0.18), rgba(14, 16, 32, 0.72)),
+    url("/images/campground_2.jpg");
+  background-position: center;
+  background-size: cover;
 }
 
 @media (prefers-reduced-motion: reduce) {

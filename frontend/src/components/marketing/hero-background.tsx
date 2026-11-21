@@ -535,6 +535,7 @@ export function HeroBackground({ align = "left" }: { align?: "left" | "right" })
     <div aria-hidden className="absolute inset-0 pointer-events-none">
       {/* Preload the poster texture and hero airliner before JS asks for them. */}
       <link rel="preload" as="image" href="/textures/earth.jpg" />
+      <link rel="preload" as="image" href="/images/campground_2.jpg" />
       <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
 
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">

@@ -140,6 +140,7 @@ export function WhyAttend() {
                         src="/images/conference_flyer.png"
                         alt="Official flyer for the International Holiness General Conference 2026"
                         fill
+                        priority
                         className="object-contain"
                         quality={95}
                         sizes="(max-width: 1024px) 70vw, 340px"
@@ -157,6 +158,7 @@ export function WhyAttend() {
                         src="/images/crowd-bw_2.jpg"
                         alt="Worshippers gathered for a conference service"
                         fill
+                        priority
                         quality={95}
                         className="object-cover"
                         sizes="(max-width: 1024px) 60vw, 300px"

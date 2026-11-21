@@ -89,6 +89,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             src={image}
             alt={name}
             fill
+            priority
             className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
             sizes="(max-width: 768px) 100vw, 42vw"
           />

@@ -99,6 +99,8 @@ export function Hero() {
                       src={SITE_CONFIG.logo.src}
                       alt={SITE_CONFIG.logo.alt}
                       fill
+                      priority
+                      fetchPriority="high"
                       sizes="(max-width: 639px) 28px, 48px"
                       className="object-contain drop-shadow-md"
                     />
