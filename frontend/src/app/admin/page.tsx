@@ -1,12 +1,38 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { CheckCircle2, Globe2, MapPin, ScanLine, Sparkles, Users } from "lucide-react";
+import { CheckCircle2, Globe2, MapPin, ScanLine, Sparkles, Users, Wallet } from "lucide-react";
+import {
+  CURRENCIES,
+  formatMoneyMinor,
+  type SupportedCurrency,
+} from "@/config/currencies";
 
 export const dynamic = "force-dynamic";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
 type RankedLocation = { name: string; total: number };
+
+type CurrencyKpi = {
+  currency: SupportedCurrency;
+  orders: number;
+  seats: number;
+  grossMinor: number;
+  feeMinor: number;
+  netMinor: number;
+};
+
+const CURRENCY_CODES = Object.keys(CURRENCIES) as SupportedCurrency[];
+
+const emptyCurrencyKpis = (): CurrencyKpi[] =>
+  CURRENCY_CODES.map((currency) => ({
+    currency,
+    orders: 0,
+    seats: 0,
+    grossMinor: 0,
+    feeMinor: 0,
+    netMinor: 0,
+  }));
 
 type DashboardStats = {
   totalPaidParticipants: number;
@@ -19,6 +45,7 @@ type DashboardStats = {
   checkedInParticipants: number;
   byState: RankedLocation[];
   byNation: RankedLocation[];
+  financeByCurrency: CurrencyKpi[];
 };
 
 const EMPTY_STATS: DashboardStats = {
@@ -32,7 +59,34 @@ const EMPTY_STATS: DashboardStats = {
   checkedInParticipants: 0,
   byState: [],
   byNation: [],
+  financeByCurrency: emptyCurrencyKpis(),
 };
+
+function CurrencyKpiCard({ row }: { row: CurrencyKpi }) {
+  const config = CURRENCIES[row.currency];
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xs sm:space-y-3 sm:rounded-[16px] sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 sm:text-xs">
+            {row.currency}
+          </div>
+          <div className="mt-0.5 text-[9px] text-gray-400 sm:text-[10px]">{config.label}</div>
+        </div>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        </span>
+      </div>
+      <div className="break-words text-lg font-black tabular-nums text-[#111320] sm:text-2xl">
+        {formatMoneyMinor(row.grossMinor, row.currency)}
+      </div>
+      <div className="text-[10px] text-gray-400 sm:text-[11px]">
+        {row.orders.toLocaleString()} verified payment{row.orders === 1 ? "" : "s"} · {row.seats.toLocaleString()} paid participants
+      </div>
+    </div>
+  );
+}
 
 function MetricCard({
   label,
@@ -219,6 +273,14 @@ export default async function AdminDashboardPage() {
         firstTimeTotals: { ...EMPTY_STATS.firstTimeTotals, ...(data.firstTimeTotals || {}) },
         byState: Array.isArray(data.byState) ? data.byState : [],
         byNation: Array.isArray(data.byNation) ? data.byNation : [],
+        financeByCurrency: Array.isArray(data.financeByCurrency)
+          ? emptyCurrencyKpis().map(
+              (fallback) =>
+                data.financeByCurrency.find(
+                  (row: CurrencyKpi) => row.currency === fallback.currency
+                ) || fallback
+            )
+          : EMPTY_STATS.financeByCurrency,
       };
     } else {
       console.error("[admin] Dashboard API failed with status:", res.status);
@@ -278,6 +340,25 @@ export default async function AdminDashboardPage() {
           icon={ScanLine}
           tone="amber"
         />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-[#0E7A6E]" />
+          <div>
+            <h2 className="text-sm font-bold text-[#111320] sm:text-base">
+              Verified Revenue By Currency
+            </h2>
+            <p className="text-[11px] text-gray-400 sm:text-xs">
+              Gross confirmed payments for each supported currency. No pending checkouts are counted.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {stats.financeByCurrency.map((row) => (
+            <CurrencyKpiCard key={row.currency} row={row} />
+          ))}
+        </div>
       </div>
 
       <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:space-y-4 sm:rounded-[20px] sm:p-6">

@@ -5,6 +5,7 @@ import type { Request, Response } from 'express';
 import { Order } from '../schema/orders.ts';
 import { Participant, Group } from '../schema/participants.ts';
 import { ScanEvent } from '../schema/scans.ts';
+import { CURRENCIES } from '../constants/enums.ts';
 import { authenticateStaff, requireRole } from './auth.ts';
 import { listPaidPayments, recordGateScan } from '../lib/gate-scan.ts';
 
@@ -46,9 +47,17 @@ router.get(
         checkedInParticipants: 0,
         byState: [] as Array<{ name: string; total: number }>,
         byNation: [] as Array<{ name: string; total: number }>,
+        financeByCurrency: [] as Array<{
+          currency: string;
+          orders: number;
+          seats: number;
+          grossMinor: number;
+          feeMinor: number;
+          netMinor: number;
+        }>,
       };
 
-      const [kpiRows, scanRows, locationRows] = await Promise.all([
+      const [kpiRows, scanRows, locationRows, financeRows] = await Promise.all([
         Order.aggregate([
           { $match: { status: 'paid' } },
           {
@@ -196,11 +205,49 @@ router.get(
             },
           },
         ]),
+        // Verified money in, grouped by currency. Every supported currency is
+        // returned even when it has no paid orders yet.
+        Order.aggregate([
+          { $match: { status: 'paid' } },
+          {
+            $group: {
+              _id: { $ifNull: ['$currency', 'NGN'] },
+              orders: { $sum: 1 },
+              seats: { $sum: { $ifNull: ['$seats', 0] } },
+              grossMinor: { $sum: { $ifNull: ['$totalMinor', 0] } },
+              feeMinor: { $sum: { $ifNull: ['$feeMinor', 0] } },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              currency: '$_id',
+              orders: 1,
+              seats: 1,
+              grossMinor: 1,
+              feeMinor: 1,
+              netMinor: { $subtract: ['$grossMinor', '$feeMinor'] },
+            },
+          },
+          { $sort: { currency: 1 } },
+        ]),
       ]);
 
       const kpi = (kpiRows[0] as any) || {};
       const scans = (scanRows[0] as any) || {};
       const locations = (locationRows[0] as any) || {};
+
+      const financeByCurrency = CURRENCIES.map((currency) => {
+        const row = (financeRows as any[]).find((item) => item.currency === currency);
+        return {
+          currency,
+          orders: Number(row?.orders) || 0,
+          seats: Number(row?.seats) || 0,
+          grossMinor: Number(row?.grossMinor) || 0,
+          feeMinor: Number(row?.feeMinor) || 0,
+          netMinor: Number(row?.netMinor) || 0,
+        };
+      });
 
       const checkedInCount = await Participant.countDocuments({
         status: 'checked_in',
@@ -229,6 +276,7 @@ router.get(
         checkedInParticipants: Number(scans.scannedParticipants) || checkedInCount || 0,
         byState: Array.isArray(locations.states) ? locations.states : [],
         byNation: Array.isArray(locations.nations) ? locations.nations : [],
+        financeByCurrency,
       });
     } catch (err) {
       console.error('[GET /admin/dashboard-stats] error:', err);

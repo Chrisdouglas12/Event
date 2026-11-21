@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,13 @@ import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { SITE_CONFIG } from "@/config/site";
 import { formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
+import {
+  COUNTRIES,
+  NIGERIA,
+  NIGERIAN_STATES,
+  findCountry,
+  findNigerianState,
+} from "@/config/countries";
 import { HeroBackground } from "@/components/marketing/hero-background";
 import { Countdown } from "@/components/ui/countdown";
 
@@ -168,6 +175,23 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.6-3.6" />
+    </Icon>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M6 9l6 6 6-6" />
+    </Icon>
+  );
+}
+
 /* ---------- Shared form pieces ---------- */
 
 const inputBase =
@@ -175,6 +199,12 @@ const inputBase =
 const inputOk = "border-gray-200 bg-[#F9FAFB] focus:border-[#1FA396] focus:bg-white focus:ring-[#8EE3D6]/40";
 const inputBad = "border-red-400 bg-red-50 focus:border-red-500 focus:bg-white focus:ring-red-200";
 const inputCls = (bad: boolean, extra = "") => `${inputBase} ${bad ? inputBad : inputOk} ${extra}`;
+
+const normaliseSearch = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 function Field({
   htmlFor,
@@ -205,6 +235,212 @@ function Field({
           <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>{error}</span>
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Modern searchable dropdown. The input stays focused while filtering, the
+ * list opens on focus/typing, and arrow keys + Enter select without replacing
+ * whatever the user is doing elsewhere in the form.
+ */
+function SearchableSelect({
+  id,
+  value,
+  options,
+  onChange,
+  onQueryChange,
+  placeholder,
+  disabled = false,
+  emptyMessage = "No matches found",
+  inputProps,
+}: {
+  id: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  onQueryChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  emptyMessage?: string;
+  inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+}) {
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const needle = normaliseSearch(query.trim());
+  const selectedNeedle = normaliseSearch(value.trim());
+  const showAll = !needle || needle === selectedNeedle;
+
+  const filtered = useMemo(() => {
+    if (showAll) return options;
+    return options.filter((option) => normaliseSearch(option).includes(needle));
+  }, [needle, options, showAll]);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const active = listRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+    active?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
+  useEffect(() => {
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, []);
+
+  const currentIndex = filtered.findIndex(
+    (option) => normaliseSearch(option) === selectedNeedle
+  );
+
+  const commit = (option: string) => {
+    onChange(option);
+    setQuery(option);
+    setOpen(false);
+    setActiveIndex(0);
+    inputRef.current?.focus();
+  };
+
+  const resetToValue = () => {
+    setQuery(value);
+    onQueryChange?.(value);
+    setOpen(false);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+      } else {
+        setActiveIndex((index) => Math.min(filtered.length - 1, index + 1));
+      }
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(currentIndex >= 0 ? currentIndex : Math.max(0, filtered.length - 1));
+      } else {
+        setActiveIndex((index) => Math.max(0, index - 1));
+      }
+    } else if (event.key === "Enter" && open && filtered[activeIndex]) {
+      event.preventDefault();
+      commit(filtered[activeIndex]);
+    } else if (event.key === "Escape" && open) {
+      event.preventDefault();
+      resetToValue();
+    } else if (event.key === "Tab") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+        }
+      }}
+    >
+      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+        {disabled ? (
+          <LockIcon className="h-4 w-4" />
+        ) : (
+          <SearchIcon className="h-4 w-4" />
+        )}
+      </div>
+
+      <input
+        {...inputProps}
+        ref={inputRef}
+        id={id}
+        type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={`${id}-options`}
+        aria-activedescendant={open && filtered[activeIndex] ? `${id}-option-${activeIndex}` : undefined}
+        autoComplete="off"
+        value={query}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => {
+          const next = event.target.value;
+          setQuery(next);
+          onQueryChange?.(next);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onFocus={() => {
+          if (disabled) return;
+          setOpen(true);
+          setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+        }}
+        onKeyDown={handleKeyDown}
+      />
+
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        disabled={disabled}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          if (disabled) return;
+          setOpen((wasOpen) => !wasOpen);
+          setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+          inputRef.current?.focus();
+        }}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 transition-transform hover:text-[#0E7A6E] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && !disabled && (
+        <div
+          ref={listRef}
+          id={`${id}-options`}
+          role="listbox"
+          className="absolute z-30 mt-1.5 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white p-1 shadow-[0_16px_40px_rgba(15,23,42,0.16)]"
+        >
+          {filtered.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-gray-400">{emptyMessage}</div>
+          ) : (
+            filtered.map((option, index) => (
+              <div
+                key={option}
+                id={`${id}-option-${index}`}
+                role="option"
+                aria-selected={option === value}
+                data-active={index === activeIndex ? "true" : undefined}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => commit(option)}
+                className={`cursor-pointer rounded-md px-3 py-2 text-xs transition-colors sm:text-sm ${
+                  index === activeIndex ? "bg-[#E8F7F4] text-[#0E7A6E]" : "text-[#111320] hover:bg-gray-50"
+                } ${option === value ? "font-semibold" : ""}`}
+              >
+                {option}
+              </div>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
@@ -278,7 +514,9 @@ export default function RegisterPage() {
   const checkoutAttempt = useRef<{ payload: string; key: string } | null>(null);
 
   const errorCount = Object.keys(fieldErrors).length;
-  const isNigeria = country.trim().toLowerCase() === "nigeria";
+  const matchedCountry = findCountry(country);
+  const matchedState = findNigerianState(state);
+  const isNigeria = matchedCountry === NIGERIA || country.trim().toLowerCase() === "nigeria";
 
   /* ---------- Reset helpers ---------- */
 
@@ -490,8 +728,8 @@ export default function RegisterPage() {
     if (!EMAIL_RE.test(payerEmail.trim())) {
       errs.payerEmail = "Enter a valid email address, e.g. name@example.com.";
     }
-    if (!country.trim()) errs.country = "Enter your country of residence.";
-    if (isNigeria && !state.trim()) errs.state = "Enter your state of residence.";
+    if (!matchedCountry) errs.country = "Select a country from the list.";
+    if (isNigeria && !matchedState) errs.state = "Select a state from the list.";
 
     if (!isGroup && isMinor) {
       if (!guardianName.trim()) errs.guardianName = "Enter a parent or guardian name.";
@@ -554,8 +792,8 @@ export default function RegisterPage() {
           phone: payerPhone.trim(),
           email: payerEmail.trim().toLowerCase(),
         },
-        country: country.trim(),
-        state: isNigeria ? state.trim() : undefined,
+        country: matchedCountry || country.trim(),
+        state: isNigeria && matchedState ? matchedState : undefined,
         chapterZone: chapterZone.trim() || undefined,
         attendanceMode,
         gender: isGroup ? undefined : gender,
@@ -1032,45 +1270,66 @@ export default function RegisterPage() {
                   </Field>
 
                   <Field htmlFor="field-country" label="Country of Residence *" error={fieldErrors.country}>
-                    <input
-                      type="text"
-                      autoComplete="country-name"
+                    <SearchableSelect
+                      id="field-country"
                       value={country}
-                      onChange={(e) => {
-                        setCountry(e.target.value);
+                      options={COUNTRIES}
+                      placeholder="Search countries..."
+                      emptyMessage="No countries match your search"
+                      inputProps={fp("country", "pl-10 pr-10")}
+                      onQueryChange={(next) => {
+                        setCountry(next);
                         clearErr("country");
                         clearErr("state");
                       }}
-                      {...fp("country")}
+                      onChange={(next) => {
+                        setCountry(next);
+                        clearErr("country");
+                        clearErr("state");
+                        if (next !== NIGERIA) setState("");
+                      }}
+                    />
+                  </Field>
+
+                  <Field
+                    htmlFor="field-state"
+                    label={`State of Residence${isNigeria ? " *" : ""}`}
+                    error={fieldErrors.state}
+                    hint={isNigeria ? undefined : "Enabled when your country is Nigeria."}
+                  >
+                    <SearchableSelect
+                      id="field-state"
+                      value={state}
+                      options={NIGERIAN_STATES}
+                      placeholder={isNigeria ? "Search Nigerian states..." : "Select Nigeria first"}
+                      emptyMessage="No states match your search"
+                      disabled={!isNigeria}
+                      inputProps={fp(
+                        "state",
+                        "pl-10 pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                      )}
+                      onQueryChange={(next) => {
+                        setState(next);
+                        clearErr("state");
+                      }}
+                      onChange={(next) => {
+                        setState(next);
+                        clearErr("state");
+                      }}
                     />
                   </Field>
 
                   {isNigeria && (
-                    <>
-                      <Field htmlFor="field-state" label="State of Residence *" error={fieldErrors.state}>
-                        <input
-                          type="text"
-                          placeholder="e.g. FCT Abuja, Lagos"
-                          value={state}
-                          onChange={(e) => {
-                            setState(e.target.value);
-                            clearErr("state");
-                          }}
-                          {...fp("state")}
-                        />
-                      </Field>
-
-                      <Field htmlFor="field-chapterZone" label="Chapter/Zone (Optional)">
-                        <input
-                          id="field-chapterZone"
-                          type="text"
-                          placeholder="e.g. Horemow Kwali Chapter"
-                          value={chapterZone}
-                          onChange={(e) => setChapterZone(e.target.value)}
-                          className={inputCls(false)}
-                        />
-                      </Field>
-                    </>
+                    <Field htmlFor="field-chapterZone" label="Chapter/Zone (Optional)">
+                      <input
+                        id="field-chapterZone"
+                        type="text"
+                        placeholder="e.g. Horemow Kwali Chapter"
+                        value={chapterZone}
+                        onChange={(e) => setChapterZone(e.target.value)}
+                        className={inputCls(false)}
+                      />
+                    </Field>
                   )}
                 </div>
 
