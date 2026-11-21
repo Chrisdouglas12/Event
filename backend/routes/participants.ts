@@ -757,7 +757,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       const name = typeof group?.name === 'string' ? group.name.trim() : '';
       if (!name) return res.status(400).json({ error: 'Chapter / Zone name is required' });
       if (!Number.isInteger(group?.totalSeats) || group.totalSeats < 2 || group.totalSeats > 500) {
-        return res.status(400).json({ error: 'totalSeats must be a whole number between 2 and 500' });
+        return res.status(400).json({ error: 'Number of participants must be a whole number between 2 and 500' });
       }
       seats = group.totalSeats;
 
@@ -775,20 +775,20 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
         const notSure = readCount(body.groupAttendance?.not_sure, 'Not sure attendance', seats);
         const male = readCount(body.genderCounts?.male, 'Male count', seats);
         const female = readCount(body.genderCounts?.female, 'Female count', seats);
-        const firstYes = readCount(body.firstTimeCounts?.yes, 'First-time Yes count', seats);
-        const firstNo = readCount(body.firstTimeCounts?.no, 'First-time No count', seats);
-        const inviteeCount = readCount(body.inviteeCount, 'Invitee count', seats);
+        const inviteeCount = readCount(body.inviteeCount, 'New comers / invitees count', seats);
         const hasChildren = body.hasChildren === true;
         const childCount = hasChildren ? readCount(body.childCount, 'Children count', seats) : 0;
+
+        // Invitees are the first-time attendees. Everyone else in the group is
+        // a returning attendant, so the KPI split is derived rather than typed.
+        const firstYes = inviteeCount;
+        const firstNo = seats - inviteeCount;
 
         if (physically + online + notSure !== seats) {
           throw new Error(`Group attendance counts must add up to ${seats} participants.`);
         }
         if (male + female !== seats) {
           throw new Error(`Male and Female counts must add up to ${seats} participants (children included).`);
-        }
-        if (firstYes + firstNo !== seats) {
-          throw new Error(`First-time Yes and No counts must add up to ${seats} participants.`);
         }
         if (hasChildren && childCount < 1) {
           throw new Error('Children count must be at least 1 when children are attending.');
@@ -818,11 +818,13 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       return res.status(400).json({ error: `No price is set for ${currency}` });
     }
     let totalMinor = price.amountMinor * seats;
-    if (currency === 'NGN' && body.customAmountMinor !== undefined) {
+    // Groups always pay the standard per-participant price; only individuals
+    // may choose a higher contribution amount.
+    if (!isGroup && currency === 'NGN' && body.customAmountMinor !== undefined) {
       const customAmountMinor = Number(body.customAmountMinor);
       const minimumContributionMinor = seats * 200_000;
       if (!Number.isInteger(customAmountMinor) || customAmountMinor < minimumContributionMinor) {
-        return res.status(400).json({ error: 'Please enter a valid contribution amount.' });
+        return res.status(400).json({ error: 'Please enter a valid payment amount.' });
       }
       totalMinor = customAmountMinor;
     }

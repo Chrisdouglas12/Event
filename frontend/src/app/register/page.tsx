@@ -38,7 +38,6 @@ type FieldKey =
   | "seats"
   | "inviteeCount"
   | "genderCounts"
-  | "firstTimeCounts"
   | "hasChildren"
   | "childCount"
   | "gender"
@@ -62,7 +61,6 @@ const FIELD_ORDER: FieldKey[] = [
   "seats",
   "inviteeCount",
   "genderCounts",
-  "firstTimeCounts",
   "hasChildren",
   "childCount",
   "gender",
@@ -91,8 +89,6 @@ const ATTENDANCE_IDS = {
   online: "field-attendance-online",
   not_sure: "field-attendance-not-sure",
 } as const;
-
-const PASS_BENEFITS = ["4-day all-access participant badge", "Gate check-in with your QR ticket", "Instant QR ticket"];
 
 // Mirrors the backend normaliser so users get a clear error before checkout.
 // Accepts 08012345678, 8012345678, 2348012345678, +234 (0) 801 234 5678,
@@ -163,14 +159,6 @@ function AlertIcon({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7.5v5" />
       <path d="M12 16.2v.01" />
-    </Icon>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <Icon className={className}>
-      <path d="M5 12.5l4.5 4.5L19 7" />
     </Icon>
   );
 }
@@ -493,9 +481,9 @@ export default function RegisterPage() {
   const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
   const [gender, setGender] = useState<"male" | "female">("male");
   const [firstTime, setFirstTime] = useState<"yes" | "no">("no");
+  const [hasInvitees, setHasInvitees] = useState(false);
   const [inviteeCount, setInviteeCount] = useState("0");
   const [genderCounts, setGenderCounts] = useState({ male: 0, female: 0 });
-  const [firstTimeCounts, setFirstTimeCounts] = useState({ yes: 0, no: 0 });
   const [hasChildren, setHasChildren] = useState(false);
   const [childCount, setChildCount] = useState(0);
   const [isMinor, setIsMinor] = useState(false);
@@ -517,6 +505,8 @@ export default function RegisterPage() {
   const matchedCountry = findCountry(country);
   const matchedState = findNigerianState(state);
   const isNigeria = matchedCountry === NIGERIA || country.trim().toLowerCase() === "nigeria";
+  const inviteeNumber = hasInvitees ? Number(inviteeCount) || 0 : 0;
+  const returningCount = Math.max(0, seatsCount - inviteeNumber);
 
   /* ---------- Reset helpers ---------- */
 
@@ -542,9 +532,9 @@ export default function RegisterPage() {
     setAttendanceMode("physically");
     setGender("male");
     setFirstTime("no");
+    setHasInvitees(false);
     setInviteeCount("0");
     setGenderCounts({ male: 0, female: 0 });
-    setFirstTimeCounts({ yes: 0, no: 0 });
     setHasChildren(false);
     setChildCount(0);
     setIsMinor(false);
@@ -686,11 +676,18 @@ export default function RegisterPage() {
   const effectiveSeats = isGroup ? seatsCount : 1;
   const unitMinor = pricesMinor[currency];
   const minimumNairaMinor = effectiveSeats * MIN_NGN_PER_PASS_MINOR;
+  const standardGroupNairaMinor = typeof pricesMinor.NGN === "number" ? pricesMinor.NGN * seatsCount : null;
   const customNairaMajor = Number(customNairaAmount);
   const customNairaMinor =
     currency === "NGN" && Number.isFinite(customNairaMajor) ? Math.round(customNairaMajor * 100) : null;
   const totalMinor =
-    currency === "NGN" ? customNairaMinor : typeof unitMinor === "number" ? effectiveSeats * unitMinor : null;
+    currency === "NGN"
+      ? isGroup
+        ? standardGroupNairaMinor
+        : customNairaMinor
+      : typeof unitMinor === "number"
+        ? effectiveSeats * unitMinor
+        : null;
   const formattedTotal = totalMinor !== null ? formatMoneyMinor(totalMinor, currency) : "—";
   const checkoutProvider = providerByCurrency[currency] === "paystack" ? "Paystack" : "PayPal";
 
@@ -704,14 +701,14 @@ export default function RegisterPage() {
     if (isGroup) {
       if (!groupName.trim()) errs.groupName = "Enter your chapter or zone name.";
       if (!seatsValid) errs.seats = "Enter a number between 2 and 500.";
-      if (!Number.isInteger(Number(inviteeCount)) || Number(inviteeCount) < 0 || Number(inviteeCount) > seatsCount) {
-        errs.inviteeCount = `Enter a number between 0 and ${seatsCount}.`;
+      if (
+        hasInvitees &&
+        (!Number.isInteger(Number(inviteeCount)) || Number(inviteeCount) < 1 || Number(inviteeCount) > seatsCount)
+      ) {
+        errs.inviteeCount = `Enter a number between 1 and ${seatsCount}.`;
       }
       if (genderCounts.male + genderCounts.female !== seatsCount) {
-        errs.genderCounts = `Male and Female must add up to ${seatsCount} paid seats (children included).`;
-      }
-      if (firstTimeCounts.yes + firstTimeCounts.no !== seatsCount) {
-        errs.firstTimeCounts = `First-time Yes and No must add up to ${seatsCount} paid seats.`;
+        errs.genderCounts = `Male and Female must add up to ${seatsCount} participants (children included).`;
       }
       if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
         errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
@@ -736,7 +733,7 @@ export default function RegisterPage() {
       if (!guardianPhone.trim()) errs.guardianPhone = "Enter a parent or guardian phone number.";
     }
 
-    if (currency === "NGN") {
+    if (!isGroup && currency === "NGN") {
       if (
         !Number.isInteger(customNairaMajor) ||
         customNairaMinor === null ||
@@ -802,14 +799,13 @@ export default function RegisterPage() {
         guardianName: minor ? guardianName.trim() : undefined,
         guardianPhone: minor ? guardianPhone.trim() : undefined,
         group: isGroup ? { name: groupName.trim(), totalSeats: seatsCount } : undefined,
-        inviteeCount: isGroup ? Number(inviteeCount) : undefined,
+        inviteeCount: isGroup && hasInvitees ? Number(inviteeCount) : isGroup ? 0 : undefined,
         genderCounts: isGroup ? genderCounts : undefined,
-        firstTimeCounts: isGroup ? firstTimeCounts : undefined,
         hasChildren: isGroup ? hasChildren : undefined,
         childCount: isGroup && hasChildren ? childCount : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
-        customAmountMinor: currency === "NGN" ? customNairaMinor : undefined,
+        customAmountMinor: !isGroup && currency === "NGN" ? customNairaMinor : undefined,
         groupAttendance: isGroup ? groupAttendance : undefined,
       };
 
@@ -982,8 +978,14 @@ export default function RegisterPage() {
                 {/* Group extra fields */}
                 {isGroup && (
                   <div className="animate-in fade-in space-y-4 rounded-[16px] border border-[#CDEFEA] bg-[#EAF9F7] p-5 duration-200">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
-                      Group Configuration
+                    <div className="space-y-1">
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
+                        Group Configuration
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Country and state are collected in the group leader details below and counted for every
+                        participant in this group.
+                      </p>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field htmlFor="field-groupName" label="Chapter / Zone Name *" error={fieldErrors.groupName}>
@@ -999,7 +1001,7 @@ export default function RegisterPage() {
                         />
                       </Field>
 
-                      <Field htmlFor="field-seats" label="Number of Paid Seats *" error={fieldErrors.seats}>
+                      <Field htmlFor="field-seats" label="Number of Participants *" error={fieldErrors.seats}>
                         <input
                           type="number"
                           min={2}
@@ -1010,7 +1012,7 @@ export default function RegisterPage() {
                             clearErr("seats");
                             clearErr("groupAttendance");
                             clearErr("genderCounts");
-                            clearErr("firstTimeCounts");
+                            if (!hasInvitees) clearErr("inviteeCount");
                           }}
                           onBlur={() => {
                             const parsed = Number.parseInt(seatsInput, 10);
@@ -1019,25 +1021,93 @@ export default function RegisterPage() {
                           {...fp("seats")}
                         />
                       </Field>
+                    </div>
 
-                      <Field
-                        htmlFor="field-inviteeCount"
-                        label="Number of Invitees *"
-                        error={fieldErrors.inviteeCount}
-                        hint="People personally invited by the group leader. Counted within the paid seats."
-                      >
+                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
                         <input
-                          type="number"
-                          min={0}
-                          max={seatsCount}
-                          value={inviteeCount}
+                          id="field-hasInvitees"
+                          type="checkbox"
+                          checked={hasInvitees}
                           onChange={(e) => {
-                            setInviteeCount(e.target.value);
+                            setHasInvitees(e.target.checked);
+                            setInviteeCount(e.target.checked ? "1" : "0");
                             clearErr("inviteeCount");
                           }}
-                          {...fp("inviteeCount")}
+                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
                         />
-                      </Field>
+                        Do you have new comers / invitees registering with you?
+                      </label>
+                      {hasInvitees && (
+                        <Field
+                          htmlFor="field-inviteeCount"
+                          label="Number of New Comers / Invitees *"
+                          error={fieldErrors.inviteeCount}
+                          hint="These participants are recorded as first-time attendees."
+                        >
+                          <input
+                            type="number"
+                            min={1}
+                            max={seatsCount}
+                            value={inviteeCount}
+                            onChange={(e) => {
+                              setInviteeCount(e.target.value);
+                              clearErr("inviteeCount");
+                            }}
+                            {...fp("inviteeCount", "sm:max-w-xs")}
+                          />
+                        </Field>
+                      )}
+                      <p className="text-[11px] text-gray-500">
+                        {hasInvitees
+                          ? `${inviteeNumber} first-time · ${returningCount} returning attendant${returningCount === 1 ? "" : "s"}.`
+                          : `All ${seatsCount} participants will be recorded as returning attendants.`}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
+                        <input
+                          id="field-hasChildren"
+                          type="checkbox"
+                          checked={hasChildren}
+                          aria-invalid={fieldErrors.hasChildren ? true : undefined}
+                          aria-describedby={fieldErrors.hasChildren ? "field-hasChildren-error" : undefined}
+                          onChange={(e) => {
+                            setHasChildren(e.target.checked);
+                            setChildCount(e.target.checked ? 1 : 0);
+                            clearErr("hasChildren");
+                            clearErr("childCount");
+                          }}
+                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
+                        />
+                        Are you registering any children?
+                      </label>
+                      {fieldErrors.hasChildren && (
+                        <p id="field-hasChildren-error" role="alert" className="text-[11px] font-medium text-red-600">
+                          {fieldErrors.hasChildren}
+                        </p>
+                      )}
+                      {hasChildren && (
+                        <Field
+                          htmlFor="field-childCount"
+                          label="Number of Children *"
+                          error={fieldErrors.childCount}
+                          hint="Children are included in the participant count and every KPI above."
+                        >
+                          <input
+                            type="number"
+                            min={1}
+                            max={seatsCount}
+                            value={childCount}
+                            onChange={(e) => {
+                              setChildCount(Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0)));
+                              clearErr("childCount");
+                            }}
+                            {...fp("childCount", "sm:max-w-xs")}
+                          />
+                        </Field>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1075,88 +1145,6 @@ export default function RegisterPage() {
                           className={inputCls(Boolean(fieldErrors.genderCounts))}
                         />
                       </Field>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Field
-                        htmlFor="field-firstTimeCounts"
-                        label="First Time — Yes *"
-                        error={fieldErrors.firstTimeCounts}
-                        hint="First time attending a conference in HOREMOW."
-                      >
-                        <input
-                          type="number"
-                          min={0}
-                          max={seatsCount}
-                          value={firstTimeCounts.yes}
-                          onChange={(e) => {
-                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
-                            setFirstTimeCounts((prev) => ({ ...prev, yes: value }));
-                            clearErr("firstTimeCounts");
-                          }}
-                          {...fp("firstTimeCounts")}
-                        />
-                      </Field>
-                      <Field htmlFor="field-firstTimeCounts-no" label="First Time — No *">
-                        <input
-                          id="field-firstTimeCounts-no"
-                          type="number"
-                          min={0}
-                          max={seatsCount}
-                          value={firstTimeCounts.no}
-                          onChange={(e) => {
-                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
-                            setFirstTimeCounts((prev) => ({ ...prev, no: value }));
-                            clearErr("firstTimeCounts");
-                          }}
-                          className={inputCls(Boolean(fieldErrors.firstTimeCounts))}
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
-                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
-                        <input
-                          id="field-hasChildren"
-                          type="checkbox"
-                          checked={hasChildren}
-                          aria-invalid={fieldErrors.hasChildren ? true : undefined}
-                          aria-describedby={fieldErrors.hasChildren ? "field-hasChildren-error" : undefined}
-                          onChange={(e) => {
-                            setHasChildren(e.target.checked);
-                            setChildCount(e.target.checked ? 1 : 0);
-                            clearErr("hasChildren");
-                            clearErr("childCount");
-                          }}
-                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
-                        />
-                        Children are attending with the group
-                      </label>
-                      {fieldErrors.hasChildren && (
-                        <p id="field-hasChildren-error" role="alert" className="text-[11px] font-medium text-red-600">
-                          {fieldErrors.hasChildren}
-                        </p>
-                      )}
-                      {hasChildren && (
-                        <Field
-                          htmlFor="field-childCount"
-                          label="Number of Children *"
-                          error={fieldErrors.childCount}
-                          hint="Children are included in paid seats and in every count above."
-                        >
-                          <input
-                            type="number"
-                            min={1}
-                            max={seatsCount}
-                            value={childCount}
-                            onChange={(e) => {
-                              setChildCount(Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0)));
-                              clearErr("childCount");
-                            }}
-                            {...fp("childCount", "sm:max-w-xs")}
-                          />
-                        </Field>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1269,7 +1257,12 @@ export default function RegisterPage() {
                     />
                   </Field>
 
-                  <Field htmlFor="field-country" label="Country of Residence *" error={fieldErrors.country}>
+                  <Field
+                    htmlFor="field-country"
+                    label={isGroup ? "Group Nation / Country *" : "Country of Residence *"}
+                    error={fieldErrors.country}
+                    hint={isGroup ? "Applied to every participant in this group." : undefined}
+                  >
                     <SearchableSelect
                       id="field-country"
                       value={country}
@@ -1293,9 +1286,15 @@ export default function RegisterPage() {
 
                   <Field
                     htmlFor="field-state"
-                    label={`State of Residence${isNigeria ? " *" : ""}`}
+                    label={`${isGroup ? "Group State" : "State of Residence"}${isNigeria ? " *" : ""}`}
                     error={fieldErrors.state}
-                    hint={isNigeria ? undefined : "Enabled when your country is Nigeria."}
+                    hint={
+                      isNigeria
+                        ? isGroup
+                          ? "Applied to every participant in this group."
+                          : undefined
+                        : "Enabled when your country is Nigeria."
+                    }
                   >
                     <SearchableSelect
                       id="field-state"
@@ -1390,24 +1389,36 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* NGN contribution amount */}
+              {/* NGN payment amount */}
               {currency === "NGN" && (
                 <div className="space-y-3 border-t border-gray-100 pt-8">
-                  <SectionTitle title="Contribution" />
+                  <SectionTitle title="Payment" />
                   <Field
                     htmlFor="field-customNairaAmount"
-                    label={isGroup ? "Total Group Contribution (₦) *" : "Contribution Amount (₦) *"}
+                    label={isGroup ? "Payment Amount (₦)" : "Payment Amount (₦) *"}
                     error={fieldErrors.customNairaAmount}
-                    hint={`Minimum ${formatMoneyMinor(minimumNairaMinor, "NGN")} for ${effectiveSeats} ${
-                      effectiveSeats === 1 ? "participant" : "participants"
-                    }.`}
+                    hint={
+                      isGroup
+                        ? "Calculated automatically from the standard price and your participant count."
+                        : `Minimum ${formatMoneyMinor(minimumNairaMinor, "NGN")} for ${effectiveSeats} ${
+                            effectiveSeats === 1 ? "participant" : "participants"
+                          }.`
+                    }
                   >
                     <input
                       type="number"
                       inputMode="numeric"
                       step="1"
-                      value={customNairaAmount}
+                      readOnly={isGroup}
+                      value={
+                        isGroup
+                          ? standardGroupNairaMinor !== null
+                            ? String(standardGroupNairaMinor / 100)
+                            : ""
+                          : customNairaAmount
+                      }
                       onChange={(e) => {
+                        if (isGroup) return;
                         setCustomNairaAmount(e.target.value);
                         clearErr("customNairaAmount");
                       }}
@@ -1567,12 +1578,12 @@ export default function RegisterPage() {
                   <dd className="font-semibold text-[#111320]">{isGroup ? "Group" : "Individual"}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-gray-500">{effectiveSeats === 1 ? "Participant pass" : "Participant passes"}</dt>
+                  <dt className="text-gray-500">{effectiveSeats === 1 ? "Participant" : "Participants"}</dt>
                   <dd className="font-semibold text-[#111320]">{effectiveSeats}</dd>
                 </div>
-                {currency !== "NGN" && typeof unitMinor === "number" && (
+                {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
                   <div className="flex items-center justify-between gap-4">
-                    <dt className="text-gray-500">Price per pass</dt>
+                    <dt className="text-gray-500">Standard price per participant</dt>
                     <dd className="font-semibold text-[#111320]">{formatMoneyMinor(unitMinor, currency)}</dd>
                   </div>
                 )}
@@ -1586,15 +1597,6 @@ export default function RegisterPage() {
                 <span className="text-sm text-gray-500">Total ({currency})</span>
                 <span className="text-3xl font-black tracking-tight text-[#111320]">{formattedTotal}</span>
               </div>
-
-              <ul className="mt-5 space-y-2 text-xs text-gray-600">
-                {PASS_BENEFITS.map((b) => (
-                  <li key={b} className="flex items-center gap-2">
-                    <CheckIcon className="h-3.5 w-3.5 shrink-0 text-[#1FA396]" />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
 
               {/* Messages */}
               <div className="mt-6 space-y-3">
@@ -1640,7 +1642,7 @@ export default function RegisterPage() {
                 type="submit"
                 form="register-form"
                 disabled={submitDisabled}
-                className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full bg-[#0E1020] px-6 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition-all duration-200 hover:bg-[#1A1D36] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[6px] bg-[#0E1020] px-6 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition-all duration-200 hover:bg-[#1A1D36] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <LockIcon className="h-4 w-4 text-[#8EE3D6]" />
                 <span>
@@ -1648,7 +1650,7 @@ export default function RegisterPage() {
                     ? "Initializing Secure Checkout..."
                     : totalMinor === null
                       ? "Loading price..."
-                      : `Pay ${formattedTotal} via ${checkoutProvider}`}
+                      : `Pay ${formattedTotal}`}
                 </span>
               </button>
             </div>
