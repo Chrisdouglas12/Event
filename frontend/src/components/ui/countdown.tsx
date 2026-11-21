@@ -15,6 +15,7 @@ interface TimeLeft {
 interface CountdownProps {
   startsAt?: string;
   endsAt?: string;
+  compact?: boolean;
 }
 
 function calculateTime(startsAt: string, endsAt: string): TimeLeft {
@@ -50,6 +51,7 @@ function calculateTime(startsAt: string, endsAt: string): TimeLeft {
 export function Countdown({
   startsAt = SITE_CONFIG.startsAt,
   endsAt = SITE_CONFIG.endsAt,
+  compact = false,
 }: CountdownProps) {
   // Calculate on the first render instead of waiting for useEffect. This means
   // the server/static HTML already contains real numbers, not a 00 placeholder.
@@ -103,23 +105,35 @@ export function Countdown({
   return (
     <div
       suppressHydrationWarning
-      className="flex items-center gap-3 sm:gap-6 text-white py-2"
+      className={compact ? "flex items-center gap-1.5 text-white" : "flex items-center gap-3 sm:gap-6 text-white py-2"}
     >
       {units.map((unit, index) => (
         <Fragment key={unit.label}>
-          <div className="text-center min-w-[50px] sm:min-w-[60px]">
+          <div className={compact ? "text-center min-w-[24px]" : "text-center min-w-[50px] sm:min-w-[60px]"}>
             <div
               suppressHydrationWarning
-              className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums"
+              className={
+                compact
+                  ? "text-sm font-bold tracking-tight tabular-nums"
+                  : "text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums"
+              }
             >
               {String(unit.value).padStart(2, "0")}
             </div>
-            <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1">
+            <div
+              className={
+                compact
+                  ? "text-[7px] uppercase tracking-[0.08em] text-gray-300 font-medium"
+                  : "text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-gray-300 font-medium mt-1"
+              }
+            >
               {unit.label}
             </div>
           </div>
           {index < units.length - 1 && (
-            <span className="text-2xl text-gray-400/80 font-light -mt-3">:</span>
+            <span className={compact ? "text-xs text-gray-400/80 -mt-1" : "text-2xl text-gray-400/80 font-light -mt-3"}>
+              :
+            </span>
           )}
         </Fragment>
       ))}

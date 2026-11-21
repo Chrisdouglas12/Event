@@ -38,10 +38,13 @@ export function HeroBackground({
   align = "left",
   desktopLift = 0,
   shrinkOnScroll = false,
+  richAtmosphere = false,
 }: {
   align?: "left" | "right";
   desktopLift?: number;
   shrinkOnScroll?: boolean;
+  /** Extra galaxy/nebula depth. Off on the landing hero, which has its own scene. */
+  richAtmosphere?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -160,12 +163,17 @@ export function HeroBackground({
       const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 64, 64), atmosphereMat);
       worldScroll.add(atmosphere);
 
-      const outerAtmosphereMat = atmosphereMat.clone();
-      outerAtmosphereMat.uniforms = THREE.UniformsUtils.clone(atmosphereMat.uniforms);
-      outerAtmosphereMat.uniforms.uGlow.value = 0.5;
-      outerAtmosphereMat.uniforms.uColor.value = new THREE.Color(0x7ff0d2);
-      const outerAtmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.78, 64, 64), outerAtmosphereMat);
-      worldScroll.add(outerAtmosphere);
+      let outerAtmosphere: InstanceType<typeof THREE.Mesh> | null = null;
+      let galaxy: InstanceType<typeof THREE.Points> | null = null;
+      let nebulaGroup: InstanceType<typeof THREE.Group> | null = null;
+      if (richAtmosphere) {
+        const outerAtmosphereMat = atmosphereMat.clone();
+        outerAtmosphereMat.uniforms = THREE.UniformsUtils.clone(atmosphereMat.uniforms);
+        outerAtmosphereMat.uniforms.uGlow.value = 0.16;
+        outerAtmosphereMat.uniforms.uColor.value = new THREE.Color(0x7ff0d2);
+        outerAtmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.78, 64, 64), outerAtmosphereMat);
+        worldScroll.add(outerAtmosphere);
+      }
 
       // Airliners circle above the globe. They are loaded from a local GLB and
       // share the scene lights, so they feel part of the same 3D world.
@@ -287,7 +295,8 @@ export function HeroBackground({
       const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
       const textures: InstanceType<typeof THREE.Texture>[] = [];
 
-      // ---------- Galaxy dust & nebula atmosphere ----------
+      // ---------- Galaxy dust & nebula atmosphere (registration only) ----------
+      if (richAtmosphere) {
       const galaxyCount = 560;
       const galaxyPos = new Float32Array(galaxyCount * 3);
       const galaxyColors = new Float32Array(galaxyCount * 3);
@@ -312,13 +321,13 @@ export function HeroBackground({
       const galaxyGeo = new THREE.BufferGeometry();
       galaxyGeo.setAttribute("position", new THREE.BufferAttribute(galaxyPos, 3));
       galaxyGeo.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
-      const galaxy = new THREE.Points(
+      galaxy = new THREE.Points(
         galaxyGeo,
         new THREE.PointsMaterial({
-          size: 0.085,
+          size: 0.07,
           vertexColors: true,
           transparent: true,
-          opacity: 0.72,
+          opacity: 0.28,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           sizeAttenuation: true,
@@ -327,7 +336,6 @@ export function HeroBackground({
       worldScroll.add(galaxy);
 
       // Soft nebula puffs give the sphere a deeper, cloudy atmosphere.
-      let nebulaGroup: InstanceType<typeof THREE.Group> | null = null;
       const glowCanvas = document.createElement("canvas");
       glowCanvas.width = glowCanvas.height = 128;
       const glowCtx = glowCanvas.getContext("2d");
@@ -353,7 +361,7 @@ export function HeroBackground({
               map: glowTex,
               color: puff.color,
               transparent: true,
-              opacity: 0.16,
+              opacity: 0.05,
               blending: THREE.AdditiveBlending,
               depthWrite: false,
             })
@@ -362,6 +370,7 @@ export function HeroBackground({
           sprite.scale.set(puff.scale, puff.scale, 1);
           nebulaGroup?.add(sprite);
         });
+      }
       }
 
       rings.forEach((ring, ri) => {
@@ -611,9 +620,11 @@ export function HeroBackground({
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
-        outerAtmosphere.rotation.y -= dt * 0.012;
-        galaxy.rotation.y -= dt * 0.009;
-        galaxy.rotation.x = Math.sin(t * 0.05) * 0.08;
+        if (outerAtmosphere) outerAtmosphere.rotation.y -= dt * 0.012;
+        if (galaxy) {
+          galaxy.rotation.y -= dt * 0.009;
+          galaxy.rotation.x = Math.sin(t * 0.05) * 0.08;
+        }
         if (nebulaGroup) nebulaGroup.rotation.y += dt * 0.004;
         stars.rotation.y += dt * 0.005;
 
@@ -722,7 +733,7 @@ export function HeroBackground({
       disposed = true;
       cleanup();
     };
-  }, [align, desktopLift, shrinkOnScroll]);
+  }, [align, desktopLift, shrinkOnScroll, richAtmosphere]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">

@@ -148,13 +148,15 @@ h1, h2, h3, h4, h5, h6 {
   contain-intrinsic-size: auto 900px;
 }
 
-/* Landing sections recede subtly as they move away from the viewport centre.
-   The scale lives in a variable so the view-timeline enter animation below can
+/* Landing cards/sections receive a three.js-driven perspective tilt and scale.
+   The values live in variables so the view-timeline enter animation below can
    keep animating transform without losing the depth effect. */
 .landing-navy [data-enter],
-.landing-navy [data-depth] {
+.landing-navy [data-depth],
+.landing-navy .landing-card {
   transform-origin: center 40%;
-  transform: perspective(1400px) scale(var(--section-scale, 1));
+  transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
+    rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
 }
 
 /* Typing reveal: the ghost reserves the final layout while the visible layer
@@ -217,11 +219,14 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes soft-enter {
   from {
     opacity: 0;
-    transform: perspective(1400px) translate3d(0, 24px, 0) scale(var(--section-scale, 1));
+    transform: perspective(1400px) translate3d(0, 24px, 0)
+      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
+      scale(var(--section-scale, 1));
   }
   to {
     opacity: 1;
-    transform: perspective(1400px) scale(var(--section-scale, 1));
+    transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
+      rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
   }
 }
 

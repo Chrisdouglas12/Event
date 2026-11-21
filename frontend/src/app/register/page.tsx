@@ -9,6 +9,7 @@ import { Footer } from "@/components/marketing/footer";
 import { SITE_CONFIG } from "@/config/site";
 import { formatMoneyMinor, SupportedCurrency } from "@/config/currencies";
 import { HeroBackground } from "@/components/marketing/hero-background";
+import { Countdown } from "@/components/ui/countdown";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -630,9 +631,9 @@ export default function RegisterPage() {
 
       {/* Fixed globe on the left, registration on the right. */}
       <section className="relative w-full overflow-hidden px-4 pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
-        <div className="fixed inset-0 z-0">
-          <HeroBackground align="left" desktopLift={-10} shrinkOnScroll />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/10 to-[#0E1020]/35" />
+        <div className="fixed inset-0 z-0 opacity-60">
+          <HeroBackground align="left" desktopLift={-10} shrinkOnScroll richAtmosphere />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/20 to-[#0E1020]/50" />
         </div>
 
         <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 lg:grid-cols-12 lg:gap-8">
@@ -683,6 +684,13 @@ export default function RegisterPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#151829] px-5 py-2 sm:px-8">
+                <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
+                  Conference starts in
+                </span>
+                <Countdown compact />
               </div>
 
               <div className="px-5 pb-4 pt-4 sm:px-8">
