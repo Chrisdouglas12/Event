@@ -67,7 +67,7 @@ export default function CampInfoPage() {
               <li className="flex items-start gap-2"><Ticket className="mt-0.5 h-4 w-4 text-[#0E7A6E]" />Keep your ticket QR code or reference code available at arrival.</li>
               <li className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 text-[#0E7A6E]" />Arrange your own accommodation and food.</li>
             </ul>
-            <p className="text-xs text-gray-500">The official programme booklet will be available at the conference on 8 December 2026.</p>
+            <p className="text-xs text-gray-500">The full programme will be available at the conference on 8 December 2026.</p>
           </section>
 
           <section className="rounded-[18px] border border-gray-200 bg-white p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4">

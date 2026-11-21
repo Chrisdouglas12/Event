@@ -72,9 +72,6 @@ const EVENT_FIELDS = [
   'venueMapUrl',
   'contactPhone',
   'contactEmail',
-  'bankName',
-  'bankAccountName',
-  'bankAccountNumber',
   'capacityLimit',
   'capacityAlertThresholds',
 ] as const;
@@ -235,11 +232,6 @@ router.get('/settings/public', async (_req: Request, res: Response) => {
         contact: {
           phone: settings.contactPhone,
           email: settings.contactEmail || null,
-        },
-        bank: {
-          name: settings.bankName || null,
-          accountName: settings.bankAccountName || null,
-          accountNumber: settings.bankAccountNumber || null,
         },
         capacity: {
           limit: settings.capacityLimit,

@@ -25,7 +25,7 @@ function toBuffer(value: unknown): Buffer | null {
 }
 
 // GET /api/resources/:key
-// Streams a stored asset (for example the conference booklet) from MongoDB.
+// Streams a stored asset (for example the conference programme) from MongoDB.
 router.get('/resources/:key', async (req: Request, res: Response) => {
   try {
     const key = String(req.params.key || '').trim().toLowerCase();

@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           </section>
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#111320]">Ticket and check-in</h2>
-            <p>Tickets use signed QR tokens. Staff check-in uses a limited offline roster and records arrival and booklet issuance. The organizers must confirm the retention period and deletion process for registration, payment, and check-in records.</p>
+            <p>Tickets use signed QR tokens. Staff check-in uses a limited offline roster and records arrival only. The organizers must confirm the retention period and deletion process for registration, payment, and check-in records.</p>
           </section>
           <section className="rounded-xl border border-gray-200 bg-[#F8FAFC] p-6">
             <h2 className="font-bold text-[#111320]">Privacy contact</h2>

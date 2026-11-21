@@ -61,10 +61,14 @@ export function authenticateStaff(
 }
 
 export function requireRole(...roles: string[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    if (!req.staff) return res.status(401).json({ error: 'Unauthenticated' });
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.staff) {
+      res.status(401).json({ error: 'Unauthenticated' });
+      return;
+    }
     if (!roles.includes(req.staff.role)) {
-      return res.status(403).json({ error: 'Forbidden' });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
     next();
   };
@@ -314,12 +318,7 @@ router.post(
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const newHash = await hashPassword(newPassword, {
-        type: argon2.argon2id,
-        memoryCost: 19456,
-        timeCost: 2,
-        parallelism: 1,
-      });
+      const newHash = await hashPassword(newPassword);
 
       staff.passwordHash = newHash;
       await staff.save();
@@ -371,12 +370,7 @@ router.post(
         return res.status(400).json({ error: `role must be one of: ${STAFF_ROLES.join(', ')}` });
       }
 
-      const passwordHash = await hashPassword(password, {
-        type: argon2.argon2id,
-        memoryCost: 19456,
-        timeCost: 2,
-        parallelism: 1,
-      });
+      const passwordHash = await hashPassword(password);
 
       const staff = await StaffUser.create({
         fullName: String(fullName).trim(),

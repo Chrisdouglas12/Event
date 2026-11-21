@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Printer, FileSpreadsheet, Lock, BookOpen } from "lucide-react";
+import { Download, Printer, FileSpreadsheet, Lock } from "lucide-react";
 
 export default function AdminExportPage() {
   return (
@@ -48,14 +48,14 @@ export default function AdminExportPage() {
         <div className="bg-white rounded-[20px] border border-gray-200 p-6 sm:p-8 space-y-6 shadow-2xs">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
-              <BookOpen className="w-6 h-6" />
+              <Printer className="w-6 h-6" />
             </div>
             <div className="space-y-1">
               <h3 className="text-base font-bold text-[#111320]">
                 Physical Plan B Gate Master Roster (Print / PDF)
               </h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Pre-formatted for A4 ring binder printing. Grouped by State/Region with check-in signature boxes, booklet issuance tracking, and emergency manual reconciliation headers.
+                Pre-formatted for A4 ring binder printing. Grouped by State/Region with check-in signature boxes and emergency manual reconciliation headers.
               </p>
             </div>
           </div>

@@ -21,9 +21,6 @@ type Settings = {
   venueMapUrl?: string;
   contactPhone?: string;
   contactEmail?: string | null;
-  bankName?: string | null;
-  bankAccountName?: string | null;
-  bankAccountNumber?: string | null;
   capacityLimit?: number | null;
   capacityAlertThresholds?: string;
 };
@@ -49,7 +46,7 @@ type ProgrammeItem = {
 };
 
 const CURRENCIES = ["NGN", "USD", "EUR", "GBP"] as const;
-const PROVIDERS = ["paystack", "paypal", "manual_transfer"] as const;
+const PROVIDERS = ["paystack", "paypal"] as const;
 
 const EMPTY_PROGRAMME: ProgrammeItem = {
   eventDate: "",
@@ -122,9 +119,6 @@ export default function AdminSettingsPage() {
             venueMapUrl: s.venueMapUrl || "",
             contactPhone: s.contactPhone,
             contactEmail: s.contactEmail || "",
-            bankName: s.bankName || "",
-            bankAccountName: s.bankAccountName || "",
-            bankAccountNumber: s.bankAccountNumber || "",
             capacityLimit: s.capacityLimit,
             capacityAlertThresholds: Array.isArray(s.capacityAlertThresholds)
               ? s.capacityAlertThresholds.join(", ")
@@ -493,19 +487,6 @@ export default function AdminSettingsPage() {
               <label className={labelCls}>Venue Map Embed URL</label>
               <input className={inputCls} value={settings.venueMapUrl || ""} onChange={(e) => updateSetting("venueMapUrl", e.target.value)} />
             </div>
-          </div>
-        </section>
-
-        {/* Bank Transfer Settings */}
-        <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
-          <div>
-            <h2 className="text-lg font-bold text-[#111320]">Manual Bank Transfer</h2>
-            <p className="mt-1 text-xs text-gray-500">These details are shown to registrants only when NGN checkout is routed to manual transfer. Never ask participants to upload a receipt.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div><label className={labelCls}>Bank Name</label><input className={inputCls} value={settings.bankName || ""} onChange={(e) => updateSetting("bankName", e.target.value)} /></div>
-            <div><label className={labelCls}>Account Name</label><input className={inputCls} value={settings.bankAccountName || ""} onChange={(e) => updateSetting("bankAccountName", e.target.value)} /></div>
-            <div><label className={labelCls}>Account Number</label><input inputMode="numeric" autoComplete="off" className={inputCls} value={settings.bankAccountNumber || ""} onChange={(e) => updateSetting("bankAccountNumber", e.target.value.replace(/\s/g, ""))} /></div>
           </div>
         </section>
 

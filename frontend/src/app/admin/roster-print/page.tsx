@@ -25,7 +25,6 @@ export default async function AdminRosterPrintPage() {
     guardianName: string | null;
     status: string;
     checkedInAt: Date | null;
-    bookletIssuedAt: Date | null;
   };
 
   let confirmedParticipants: RosterParticipant[] = [];
@@ -33,11 +32,10 @@ export default async function AdminRosterPrintPage() {
   try {
     const [participantData, orderData] = await Promise.all([
       adminApi("/admin/participants"),
-      adminApi("/admin/orders?limit=200"),
+      adminApi("/admin/payments?limit=200"),
     ]);
     const paidOrderIds = new Set<string>(
-      (orderData.orders || [])
-        .filter((order: { status: string }) => order.status === "paid")
+      (orderData.payments || orderData.orders || [])
         .map((order: { _id?: string; id?: string }) => String(order._id || order.id))
     );
     const asDate = (value: unknown): Date | null => (value ? new Date(String(value)) : null);
@@ -56,7 +54,6 @@ export default async function AdminRosterPrintPage() {
         guardianName: a.guardianName || null,
         status: a.status,
         checkedInAt: asDate(a.checkedInAt),
-        bookletIssuedAt: asDate(a.bookletIssuedAt),
       }))
       .sort((a: RosterParticipant, b: RosterParticipant) =>
         (a.state || "").localeCompare(b.state || "") || a.name.localeCompare(b.name)
@@ -119,7 +116,7 @@ export default async function AdminRosterPrintPage() {
             </div>
           </div>
           <div className="bg-gray-100 p-2.5 rounded border border-gray-300 text-[11px] leading-relaxed">
-            <strong>EMERGENCY GATE PROTOCOL:</strong> Use this binder when gate scanner devices, power, or networks are unavailable. Verify the participant&apos;s printed pass or SMS ref code against this directory, mark <strong>[✓] ARRIVED</strong> and <strong>[✓] BOOKLET</strong>, and record their gate stand. Synchronize back into the admin system once power/connectivity is restored.
+            <strong>EMERGENCY GATE PROTOCOL:</strong> Use this binder when gate scanner devices, power, or networks are unavailable. Verify the participant&apos;s printed pass or SMS ref code against this directory, mark <strong>[✓] ARRIVED</strong>, and record their gate stand. Synchronize back into the admin system once power/connectivity is restored.
           </div>
         </header>
 
@@ -148,7 +145,6 @@ export default async function AdminRosterPrintPage() {
                     <th className="py-1.5 px-2 w-32">Phone</th>
                     <th className="py-1.5 px-2 w-36">Chapter/Zone / Locality</th>
                     <th className="py-1.5 px-2 text-center w-16">Arrived</th>
-                    <th className="py-1.5 px-2 text-center w-16">Booklet</th>
                     <th className="py-1.5 px-2 w-28">Stand / Notes</th>
                   </tr>
                 </thead>
@@ -170,11 +166,6 @@ export default async function AdminRosterPrintPage() {
                       <td className="py-2 px-2 text-center">
                         <span className="inline-block w-4 h-4 border border-black align-middle text-center text-[10px] leading-3 font-bold">
                           {a.checkedInAt ? "✓" : ""}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2 text-center">
-                        <span className="inline-block w-4 h-4 border border-black align-middle text-center text-[10px] leading-3 font-bold">
-                          {a.bookletIssuedAt ? "✓" : ""}
                         </span>
                       </td>
                       <td className="py-2 px-2 border-b border-gray-200">

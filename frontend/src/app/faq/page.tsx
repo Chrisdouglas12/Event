@@ -45,7 +45,7 @@ export default function FaqPage() {
     },
     {
       q: "Will the check-in scanner work if network is down at Kwali Campground?",
-      a: "Yes. Our check-in scanner PWA is engineered offline-first with Ed25519 cryptographic signatures. Gate attendants can verify ticket authenticity and issue conference booklets even without active cellular network.",
+      a: "Yes. Our check-in scanner PWA is engineered offline-first with Ed25519 cryptographic signatures. Gate attendants can validate paid tickets and record attendance even without an active cellular network.",
     },
   ];
 

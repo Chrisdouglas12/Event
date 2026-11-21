@@ -12,7 +12,7 @@ export interface InitializeCheckoutParams {
 }
 
 export interface CheckoutSessionResult {
-  provider: "paystack" | "paypal" | "manual_transfer";
+  provider: "paystack" | "paypal";
   checkoutUrl?: string; // Redirect URL for hosted checkout
   providerRef: string; // Paystack access_code / PayPal order_id
   rawPayload?: any;

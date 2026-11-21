@@ -115,50 +115,5 @@ describe("Phase 3: Security & Cryptographic Field Hardening", () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0].standId).toBe("Gate B - Stand 3");
   });
-
-  it("enforces booklet issuance prerequisites (no booklet without prior check-in, no double-issue)", () => {
-    interface ParticipantState {
-      checkedInAt: number | null;
-      bookletIssuedAt: number | null;
-    }
-
-    const state: ParticipantState = {
-      checkedInAt: null,
-      bookletIssuedAt: null,
-    };
-
-    function attemptBookletIssue(scanTime: number) {
-      if (!state.checkedInAt) {
-        return { success: false, reason: "Booklet cannot be issued before check-in." };
-      }
-      if (state.bookletIssuedAt) {
-        return { success: false, reason: "Booklet issue was already recorded." };
-      }
-      if (scanTime < state.checkedInAt) {
-        return { success: false, reason: "Booklet timestamp precedes the participant arrival timestamp." };
-      }
-      state.bookletIssuedAt = scanTime;
-      return { success: true };
-    }
-
-    // 1. Attempt to issue booklet before arrival check-in -> REJECTED
-    expect(attemptBookletIssue(1000)).toEqual({
-      success: false,
-      reason: "Booklet cannot be issued before check-in.",
-    });
-
-    // 2. Participant arrives & checks in
-    state.checkedInAt = 2000;
-
-    // 3. Issue booklet -> SUCCESS
-    expect(attemptBookletIssue(2500)).toEqual({ success: true });
-    expect(state.bookletIssuedAt).toBe(2500);
-
-    // 4. Attempt to issue a duplicate booklet at another stand -> REJECTED
-    expect(attemptBookletIssue(3000)).toEqual({
-      success: false,
-      reason: "Booklet issue was already recorded.",
-    });
-  });
 });
 

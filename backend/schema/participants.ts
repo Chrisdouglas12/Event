@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 
-import {  ATTENDANCE_MODES, CURRENCIES, PARTICIPANT_STATUSES  } from '../constants/enums.ts';
-
+import { ATTENDANCE_MODES, CURRENCIES, GENDERS, PARTICIPANT_STATUSES } from '../constants/enums.ts';
 
 // TICKET TYPE
 
@@ -23,15 +22,11 @@ const ticketTypeSchema = new mongoose.Schema(
       required: true,
       default: true,
     },
-  
     prices: [
       {
         currency: {
           type: String,
-          enum: {
-            values: CURRENCIES,
-            message: 'Currency must be one of: NGN, USD, EUR, GBP',
-          },
+          enum: { values: CURRENCIES },
           required: true,
         },
         amountMinor: {
@@ -50,24 +45,22 @@ const ticketTypeSchema = new mongoose.Schema(
 
 ticketTypeSchema.path('prices').validate(function (prices) {
   const seen = new Set();
-  for (const p of prices) {
-    if (seen.has(p.currency)) return false;
-    seen.add(p.currency);
+  for (const price of prices) {
+    if (seen.has(price.currency)) return false;
+    seen.add(price.currency);
   }
   return true;
 }, 'Duplicate currency in ticket prices');
 
 ticketTypeSchema.pre('save', function () {
   if (Array.isArray(this.prices)) {
-    this.prices.forEach((p) => {
-      if (p.isModified && p.isModified('amountMinor')) {
-        p.updatedAt = new Date();
+    this.prices.forEach((price) => {
+      if (price.isModified && price.isModified('amountMinor')) {
+        price.updatedAt = new Date();
       }
     });
   }
 });
-
-
 
 // GROUP
 
@@ -102,6 +95,16 @@ const groupSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    country: {
+      type: String,
+      maxlength: 64,
+      trim: true,
+    },
+    state: {
+      type: String,
+      maxlength: 64,
+      trim: true,
+    },
     totalSeats: {
       type: Number,
       required: true,
@@ -112,12 +115,35 @@ const groupSchema = new mongoose.Schema(
       online: { type: Number, min: 0, default: 0 },
       not_sure: { type: Number, min: 0, default: 0 },
     },
+    genderCounts: {
+      male: { type: Number, min: 0, default: 0 },
+      female: { type: Number, min: 0, default: 0 },
+    },
+    firstTimeCounts: {
+      yes: { type: Number, min: 0, default: 0 },
+      no: { type: Number, min: 0, default: 0 },
+    },
+    inviteeCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    hasChildren: {
+      type: Boolean,
+      default: false,
+    },
+    childCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
     claimedSeats: {
       type: Number,
       required: true,
       default: 0,
       min: 0,
     },
+    checkedInAt: { type: Date, default: null },
     managementToken: {
       type: String,
       required: true,
@@ -134,7 +160,6 @@ const groupSchema = new mongoose.Schema(
 groupSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
-
 
 // PARTICIPANT
 
@@ -199,12 +224,23 @@ const participantSchema = new mongoose.Schema(
     },
     attendanceMode: {
       type: String,
-      enum: {
-        values: ATTENDANCE_MODES,
-        message: 'Attendance mode must be one of: physically, online, not_sure',
-      },
+      enum: { values: ATTENDANCE_MODES },
       required: true,
       default: 'not_sure',
+    },
+    gender: {
+      type: String,
+      enum: { values: GENDERS },
+      default: null,
+    },
+    firstTime: {
+      type: Boolean,
+      default: false,
+    },
+    isChild: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
     isMinor: {
       type: Boolean,
@@ -223,10 +259,7 @@ const participantSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: {
-        values: PARTICIPANT_STATUSES,
-        message: 'Status must be one of: unconfirmed, confirmed, checked_in, booklet_issued',
-      },
+      enum: { values: PARTICIPANT_STATUSES },
       required: true,
       default: 'unconfirmed',
     },
@@ -237,11 +270,10 @@ const participantSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    checkedInAt:      { type: Date, default: null },
-    bookletIssuedAt:  { type: Date, default: null },
-    createdAt:        { type: Date, default: Date.now },
-    updatedAt:        { type: Date, default: Date.now },
-    deletedAt:        { type: Date, default: null }, 
+    checkedInAt: { type: Date, default: null },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    deletedAt: { type: Date, default: null },
   },
   { collection: 'participants' }
 );
@@ -249,7 +281,6 @@ const participantSchema = new mongoose.Schema(
 participantSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
-
 
 // GROUP SEAT
 
@@ -283,36 +314,29 @@ const groupSeatSchema = new mongoose.Schema(
   { collection: 'group_seats' }
 );
 
-
 // INDEXES
 
-// Ticket types
 ticketTypeSchema.index({ isActive: 1 });
 ticketTypeSchema.index({ 'prices.currency': 1 });
 
-// Groups
 groupSchema.index({ orderId: 1 });
 
-// Participants
 participantSchema.index({ phoneE164: 1 });
 participantSchema.index({ email: 1 });
 participantSchema.index({ orderId: 1 });
 participantSchema.index({ groupId: 1 });
 participantSchema.index({ status: 1 });
-
 participantSchema.index(
   { deletedAt: 1 },
   { partialFilterExpression: { deletedAt: { $type: 'date' } } }
 );
 
-// Group participants
 groupSeatSchema.index({ groupId: 1 });
 groupSeatSchema.index({ participantId: 1 });
-
 
 // EXPORTS
 
 export const TicketType = (mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema)) as mongoose.Model<any>;
-export const Group = (mongoose.models.Group      || mongoose.model('Group',      groupSchema)) as mongoose.Model<any>;
-export const Participant = (mongoose.models.Participant   || mongoose.model('Participant',   participantSchema)) as mongoose.Model<any>;
-export const GroupSeat = (mongoose.models.GroupSeat  || mongoose.model('GroupSeat',  groupSeatSchema)) as mongoose.Model<any>;
+export const Group = (mongoose.models.Group || mongoose.model('Group', groupSchema)) as mongoose.Model<any>;
+export const Participant = (mongoose.models.Participant || mongoose.model('Participant', participantSchema)) as mongoose.Model<any>;
+export const GroupSeat = (mongoose.models.GroupSeat || mongoose.model('GroupSeat', groupSeatSchema)) as mongoose.Model<any>;

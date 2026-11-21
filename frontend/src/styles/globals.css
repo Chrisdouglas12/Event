@@ -236,6 +236,209 @@ h1, h2, h3, h4, h5, h6 {
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* 3D conference gallery: one cylinder, all panels keep the same 16:9 frame. */
+.gallery-3d {
+  --gallery-card-width: clamp(240px, 46vw, 560px);
+  --gallery-radius: clamp(300px, 56vw, 680px);
+  position: relative;
+  height: clamp(320px, 37vw, 420px);
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+}
+
+.gallery-3d__stage {
+  position: absolute;
+  inset: 0 0 54px;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  outline: none;
+}
+
+.gallery-3d.is-dragging .gallery-3d__stage {
+  cursor: grabbing;
+}
+
+.gallery-3d__stage:focus-visible {
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 2px rgba(142, 227, 214, 0.65);
+}
+
+.gallery-3d__ring {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.gallery-3d.is-dragging .gallery-3d__ring {
+  transition: none;
+}
+
+.gallery-3d__panel {
+  grid-area: 1 / 1;
+  width: var(--gallery-card-width);
+  margin: 0;
+  transform: rotateY(var(--angle)) translateZ(var(--gallery-radius));
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition: opacity 450ms ease, filter 450ms ease;
+}
+
+.gallery-3d__panel.is-front {
+  opacity: 1;
+  filter: none;
+}
+
+.gallery-3d__panel.is-side {
+  opacity: 0.88;
+  filter: brightness(0.88);
+}
+
+.gallery-3d__panel.is-far {
+  opacity: 0.5;
+  filter: brightness(0.72);
+}
+
+.gallery-3d__frame {
+  position: relative;
+  overflow: hidden;
+  background: #0e1020;
+  box-shadow:
+    0 34px 70px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(142, 227, 214, 0.16);
+  transform: translateZ(0);
+  transition: transform 350ms ease, box-shadow 350ms ease;
+}
+
+.gallery-3d__panel.is-front .gallery-3d__frame {
+  transform: translateZ(18px);
+  box-shadow:
+    0 44px 90px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(142, 227, 214, 0.28);
+}
+
+.gallery-3d__caption {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8ee3d6;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.gallery-3d__controls {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.gallery-3d__arrow {
+  display: inline-flex;
+  height: 38px;
+  width: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(142, 227, 214, 0.35);
+  border-radius: 999px;
+  background: rgba(14, 16, 32, 0.7);
+  color: #8ee3d6;
+  transition: background 200ms ease, color 200ms ease, transform 200ms ease;
+}
+
+.gallery-3d__arrow:hover {
+  background: #8ee3d6;
+  color: #0e1020;
+  transform: translateY(-1px);
+}
+
+.gallery-3d__arrow:focus-visible,
+.gallery-3d__dot:focus-visible {
+  outline: 2px solid #8ee3d6;
+  outline-offset: 3px;
+}
+
+.gallery-3d__dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gallery-3d__dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  transition: width 250ms ease, background 250ms ease;
+}
+
+.gallery-3d__dot.is-active {
+  width: 22px;
+  background: #8ee3d6;
+}
+
+@media (max-width: 640px) {
+  .gallery-3d {
+    --gallery-card-width: min(78vw, 420px);
+    --gallery-radius: clamp(300px, 95vw, 520px);
+    height: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-3d {
+    height: auto;
+    perspective: none;
+    --gallery-card-width: 100%;
+  }
+
+  .gallery-3d__stage {
+    position: static;
+    cursor: default;
+    touch-action: auto;
+  }
+
+  .gallery-3d__ring {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    transform: none !important;
+    transition: none;
+  }
+
+  .gallery-3d__panel {
+    grid-area: auto;
+    width: 100%;
+    transform: none !important;
+    backface-visibility: visible;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  .gallery-3d__frame,
+  .gallery-3d__panel.is-front .gallery-3d__frame {
+    transform: none !important;
+  }
+
+  .gallery-3d__controls {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .gallery-3d__ring {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Heavenly light behind the WebGL globe: warm sun core, mint halo. */
 .hero-heaven {
   background:

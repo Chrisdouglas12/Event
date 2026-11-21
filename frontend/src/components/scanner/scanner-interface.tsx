@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   Camera,
   Check,
@@ -12,10 +13,9 @@ import {
   LoaderCircle,
   Search,
   Settings2,
-  UserRoundPlus,
+  ShieldAlert,
   Wifi,
 } from "lucide-react";
-import { ScanResultOverlay } from "@/components/scanner/scan-result-overlay";
 import { useScannerSession } from "@/components/scanner/use-scanner-session";
 
 export function ScannerInterface() {
@@ -101,7 +101,7 @@ export function ScannerInterface() {
                 className="mt-1.5 min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 font-body text-[13px] font-semibold text-[#111320] outline-none focus:border-[#0E7A6E] focus:ring-2 focus:ring-[#0E7A6E]/15"
               />
               <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
-                Saved on this device. Scans and booklet distributions will be recorded with this gate stand identifier.
+                Scans and check-ins are recorded with this gate stand identifier.
               </p>
             </section>
           )}
@@ -177,7 +177,7 @@ export function ScannerInterface() {
             </button>
 
             <div className="rounded-full border border-white/10 bg-black/30 px-3.5 py-1.5 font-body text-[10px] font-medium text-white/85 backdrop-blur-md">
-              Scans verified on-device
+              Scans verified with server
             </div>
 
             <button
@@ -266,6 +266,57 @@ export function ScannerInterface() {
             </p>
           </div>
 
+          {/* Inline Scan Status */}
+          {session.scanResult.type !== "idle" && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`mt-3 rounded-2xl border p-3.5 ${
+                session.scanResult.type === "valid"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : session.scanResult.type === "already_checked_in"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-red-200 bg-red-50 text-red-900"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 shrink-0">
+                  {session.scanResult.type === "valid" ? (
+                    <Check className="h-4 w-4" />
+                  ) : session.scanResult.type === "forged" ? (
+                    <ShieldAlert className="h-4 w-4" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-heading text-[12px] font-extrabold">
+                    {session.scanResult.type === "valid"
+                      ? session.scanResult.isGroup
+                        ? `Group checked in · ${session.scanResult.seats} seats`
+                        : "Participant checked in"
+                      : session.scanResult.type === "already_checked_in"
+                      ? "Already checked in"
+                      : session.scanResult.type === "forged"
+                      ? "Ticket rejected"
+                      : "Scan needs attention"}
+                  </div>
+                  <p className="mt-1 font-body text-[11px] leading-relaxed opacity-90">
+                    {session.scanResult.type === "valid" || session.scanResult.type === "already_checked_in"
+                      ? `${session.scanResult.name} · ${session.scanResult.refCode} — ${session.scanResult.message}`
+                      : session.scanResult.message}
+                  </p>
+                  <button
+                    onClick={session.dismissResult}
+                    className="mt-2 rounded-full bg-white/80 px-3 py-1 font-heading text-[10px] font-bold text-[#111320] shadow-xs transition hover:bg-white"
+                  >
+                    Next Scan
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Manual Reference Entry */}
           <form
             className="mt-3 flex gap-2"
@@ -303,39 +354,10 @@ export function ScannerInterface() {
               {session.syncMessage}
             </div>
           )}
-
-          {/* Fast Staff Action Shortcuts */}
-          <nav className="mt-3 grid grid-cols-2 gap-2" aria-label="Staff gate actions">
-            <Link
-              href="/staff/walk-in"
-              className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white font-heading text-[10px] font-bold text-[#111320] transition hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E7A6E]"
-            >
-              <UserRoundPlus className="h-3.5 w-3.5 text-[#0E7A6E]" />
-              <span>Walk-in Gate Sale</span>
-            </Link>
-            <Link
-              href="/staff/lookup"
-              className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white font-heading text-[10px] font-bold text-[#111320] transition hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E7A6E]"
-            >
-              <Search className="h-3.5 w-3.5 text-[#0E7A6E]" />
-              <span>Lookup Participant</span>
-            </Link>
-          </nav>
         </section>
 
         {/* Hidden Canvas for QR Extraction */}
         <canvas ref={session.canvasRef} className="hidden" aria-hidden="true" />
-
-        {/* Result Overlay Sheet */}
-        <ScanResultOverlay
-          result={session.scanResult}
-          standId={session.standId}
-          busy={session.busy}
-          issuingBooklet={session.issuingBooklet}
-          onDismiss={session.dismissResult}
-          onIssueBooklet={(participant, ticketToken) => void session.handleIssueBooklet(participant, ticketToken)}
-          onCheckInGroup={(participants, token) => void session.handleGroupCheckIn(participants, token)}
-        />
       </div>
     </main>
   );

@@ -7,10 +7,11 @@ import { Users } from "lucide-react";
 interface OrderQrCardProps {
   orderReference: string;
   token: string;
+  seats?: number;
 }
 
-/** A signed order capability for offline group check-in. */
-export function OrderQrCard({ orderReference, token }: OrderQrCardProps) {
+/** A distinct signed group capability: one scan checks in every paid seat. */
+export function OrderQrCard({ orderReference, token, seats }: OrderQrCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,10 +26,11 @@ export function OrderQrCard({ orderReference, token }: OrderQrCardProps) {
   }, [token]);
 
   return (
-    <div className="bg-white rounded-[20px] border border-gray-200 p-5 flex items-center gap-5">
+    <div className="bg-white rounded-[20px] border border-gray-200 p-5 flex items-center gap-5 print:break-inside-avoid">
       <div className="p-2 bg-white rounded-[12px] border border-gray-200 shrink-0">
         {dataUrl ? (
-          <img src={dataUrl} alt={`Order QR for ${orderReference}`} className="w-20 h-20 object-contain" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={dataUrl} alt={`Group QR for ${orderReference}`} className="w-20 h-20 object-contain" />
         ) : (
           <div className="w-20 h-20 bg-gray-100 animate-pulse rounded-[8px]" />
         )}
@@ -36,10 +38,12 @@ export function OrderQrCard({ orderReference, token }: OrderQrCardProps) {
       <div className="space-y-1">
         <div className="flex items-center gap-1.5 text-sm font-bold text-[#111320]">
           <Users className="w-4 h-4 text-[#0E7A6E]" />
-          Group Order QR
+          Group Check-in QR
         </div>
         <div className="text-xs text-gray-500 leading-relaxed">
-          "Scan at the group check-in desk to review all paid participants and check them in together."
+          {seats
+            ? `One scan checks in all ${seats} paid seats represented by this ticket.`
+            : "One scan checks in every paid seat represented by this ticket."}
         </div>
         <div className="text-[11px] font-mono text-gray-400">{orderReference}</div>
       </div>

@@ -1,12 +1,7 @@
-// constants/enums.js
+// constants/enums.ts
 //
 // Single source of truth for all enum-like string values.
 // Imported by Mongoose models, validators, routes and services.
-//
-// When adding a new value: add it here first. Models that already use
-// `enum: { values: X }` will pick it up on the next process restart with
-// no migration needed. Do NOT add the value directly in a model file —
-// that's how the arrays drift.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER
@@ -37,7 +32,6 @@ export const PAYMENT_STATUSES = [
 export const PAYMENT_PROVIDERS = [
   'paystack',
   'paypal',
-  'manual_transfer',
 ];
 
 export const FEE_POLICIES = [
@@ -66,11 +60,15 @@ export const ATTENDANCE_MODES = [
   'not_sure',
 ];
 
+export const GENDERS = [
+  'male',
+  'female',
+];
+
 export const PARTICIPANT_STATUSES = [
   'unconfirmed',
   'confirmed',
   'checked_in',
-  'booklet_issued',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,7 +77,6 @@ export const PARTICIPANT_STATUSES = [
 
 export const SCAN_TYPES = [
   'arrival',
-  'booklet',
   'daily_attendance',
   'custom',
 ];
@@ -102,36 +99,3 @@ export const STAFF_ROLES = [
   'finance',
   'admin',
 ];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NOTIFICATION JOB (not in the original enums.ts — defined here because the
-// Mongoose model needs a fixed set; adjust to match your worker contract)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const NOTIFICATION_CHANNELS = [
-  'sms',
-  'email',
-];
-
-export const NOTIFICATION_STATUSES = [
-  'queued',
-  'processing',
-  'sent',
-  'failed',
-  'cancelled',
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MANUAL PAYMENT
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const MANUAL_PAYMENT_STATUSES = [
-  'pending',
-  'approved',
-  'rejected',
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EXPORTS
-// ─────────────────────────────────────────────────────────────────────────────
-

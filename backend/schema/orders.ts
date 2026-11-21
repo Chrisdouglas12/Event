@@ -1,6 +1,13 @@
 import mongoose from 'mongoose';
 
-import { ATTENDANCE_MODES, CURRENCIES, ORDER_STATUSES, PAYMENT_PROVIDERS, PAYMENT_STATUSES, MANUAL_PAYMENT_STATUSES, } from '../constants/enums.ts';
+import {
+  ATTENDANCE_MODES,
+  CURRENCIES,
+  GENDERS,
+  ORDER_STATUSES,
+  PAYMENT_PROVIDERS,
+  PAYMENT_STATUSES,
+} from '../constants/enums.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER
@@ -17,11 +24,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: {
-        values: ORDER_STATUSES,
-        message:
-          'Status must be one of: draft, pending_payment, paid, expired, failed, refunded, partially_refunded',
-      },
+      enum: { values: ORDER_STATUSES },
       required: true,
       default: 'draft',
     },
@@ -32,10 +35,7 @@ const orderSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: {
-        values: CURRENCIES,
-        message: 'Currency must be one of: NGN, USD, EUR, GBP',
-      },
+      enum: { values: CURRENCIES },
       required: true,
     },
     totalMinor: {
@@ -67,6 +67,16 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    country: {
+      type: String,
+      maxlength: 64,
+      trim: true,
+    },
+    state: {
+      type: String,
+      maxlength: 64,
+      trim: true,
+    },
     isGroup: {
       type: Boolean,
       required: true,
@@ -84,20 +94,53 @@ const orderSchema = new mongoose.Schema(
     },
     attendanceMode: {
       type: String,
-      enum: {
-        values: ATTENDANCE_MODES,
-        message: 'Attendance mode must be one of: physically, online, not_sure',
-      },
+      enum: { values: ATTENDANCE_MODES },
       required: true,
       default: 'not_sure',
     },
-    // Number of participants this order holds; powers the per-ticket-type cap.
+    // Individual KPI data.
+    gender: {
+      type: String,
+      enum: { values: GENDERS },
+      default: null,
+    },
+    firstTime: {
+      type: Boolean,
+      default: false,
+    },
+    isMinor: {
+      type: Boolean,
+      default: false,
+    },
+    // Group KPI data. Counts cover every paid seat, including children.
+    genderCounts: {
+      male: { type: Number, min: 0, default: 0 },
+      female: { type: Number, min: 0, default: 0 },
+    },
+    firstTimeCounts: {
+      yes: { type: Number, min: 0, default: 0 },
+      no: { type: Number, min: 0, default: 0 },
+    },
+    inviteeCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    hasChildren: {
+      type: Boolean,
+      default: false,
+    },
+    childCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    // Number of paid seats this order holds; powers the per-ticket-type cap.
     seats: {
       type: Number,
       min: 0,
       default: null,
     },
-    // Ticket type (conference) this order was placed against.
     ticketTypeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'TicketType',
@@ -135,10 +178,7 @@ const paymentSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: {
-        values: PAYMENT_PROVIDERS,
-        message: 'Provider must be one of: paystack, paypal, manual_transfer',
-      },
+      enum: { values: PAYMENT_PROVIDERS },
       required: true,
     },
     providerRef: {
@@ -153,25 +193,15 @@ const paymentSchema = new mongoose.Schema(
       maxlength: 255,
       trim: true,
     },
-    checkoutUrl: {
-      type: String,
-      trim: true,
-    },
     status: {
       type: String,
-      enum: {
-        values: PAYMENT_STATUSES,
-        message: 'Status must be one of: initiated, pending, completed, declined, refunded',
-      },
+      enum: { values: PAYMENT_STATUSES },
       required: true,
       default: 'initiated',
     },
     currency: {
       type: String,
-      enum: {
-        values: CURRENCIES,
-        message: 'Currency must be one of: NGN, USD, EUR, GBP',
-      },
+      enum: { values: CURRENCIES },
       required: true,
     },
     amountMinor: {
@@ -195,149 +225,22 @@ paymentSchema.pre('save', function () {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WEBHOOK EVENT
-// ─────────────────────────────────────────────────────────────────────────────
-
-const webhookEventSchema = new mongoose.Schema(
-  {
-    provider: {
-      type: String,
-      enum: {
-        values: PAYMENT_PROVIDERS,
-        message: 'Provider must be one of: paystack, paypal, manual_transfer',
-      },
-      required: true,
-    },
-    eventType: {
-      type: String,
-      required: true,
-      maxlength: 64,
-      trim: true,
-    },
-    providerEventId: {
-      type: String,
-      required: true,
-      maxlength: 255,
-      unique: true,
-      trim: true,
-    },
-    payload: {
-      type: mongoose.Schema.Types.Mixed,
-      required: true,
-    },
-    signatureValid: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-    processed: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-    processedAt: { type: Date, default: null },
-    error: {
-      type: String,
-      maxlength: 1000,
-    },
-    createdAt: { type: Date, default: Date.now },
-  },
-  { collection: 'webhook_events' }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MANUAL PAYMENT
-// ─────────────────────────────────────────────────────────────────────────────
-
-const manualPaymentSchema = new mongoose.Schema(
-  {
-    orderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Order',
-      required: true,
-    },
-    bankName: {
-      type: String,
-      required: true,
-      maxlength: 128,
-      trim: true,
-    },
-    accountName: {
-      type: String,
-      required: true,
-      maxlength: 128,
-      trim: true,
-    },
-    referenceOrTellerId: {
-      type: String,
-      required: true,
-      maxlength: 128,
-      trim: true,
-    },
-    amountMinor: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    status: {
-      type: String,
-      enum: {
-        values: MANUAL_PAYMENT_STATUSES,
-        message: 'Status must be one of: pending, approved, rejected',
-      },
-      required: true,
-      default: 'pending',
-    },
-    reviewedByStaffId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'StaffUser',
-      default: null,
-    },
-    adminNotes: {
-      type: String,
-      maxlength: 1000,
-      trim: true,
-    },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
-  },
-  { collection: 'manual_payments' }
-);
-
-manualPaymentSchema.pre('save', function () {
-  this.updatedAt = new Date();
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
 // INDEXES
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Orders
 orderSchema.index({ status: 1 });
 orderSchema.index({ payerPhoneE164: 1 });
 orderSchema.index({ payerEmail: 1 });
 orderSchema.index({ expiresAt: 1 });
 orderSchema.index({ ticketTypeId: 1, status: 1 });
-// reference + idempotencyKey already unique via field-level `unique: true`
+orderSchema.index({ country: 1 });
+orderSchema.index({ state: 1 });
 
-// Payments
 paymentSchema.index({ orderId: 1 });
-// providerRef already unique via field-level `unique: true`
-
-// Webhook events
-webhookEventSchema.index({ provider: 1 });
-webhookEventSchema.index({ processed: 1 });
-// providerEventId already unique via field-level `unique: true`
-
-// Manual payments
-manualPaymentSchema.index({ orderId: 1 });
-manualPaymentSchema.index({ status: 1 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const Order = (mongoose.models.Order          || mongoose.model('Order',          orderSchema)) as mongoose.Model<any>;
-export const Payment = (mongoose.models.Payment        || mongoose.model('Payment',        paymentSchema)) as mongoose.Model<any>;
-export const WebhookEvent = (mongoose.models.WebhookEvent   || mongoose.model('WebhookEvent',   webhookEventSchema)) as mongoose.Model<any>;
-export const ManualPayment = (mongoose.models.ManualPayment  || mongoose.model('ManualPayment',  manualPaymentSchema)) as mongoose.Model<any>;
+export const Order = (mongoose.models.Order || mongoose.model('Order', orderSchema)) as mongoose.Model<any>;
+export const Payment = (mongoose.models.Payment || mongoose.model('Payment', paymentSchema)) as mongoose.Model<any>;

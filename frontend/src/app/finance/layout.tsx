@@ -12,8 +12,8 @@ export default async function FinanceLayout({ children }: Readonly<{ children: R
           <div className="text-sm font-bold">IHGC 2026 Finance</div>
           <div className="text-[11px] text-gray-400">Signed in as {user.fullName}</div>
         </div>
-        <Link href="/finance/approvals" className="text-xs font-semibold text-[#8EE3D6] hover:text-white">
-          Approvals
+        <Link href="/finance/payments" className="text-xs font-semibold text-[#8EE3D6] hover:text-white">
+          Payments
         </Link>
       </header>
       <main className="mx-auto max-w-6xl p-4 sm:p-8">{children}</main>

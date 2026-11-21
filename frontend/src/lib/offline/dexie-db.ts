@@ -5,7 +5,6 @@ export interface CachedParticipant {
   refCode: string;
   status: string;
   checkedInAt?: string | null;
-  bookletIssuedAt?: string | null;
   checkedInStand?: string | null;
   chapterZone?: string | null;
   orderId?: string;

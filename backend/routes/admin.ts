@@ -1,39 +1,33 @@
+import crypto from 'crypto';
 import express from 'express';
 import type { Request, Response } from 'express';
-import crypto from 'crypto';
 
-import { Order, ManualPayment } from '../schema/orders.ts';
+import { Order } from '../schema/orders.ts';
 import { Participant, Group } from '../schema/participants.ts';
-import { BookletStock, ScanEvent } from '../schema/scans.ts'; 
+import { ScanEvent } from '../schema/scans.ts';
 import { authenticateStaff, requireRole } from './auth.ts';
+import { listPaidPayments, recordGateScan } from '../lib/gate-scan.ts';
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 function accessTokenFor(orderId: unknown): string {
   const secret = process.env.QR_TOKEN_SECRET;
-  if (!secret || secret.length < 16) return "";
-  return crypto
-    .createHmac('sha256', secret)
-    .update(`order-access:${String(orderId)}`)
-    .digest('base64url')
-    .slice(0, 32);
+  if (!secret || secret.length < 16) return '';
+  return tokenDigest('order-access:' + String(orderId), secret);
 }
 
 function qrTokenFor(participantId: unknown): string {
   const secret = process.env.QR_TOKEN_SECRET;
-  if (!secret || secret.length < 16) return "";
-  return crypto
-    .createHmac('sha256', secret)
-    .update(`participant:${String(participantId)}`)
-    .digest('base64url')
-    .slice(0, 32);
+  if (!secret || secret.length < 16) return '';
+  return tokenDigest('participant:' + String(participantId), secret);
+}
+
+function tokenDigest(value: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(value).digest('base64url').slice(0, 32);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/dashboard-stats
+// GET /api/admin/dashboard-stats — paid-only attendance/KPI aggregation
 // ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/admin/dashboard-stats',
@@ -41,51 +35,228 @@ router.get(
   requireRole('admin', 'supervisor', 'finance'),
   async (_req: Request, res: Response) => {
     try {
-      const totalParticipants = await Participant.countDocuments({ deletedAt: null });
-      const confirmedParticipants = await Participant.countDocuments({ status: 'confirmed', deletedAt: null });
-      const checkedInParticipants = await Participant.countDocuments({ status: 'checked_in', deletedAt: null });
+      const empty = {
+        totalPaidParticipants: 0,
+        individualPaidParticipants: 0,
+        groupPaidParticipants: 0,
+        paidOrders: 0,
+        individualOrders: 0,
+        groupOrders: 0,
+        attendanceTotals: { physically: 0, online: 0, not_sure: 0 },
+        genderTotals: { male: 0, female: 0 },
+        firstTimeTotals: { yes: 0, no: 0 },
+        children: 0,
+        groupInvitees: 0,
+        groupOrdersWithChildren: 0,
+        qrScans: 0,
+        scannedParticipants: 0,
+        checkedInParticipants: 0,
+        byState: [] as Array<{ name: string; total: number }>,
+        byNation: [] as Array<{ name: string; total: number }>,
+      };
 
-      const totalOrders = await Order.countDocuments({});
-      const paidOrders = await Order.countDocuments({ status: 'paid' });
-      const pendingOrders = await Order.countDocuments({ status: 'pending_payment' });
-
-      const attendanceOrders = await Order.find({ status: { $in: ['paid', 'pending_payment'] } }).lean();
-
-      const attendanceTotals = { physically: 0, online: 0, not_sure: 0 };
-      for (const order of attendanceOrders as any[]) {
-        if (order.isGroup && order.attendanceCounts) {
-          attendanceTotals.physically += Number(order.attendanceCounts.physically) || 0;
-          attendanceTotals.online += Number(order.attendanceCounts.online) || 0;
-          attendanceTotals.not_sure += Number(order.attendanceCounts.not_sure) || 0;
-        } else {
-          const mode = ['physically', 'online', 'not_sure'].includes(order.attendanceMode)
-            ? order.attendanceMode
-            : 'not_sure';
-          attendanceTotals[mode as keyof typeof attendanceTotals] += Number(order.seats) || 1;
-        }
-      }
-
-      const revenueAgg = await Order.aggregate([
-        { $match: { status: 'paid' } },
-        { $group: { _id: '$currency', total: { $sum: '$totalMinor' } } },
+      const [kpiRows, scanRows, locationRows] = await Promise.all([
+        Order.aggregate([
+          { $match: { status: 'paid' } },
+          {
+            $project: {
+              seats: { $ifNull: ['$seats', 0] },
+              isGroup: { $eq: ['$isGroup', true] },
+              attendanceMode: { $ifNull: ['$attendanceMode', 'not_sure'] },
+              attendanceCounts: { $ifNull: ['$attendanceCounts', {}] },
+              gender: { $ifNull: ['$gender', null] },
+              genderCounts: { $ifNull: ['$genderCounts', {}] },
+              firstTime: { $eq: ['$firstTime', true] },
+              firstTimeCounts: { $ifNull: ['$firstTimeCounts', {}] },
+              isMinor: { $eq: ['$isMinor', true] },
+              inviteeCount: { $ifNull: ['$inviteeCount', 0] },
+              hasChildren: { $eq: ['$hasChildren', true] },
+              childCount: { $ifNull: ['$childCount', 0] },
+              country: { $ifNull: ['$country', 'Unknown'] },
+              state: { $ifNull: ['$state', null] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              paidOrders: { $sum: 1 },
+              totalPaidParticipants: { $sum: '$seats' },
+              individualPaidParticipants: {
+                $sum: { $cond: ['$isGroup', 0, '$seats'] },
+              },
+              groupPaidParticipants: {
+                $sum: { $cond: ['$isGroup', '$seats', 0] },
+              },
+              individualOrders: { $sum: { $cond: ['$isGroup', 0, 1] } },
+              groupOrders: { $sum: { $cond: ['$isGroup', 1, 0] } },
+              physically: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$attendanceCounts.physically', 0] },
+                    { $cond: [{ $eq: ['$attendanceMode', 'physically'] }, '$seats', 0] },
+                  ],
+                },
+              },
+              online: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$attendanceCounts.online', 0] },
+                    { $cond: [{ $eq: ['$attendanceMode', 'online'] }, '$seats', 0] },
+                  ],
+                },
+              },
+              not_sure: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$attendanceCounts.not_sure', 0] },
+                    { $cond: [{ $eq: ['$attendanceMode', 'not_sure'] }, '$seats', 0] },
+                  ],
+                },
+              },
+              male: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$genderCounts.male', 0] },
+                    { $cond: [{ $eq: ['$gender', 'male'] }, '$seats', 0] },
+                  ],
+                },
+              },
+              female: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$genderCounts.female', 0] },
+                    { $cond: [{ $eq: ['$gender', 'female'] }, '$seats', 0] },
+                  ],
+                },
+              },
+              firstYes: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$firstTimeCounts.yes', 0] },
+                    { $cond: ['$firstTime', '$seats', 0] },
+                  ],
+                },
+              },
+              firstNo: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $ifNull: ['$firstTimeCounts.no', 0] },
+                    { $cond: ['$firstTime', 0, '$seats'] },
+                  ],
+                },
+              },
+              children: {
+                $sum: {
+                  $cond: [
+                    '$isGroup',
+                    { $cond: ['$hasChildren', '$childCount', 0] },
+                    { $cond: ['$isMinor', '$seats', 0] },
+                  ],
+                },
+              },
+              groupInvitees: { $sum: { $cond: ['$isGroup', '$inviteeCount', 0] } },
+              groupOrdersWithChildren: {
+                $sum: { $cond: [{ $and: ['$isGroup', '$hasChildren'] }, 1, 0] },
+              },
+            },
+          },
+        ]),
+        ScanEvent.aggregate([
+          { $match: { result: 'valid' } },
+          {
+            $group: {
+              _id: null,
+              qrScans: { $sum: 1 },
+              scannedParticipants: { $sum: { $ifNull: ['$seats', 1] } },
+            },
+          },
+        ]),
+        Order.aggregate([
+          { $match: { status: 'paid' } },
+          {
+            $project: {
+              seats: { $ifNull: ['$seats', 0] },
+              nation: {
+                $cond: [
+                  { $in: [{ $ifNull: ['$country', ''] }, ['', null]] },
+                  'Unknown',
+                  '$country',
+                ],
+              },
+              state: {
+                $cond: [
+                  { $in: [{ $ifNull: ['$state', ''] }, ['', null]] },
+                  null,
+                  '$state',
+                ],
+              },
+            },
+          },
+          {
+            $facet: {
+              states: [
+                { $match: { state: { $ne: null } } },
+                { $group: { _id: '$state', total: { $sum: '$seats' } } },
+                { $sort: { total: -1, _id: 1 } },
+                { $limit: 12 },
+                { $project: { name: '$_id', total: 1, _id: 0 } },
+              ],
+              nations: [
+                { $group: { _id: '$nation', total: { $sum: '$seats' } } },
+                { $sort: { total: -1, _id: 1 } },
+                { $limit: 12 },
+                { $project: { name: '$_id', total: 1, _id: 0 } },
+              ],
+            },
+          },
+        ]),
       ]);
 
-      const revenueByCurrency = { NGN: 0, USD: 0, EUR: 0, GBP: 0 };
-      for (const row of revenueAgg) {
-        if (revenueByCurrency[row._id as keyof typeof revenueByCurrency] !== undefined) {
-          revenueByCurrency[row._id as keyof typeof revenueByCurrency] = row.total;
-        }
-      }
+      const kpi = (kpiRows[0] as any) || {};
+      const scans = (scanRows[0] as any) || {};
+      const locations = (locationRows[0] as any) || {};
+
+      const checkedInCount = await Participant.countDocuments({
+        status: 'checked_in',
+        deletedAt: null,
+      });
 
       return res.json({
-        totalParticipants,
-        confirmedParticipants,
-        checkedInParticipants,
-        totalOrders,
-        paidOrders,
-        pendingOrders,
-        attendanceTotals,
-        revenueByCurrency,
+        ...empty,
+        totalPaidParticipants: Number(kpi.totalPaidParticipants) || 0,
+        individualPaidParticipants: Number(kpi.individualPaidParticipants) || 0,
+        groupPaidParticipants: Number(kpi.groupPaidParticipants) || 0,
+        paidOrders: Number(kpi.paidOrders) || 0,
+        individualOrders: Number(kpi.individualOrders) || 0,
+        groupOrders: Number(kpi.groupOrders) || 0,
+        attendanceTotals: {
+          physically: Number(kpi.physically) || 0,
+          online: Number(kpi.online) || 0,
+          not_sure: Number(kpi.not_sure) || 0,
+        },
+        genderTotals: {
+          male: Number(kpi.male) || 0,
+          female: Number(kpi.female) || 0,
+        },
+        firstTimeTotals: {
+          yes: Number(kpi.firstYes) || 0,
+          no: Number(kpi.firstNo) || 0,
+        },
+        children: Number(kpi.children) || 0,
+        groupInvitees: Number(kpi.groupInvitees) || 0,
+        groupOrdersWithChildren: Number(kpi.groupOrdersWithChildren) || 0,
+        qrScans: Number(scans.qrScans) || 0,
+        scannedParticipants: Number(scans.scannedParticipants) || 0,
+        checkedInParticipants: Number(scans.scannedParticipants) || checkedInCount || 0,
+        byState: Array.isArray(locations.states) ? locations.states : [],
+        byNation: Array.isArray(locations.nations) ? locations.nations : [],
       });
     } catch (err) {
       console.error('[GET /admin/dashboard-stats] error:', err);
@@ -105,15 +276,11 @@ router.get(
     try {
       const participants = await Participant.find({ deletedAt: null })
         .sort({ createdAt: -1 })
-        .limit(50)
+        .limit(100)
         .lean();
-
-      const formatted = participants.map((att) => ({
-        ...att,
-        id: att._id.toString(),
-      }));
-
-      return res.json({ participants: formatted });
+      return res.json({
+        participants: participants.map((att: any) => ({ ...att, id: String(att._id) })),
+      });
     } catch (err) {
       console.error('[GET /admin/participants] error:', err);
       return res.status(500).json({ error: 'Failed to load participants' });
@@ -122,32 +289,20 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/orders
+// GET /api/admin/payments (and legacy /api/admin/orders alias)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get(
-  '/admin/orders',
-  authenticateStaff,
-  requireRole('admin', 'supervisor', 'finance'),
-  async (_req: Request, res: Response) => {
-    try {
-      const orders = await Order.find({})
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .lean();
-
-      const formatted = orders.map((o: any) => ({
-        ...o,
-        id: o._id.toString(),
-        ticketAccess: o.status === 'paid' ? accessTokenFor(o._id) || null : null,
-      }));
-
-      return res.json({ orders: formatted });
-    } catch (err) {
-      console.error('[GET /admin/orders] error:', err);
-      return res.status(500).json({ error: 'Failed to load orders' });
-    }
+async function paymentsHandler(_req: Request, res: Response) {
+  try {
+    const payments = await listPaidPayments(200);
+    return res.json({ payments, orders: payments });
+  } catch (err) {
+    console.error('[GET /admin/payments] error:', err);
+    return res.status(500).json({ error: 'Failed to load payments' });
   }
-);
+}
+
+router.get('/admin/payments', authenticateStaff, requireRole('admin', 'supervisor', 'finance'), paymentsHandler);
+router.get('/admin/orders', authenticateStaff, requireRole('admin', 'supervisor', 'finance'), paymentsHandler);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/admin/tickets/:reference
@@ -158,40 +313,38 @@ router.get(
   requireRole('admin', 'supervisor', 'finance'),
   async (req: Request, res: Response) => {
     try {
-      const order: any = await Order.findOne({ reference: req.params.reference }).lean();
-      
-      if (!order) {
-        return res.status(404).json({ error: 'Order not found' });
-      }
+      const order: any = await Order.findOne({ reference: req.params.reference, status: 'paid' }).lean();
+      if (!order) return res.status(404).json({ error: 'Paid order not found' });
 
-      const participants = await Participant.find({ orderId: order._id, deletedAt: null }).lean();
-      const group = order.isGroup ? await Group.findOne({ orderId: order._id }).lean() : null;
-
-      const formattedParticipants = participants.map((att: any) => ({
-        id: att._id.toString(),
-        refCode: att.refCode,
-        name: att.name,
-        chapterZone: att.chapterZone,
-        status: att.status,
-        qrToken: qrTokenFor(att._id),
-      }));
+      const participants: any[] = await Participant.find({ orderId: order._id, deletedAt: null }).lean();
+      const group: any = order.isGroup ? await Group.findOne({ orderId: order._id }).lean() : null;
 
       return res.json({
         order: {
-          id: order._id.toString(),
+          id: String(order._id),
           reference: order.reference,
           status: order.status,
           isGroup: order.isGroup,
           totalMinor: order.totalMinor,
           currency: order.currency,
         },
-        participants: formattedParticipants,
-        group: group ? {
-          id: group._id.toString(),
-          managementToken: (group as any).managementToken,
-          totalSeats: (group as any).totalSeats,
-          claimedSeats: (group as any).claimedSeats,
-        } : null
+        participants: participants.map((att) => ({
+          id: String(att._id),
+          refCode: att.refCode,
+          name: att.name,
+          chapterZone: att.chapterZone,
+          status: att.status,
+          qrToken: qrTokenFor(att._id),
+        })),
+        group: group
+          ? {
+              id: String(group._id),
+              managementToken: group.managementToken,
+              totalSeats: group.totalSeats,
+              claimedSeats: group.claimedSeats,
+              qrToken: `HGCGROUP.${String(order._id)}.${accessTokenFor(order._id)}`,
+            }
+          : null,
       });
     } catch (err) {
       console.error('[GET /admin/tickets/:reference] error:', err);
@@ -201,202 +354,7 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/approvals
-// ─────────────────────────────────────────────────────────────────────────────
-router.get(
-  '/admin/approvals',
-  authenticateStaff,
-  requireRole('admin', 'supervisor', 'finance'),
-  async (_req: Request, res: Response) => {
-    try {
-      const manuals = await ManualPayment.find({ status: 'pending' })
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .lean();
-
-      const orderIds = manuals.map((m: any) => m.orderId);
-      const orders = await Order.find({ _id: { $in: orderIds } }).lean();
-      const orderMap = new Map(orders.map((o: any) => [o._id.toString(), o]));
-
-      const pendingManuals = manuals.map((m: any) => {
-        const order = orderMap.get(m.orderId.toString()) as any;
-        return {
-          manual: {
-            id: m._id.toString(),
-            amountMinor: m.amountMinor,
-            bankName: m.bankName,
-            accountName: m.accountName,
-            referenceOrTellerId: m.referenceOrTellerId,
-            createdAt: m.createdAt,
-            status: m.status,
-          },
-          order: order ? {
-            id: order._id.toString(),
-            reference: order.reference,
-            groupName: order.groupName,
-            attendanceMode: order.attendanceMode || 'not_sure',
-            payerName: order.payerName,
-            payerPhoneE164: order.payerPhoneE164,
-            totalMinor: order.totalMinor,
-            currency: order.currency,
-            expiresAt: order.expiresAt,
-          } : null,
-        };
-      }).filter((item: any) => item.order !== null);
-
-      return res.json({ pendingManuals });
-    } catch (err) {
-      console.error('[GET /admin/approvals] error:', err);
-      return res.status(500).json({ error: 'Failed to load approvals' });
-    }
-  }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/admin/approvals/verify
-// ─────────────────────────────────────────────────────────────────────────────
-router.post(
-  '/admin/approvals/verify',
-  authenticateStaff,
-  requireRole('admin', 'finance'),
-  async (req: Request, res: Response) => {
-    try {
-      const { manualPaymentId, action } = req.body;
-      if (!['approve', 'reject'].includes(action)) {
-        return res.status(400).json({ error: 'Invalid action' });
-      }
-
-      const manual = await ManualPayment.findById(manualPaymentId);
-      if (!manual) return res.status(404).json({ error: 'Manual payment not found' });
-
-      if (action === 'approve') {
-        manual.status = 'approved';
-        manual.reviewedByStaffId = (req as any).staff._id;
-        await manual.save();
-
-        await Order.updateOne(
-          { _id: manual.orderId },
-          { $set: { status: 'paid', paidAt: new Date() } }
-        );
-      } else {
-        manual.status = 'rejected';
-        manual.reviewedByStaffId = (req as any).staff._id;
-        await manual.save();
-      }
-
-      return res.json({ success: true });
-    } catch (err) {
-      console.error('[POST /admin/approvals/verify] error:', err);
-      return res.status(500).json({ error: 'Failed to verify payment' });
-    }
-  }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/booklet-stock
-// ─────────────────────────────────────────────────────────────────────────────
-router.get(
-  '/admin/booklet-stock',
-  authenticateStaff,
-  requireRole('admin', 'supervisor', 'attendant'),
-  async (_req: Request, res: Response) => {
-    try {
-      const currentIssued = await Participant.countDocuments({
-        bookletIssuedAt: { $ne: null },
-        deletedAt: null,
-      });
-
-      const stock = await BookletStock.find({})
-        .sort({ allocatedDate: 1, standId: 1 })
-        .lean();
-
-      const allocations = stock.map((row: any) => ({
-        id: row._id.toString(),
-        standId: row.standId,
-        allocatedDate: row.allocatedDate,
-        allocatedQuantity: row.allocatedQuantity,
-        issuedCount: row.issuedCount,
-        returnedCount: row.returnedCount,
-      }));
-
-      return res.json({ currentIssued, allocations });
-    } catch (err) {
-      console.error('[GET /admin/booklet-stock] error:', err);
-      return res.status(500).json({ error: 'Failed to load booklet stock' });
-    }
-  }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/admin/booklet-stock
-// ─────────────────────────────────────────────────────────────────────────────
-router.post(
-  '/admin/booklet-stock',
-  authenticateStaff,
-  requireRole('admin', 'supervisor'),
-  async (req: Request, res: Response) => {
-    try {
-      const { standId, allocatedDate, allocatedQuantity } = req.body;
-
-      if (!standId || !allocatedDate || typeof allocatedQuantity !== 'number') {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      const stock = await BookletStock.findOneAndUpdate(
-        { standId, allocatedDate },
-        {
-          $set: {
-            allocatedQuantity,
-            updatedAt: new Date(),
-          },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-
-      return res.json({ stock });
-    } catch (err) {
-      console.error('[POST /admin/booklet-stock] error:', err);
-      return res.status(500).json({ error: 'Failed to update stock' });
-    }
-  }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PATCH /api/admin/booklet-stock (Record Returns)
-// ─────────────────────────────────────────────────────────────────────────────
-router.patch(
-  '/admin/booklet-stock',
-  authenticateStaff,
-  requireRole('admin', 'supervisor'),
-  async (req: Request, res: Response) => {
-    try {
-      const { id, quantity, reason } = req.body;
-
-      if (!id || typeof quantity !== 'number' || quantity <= 0) {
-        return res.status(400).json({ error: 'Invalid return payload' });
-      }
-
-      const stock = await BookletStock.findById(id);
-      if (!stock) return res.status(404).json({ error: 'Stock record not found' });
-
-      const available = stock.allocatedQuantity - stock.issuedCount - stock.returnedCount;
-      if (quantity > available) {
-        return res.status(400).json({ error: `Cannot return ${quantity}. Only ${available} available.` });
-      }
-
-      stock.returnedCount += quantity;
-      await stock.save();
-
-      return res.json({ stock });
-    } catch (err) {
-      console.error('[PATCH /admin/booklet-stock] error:', err);
-      return res.status(500).json({ error: 'Failed to record return' });
-    }
-  }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/admin/scan (QR Scanner)
+// POST /api/admin/scan — gate check-in (individual or whole group)
 // ─────────────────────────────────────────────────────────────────────────────
 router.post(
   '/admin/scan',
@@ -404,79 +362,20 @@ router.post(
   requireRole('admin', 'supervisor', 'attendant'),
   async (req: Request, res: Response) => {
     try {
-      const { qrToken, action, standId } = req.body;
-      const staffId = (req as any).staff._id;
-
-      if (!qrToken || !standId) {
-        return res.status(400).json({ error: 'Missing QR token or Stand ID' });
-      }
-
-      // 1. Find the participant by their QR hash
-      const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
-      const participant = await Participant.findOne({ qrTokenHash: tokenHash, deletedAt: null });
-
-      if (!participant) {
-        await ScanEvent.create({
-          scanType: action || 'arrival',
-          staffId,
-          standId,
-          clientTimestamp: new Date(),
-          idempotencyKey: crypto.randomUUID(),
-          result: 'invalid_signature',
-          notes: 'Invalid QR Token',
-        });
-        return res.status(404).json({ error: 'Invalid or forged ticket.' });
-      }
-
-      // 2. Prevent duplicate check-ins
-      if (action === 'arrival' && participant.checkedInAt) {
-        return res.status(409).json({ 
-          error: `Already checked in on ${new Date(participant.checkedInAt).toLocaleTimeString()}`,
-          participant: { name: participant.name, refCode: participant.refCode }
-        });
-      }
-
-      if (action === 'booklet' && participant.bookletIssuedAt) {
-        return res.status(409).json({ 
-          error: 'Booklet already issued.',
-          participant: { name: participant.name, refCode: participant.refCode }
-        });
-      }
-
-      // 3. Perform the action
-      if (action === 'arrival') {
-        participant.checkedInAt = new Date();
-        participant.status = 'checked_in';
-      } else if (action === 'booklet') {
-        participant.bookletIssuedAt = new Date();
-        participant.status = 'booklet_issued';
-      }
-      await participant.save();
-
-      // 4. Log the success
-      await ScanEvent.create({
-        participantId: participant._id,
-        scanType: action || 'arrival',
-        staffId,
-        standId,
-        clientTimestamp: new Date(),
-        idempotencyKey: crypto.randomUUID(),
-        result: 'valid',
+      const response = await recordGateScan({
+        qrToken: req.body?.qrToken,
+        standId: req.body?.standId,
+        staffId: (req as any).staff?._id,
+        scanType: req.body?.scanType || 'arrival',
+        clientTimestamp: req.body?.clientTimestamp,
+        idempotencyKey: req.body?.idempotencyKey,
       });
-
-      return res.json({
-        success: true,
-        message: action === 'arrival' ? 'Checked in successfully' : 'Booklet issued successfully',
-        participant: {
-          name: participant.name,
-          refCode: participant.refCode,
-          chapterZone: participant.chapterZone,
-        }
-      });
-
-    } catch (err) {
+      if (response.result === 'forged') return res.status(404).json(response);
+      if (response.result === 'already_checked_in') return res.status(409).json(response);
+      return res.json(response);
+    } catch (err: any) {
       console.error('[POST /admin/scan] error:', err);
-      return res.status(500).json({ error: 'Scan processing failed' });
+      return res.status(400).json({ error: err?.message || 'Scan processing failed' });
     }
   }
 );

@@ -7,13 +7,10 @@ import dotenv from "dotenv";
 // routes
 import participantRoutes from "./routes/participants.ts";
 import authRoutes from "./routes/auth.ts";
-import jobRoutes from "./routes/jobs.ts";
-import orderRoutes from "./routes/orders.ts";
 import scanRoutes from "./routes/scans.ts";
 import settingsRoutes from "./routes/settings.ts";
 import resourceRoutes from "./routes/resources.ts";
-import adminRoutes from "./routes/admin.ts"; // 👈 ADDED THIS
-import { ensureBookletSeeded } from "./lib/booklet.ts";
+import adminRoutes from "./routes/admin.ts";
 
 dotenv.config();
 
@@ -59,12 +56,10 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.use("/api", participantRoutes);
 app.use("/api", authRoutes);
-app.use("/api", jobRoutes);
-app.use("/api", orderRoutes);
 app.use("/api", scanRoutes);
 app.use("/api", settingsRoutes);
 app.use("/api", resourceRoutes);
-app.use("/api", adminRoutes); // 👈 ADDED THIS
+app.use("/api", adminRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
@@ -84,14 +79,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 async function start() {
   await mongoose.connect(MONGODB_URI as string);
   console.log("MongoDB connected");
-
-  try {
-    if (await ensureBookletSeeded()) {
-      console.log("Conference booklet stored in the database.");
-    }
-  } catch (err) {
-    console.warn("Could not seed the conference booklet:", err);
-  }
 
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }

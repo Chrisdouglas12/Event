@@ -51,7 +51,6 @@ export default async function AdminParticipantsPage() {
                 <th className="px-5 py-3.5">Phone</th>
                 <th className="px-5 py-3.5">Location / Chapter/Zone</th>
                 <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5">Booklet</th>
                 <th className="px-5 py-3.5">Date</th>
                 <th className="px-5 py-3.5">Attendance</th>
               </tr>
@@ -59,7 +58,7 @@ export default async function AdminParticipantsPage() {
             <tbody className="divide-y divide-gray-100">
               {allParticipants.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
                     No participants registered yet.
                   </td>
                 </tr>
@@ -93,17 +92,6 @@ export default async function AdminParticipantsPage() {
                         }`}
                       >
                         {att.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          att.bookletIssuedAt
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {att.bookletIssuedAt ? "Issued" : "Pending"}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-gray-400 text-[11px]">

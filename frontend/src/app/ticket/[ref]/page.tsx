@@ -3,7 +3,6 @@ import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { QrView } from "@/components/ticket/qr-view";
 import { OrderQrCard } from "@/components/ticket/order-qr-card";
-import { BookletDownload } from "@/components/ticket/booklet-download";
 import { SITE_CONFIG } from "@/config/site";
 import { Calendar, MapPin, ShieldCheck } from "lucide-react";
 
@@ -21,10 +20,10 @@ export default async function TicketPage({
   searchParams,
 }: {
   params: Promise<{ ref: string }>;
-  searchParams: Promise<{ access?: string }>;
+  searchParams: Promise<{ access?: string; ck?: string; token?: string }>;
 }) {
   const { ref } = await params;
-  const { access } = await searchParams;
+  const { access, ck, token } = await searchParams;
 
   // Fetch data from Express backend
   let data;
@@ -34,7 +33,12 @@ export default async function TicketPage({
     const res = await fetch(`${API_BASE}/api/checkout/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: ref, access }),
+      body: JSON.stringify({
+        reference: ref,
+        access,
+        checkoutToken: ck,
+        providerRef: token,
+      }),
       cache: 'no-store'
     });
 
@@ -73,13 +77,27 @@ export default async function TicketPage({
             </div>
           </div>
 
-          {/* Booklet download */}
-          <div className="flex justify-center print:hidden">
-            <BookletDownload />
-          </div>
+          {/* Group check-in QR — one scan checks in every paid seat. */}
+          {group?.qrToken && (
+            <>
+              <OrderQrCard
+                orderReference={order.reference}
+                token={group.qrToken}
+                seats={group.totalSeats}
+              />
+              <div className="bg-white rounded-[20px] border border-gray-200 p-5 text-center text-xs text-gray-600 print:break-inside-avoid">
+                <p className="font-semibold text-[#111320]">
+                  {order.groupName || "Group"} · {group.totalSeats} paid seats
+                </p>
+                <p className="mt-1">
+                  Scan this group QR once at the gate to check in everyone in the group, including children.
+                </p>
+              </div>
+            </>
+          )}
 
-          {/* Render Tickets */}
-          {participants.map((ticket: any, index: number) => (
+          {/* Render individual tickets only when there is no group capability. */}
+          {!group?.qrToken && participants.map((ticket: any, index: number) => (
             <div
               key={ticket.id}
               className="bg-white rounded-[24px] shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-gray-200/80 overflow-hidden print:shadow-none print:border-black"
@@ -156,7 +174,7 @@ export default async function TicketPage({
 
                   {/* Stand instructions */}
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] text-gray-600 leading-relaxed">
-                    <strong>Check-in Procedure:</strong> Present this QR code at the Kwali Campground registration stand upon arrival to receive your printed conference booklet and physical badge.
+                    <strong>Check-in Procedure:</strong> Present this QR code at the Kwali Campground gate on arrival. Keep your screen brightness up so the scanner can read it quickly.
                   </div>
                 </div>
               </div>
@@ -168,10 +186,6 @@ export default async function TicketPage({
               </div>
             </div>
           ))}
-
-          {/* Order-level QR for express group check-in */}
-          {/* Note: If you need the group order token, you'll need to generate it in the backend and pass it down */}
-          {/* {groupOrderToken && <OrderQrCard orderReference={order.reference} token={groupOrderToken} />} */}
 
           {/* Group leader dashboard link */}
           {group && (

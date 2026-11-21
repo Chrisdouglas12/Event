@@ -7,8 +7,7 @@
     "build": "echo \"Backend uses tsx at runtime; no compile step required.\"",
     "start": "tsx server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:migrate:participants": "tsx scripts/rename-participants.ts",
-    "db:seed:booklet": "tsx scripts/seed-booklet.ts"
+    "db:migrate:participants": "tsx scripts/rename-participants.ts"
   },
   "keywords": [],
   "author": "",

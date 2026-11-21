@@ -7,6 +7,7 @@ import { MinisterCard, MoreMinistersCard } from "@/components/marketing/minister
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
+import { Gallery3D } from "@/components/marketing/gallery-3d";
 import { FlyerSection } from "@/components/marketing/flyer-section";
 import { Footer } from "@/components/marketing/footer";
 import { RevealText } from "@/components/ui/reveal-text";
@@ -102,6 +103,8 @@ export default function HomePage() {
             <DetailsCard />
             <TimelineDivider />
             <AboutPreview />
+            <TimelineDivider />
+            <Gallery3D />
             <TimelineDivider />
             <FlyerSection />
           </div>

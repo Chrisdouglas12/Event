@@ -89,8 +89,6 @@ async function migrate() {
     console.log('⏳ Renaming related collection fields...');
     await renameField(db, 'groups', 'churchOrParishName', 'chapterZoneName');
     await renameField(db, 'group_seats', 'attendeeId', 'participantId');
-    await renameField(db, 'notification_jobs', 'attendeeId', 'participantId');
-    await renameField(db, 'notification_jobs', 'payload.attendeeName', 'payload.participantName');
     await renameField(db, 'scan_events', 'attendeeId', 'participantId');
     await renameField(db, 'orders', 'attendeeCount', 'participantCount');
     await renameField(db, 'orders', 'attendees', 'participants');

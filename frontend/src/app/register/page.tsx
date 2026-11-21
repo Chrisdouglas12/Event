@@ -28,6 +28,13 @@ const getTurnstile = () => (window as unknown as { turnstile?: TurnstileApi }).t
 type FieldKey =
   | "groupName"
   | "seats"
+  | "inviteeCount"
+  | "genderCounts"
+  | "firstTimeCounts"
+  | "hasChildren"
+  | "childCount"
+  | "gender"
+  | "firstTime"
   | "payerName"
   | "payerPhone"
   | "payerEmail"
@@ -45,6 +52,13 @@ type FieldErrors = Partial<Record<FieldKey, string>>;
 const FIELD_ORDER: FieldKey[] = [
   "groupName",
   "seats",
+  "inviteeCount",
+  "genderCounts",
+  "firstTimeCounts",
+  "hasChildren",
+  "childCount",
+  "gender",
+  "firstTime",
   "payerName",
   "payerPhone",
   "payerEmail",
@@ -70,7 +84,7 @@ const ATTENDANCE_IDS = {
   not_sure: "field-attendance-not-sure",
 } as const;
 
-const PASS_BENEFITS = ["4-day all-access participant badge", "Printed conference booklet", "Instant QR ticket"];
+const PASS_BENEFITS = ["4-day all-access participant badge", "Gate check-in with your QR ticket", "Instant QR ticket"];
 
 // Mirrors the backend normaliser so users get a clear error before checkout.
 // Accepts 08012345678, 8012345678, 2348012345678, +234 (0) 801 234 5678,
@@ -240,6 +254,13 @@ export default function RegisterPage() {
   const [seatsInput, setSeatsInput] = useState("5");
   const seatsCount = Math.max(2, Number.parseInt(seatsInput, 10) || 2);
   const [attendanceMode, setAttendanceMode] = useState<"physically" | "online" | "not_sure">("physically");
+  const [gender, setGender] = useState<"male" | "female">("male");
+  const [firstTime, setFirstTime] = useState<"yes" | "no">("no");
+  const [inviteeCount, setInviteeCount] = useState("0");
+  const [genderCounts, setGenderCounts] = useState({ male: 0, female: 0 });
+  const [firstTimeCounts, setFirstTimeCounts] = useState({ yes: 0, no: 0 });
+  const [hasChildren, setHasChildren] = useState(false);
+  const [childCount, setChildCount] = useState(0);
   const [isMinor, setIsMinor] = useState(false);
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
@@ -280,6 +301,13 @@ export default function RegisterPage() {
     setGroupName("");
     setSeatsInput("5");
     setAttendanceMode("physically");
+    setGender("male");
+    setFirstTime("no");
+    setInviteeCount("0");
+    setGenderCounts({ male: 0, female: 0 });
+    setFirstTimeCounts({ yes: 0, no: 0 });
+    setHasChildren(false);
+    setChildCount(0);
     setIsMinor(false);
     setGuardianName("");
     setGuardianPhone("");
@@ -437,6 +465,21 @@ export default function RegisterPage() {
     if (isGroup) {
       if (!groupName.trim()) errs.groupName = "Enter your chapter or zone name.";
       if (!seatsValid) errs.seats = "Enter a number between 2 and 500.";
+      if (!Number.isInteger(Number(inviteeCount)) || Number(inviteeCount) < 0 || Number(inviteeCount) > seatsCount) {
+        errs.inviteeCount = `Enter a number between 0 and ${seatsCount}.`;
+      }
+      if (genderCounts.male + genderCounts.female !== seatsCount) {
+        errs.genderCounts = `Male and Female must add up to ${seatsCount} paid seats (children included).`;
+      }
+      if (firstTimeCounts.yes + firstTimeCounts.no !== seatsCount) {
+        errs.firstTimeCounts = `First-time Yes and No must add up to ${seatsCount} paid seats.`;
+      }
+      if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
+        errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
+      }
+    } else {
+      if (gender !== "male" && gender !== "female") errs.gender = "Select Male or Female.";
+      if (firstTime !== "yes" && firstTime !== "no") errs.firstTime = "Select Yes or No.";
     }
 
     if (!payerName.trim()) errs.payerName = "Enter your full name.";
@@ -514,10 +557,17 @@ export default function RegisterPage() {
         state: isNigeria ? state.trim() : undefined,
         chapterZone: chapterZone.trim() || undefined,
         attendanceMode,
+        gender: isGroup ? undefined : gender,
+        firstTime: isGroup ? undefined : firstTime === "yes",
         isMinor: minor,
         guardianName: minor ? guardianName.trim() : undefined,
         guardianPhone: minor ? guardianPhone.trim() : undefined,
         group: isGroup ? { name: groupName.trim(), totalSeats: seatsCount } : undefined,
+        inviteeCount: isGroup ? Number(inviteeCount) : undefined,
+        genderCounts: isGroup ? genderCounts : undefined,
+        firstTimeCounts: isGroup ? firstTimeCounts : undefined,
+        hasChildren: isGroup ? hasChildren : undefined,
+        childCount: isGroup && hasChildren ? childCount : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
         customAmountMinor: currency === "NGN" ? customNairaMinor : undefined,
@@ -547,6 +597,16 @@ export default function RegisterPage() {
       }
 
       checkoutAttempt.current = null;
+
+      if (data.reference && data.checkoutToken) {
+        try {
+          localStorage.setItem(`ihgc_checkout_${data.reference}`, data.checkoutToken);
+          localStorage.setItem(
+            "ihgc_last_checkout",
+            JSON.stringify({ reference: data.reference, phone: payerPhoneE164 })
+          );
+        } catch (_) {}
+      }
 
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
@@ -584,8 +644,8 @@ export default function RegisterPage() {
               Register For The 2026 General Conference
             </h1>
             <p className="max-w-lg text-sm leading-relaxed text-gray-300 sm:text-base lg:text-lg">
-              Secure your 4-day all-access participant badge and printed conference booklet. Register as an
-              individual or register a group from your chapter/zone.
+              Secure your 4-day all-access participant badge and instant QR ticket. Register as an individual or
+              register a group from your chapter/zone.
             </p>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-xs text-gray-400 lg:text-sm">
               <div>• 8 – 11 Dec 2026</div>
@@ -701,7 +761,7 @@ export default function RegisterPage() {
                         />
                       </Field>
 
-                      <Field htmlFor="field-seats" label="Number of Participants *" error={fieldErrors.seats}>
+                      <Field htmlFor="field-seats" label="Number of Paid Seats *" error={fieldErrors.seats}>
                         <input
                           type="number"
                           min={2}
@@ -711,6 +771,8 @@ export default function RegisterPage() {
                             setSeatsInput(e.target.value);
                             clearErr("seats");
                             clearErr("groupAttendance");
+                            clearErr("genderCounts");
+                            clearErr("firstTimeCounts");
                           }}
                           onBlur={() => {
                             const parsed = Number.parseInt(seatsInput, 10);
@@ -719,10 +781,208 @@ export default function RegisterPage() {
                           {...fp("seats")}
                         />
                       </Field>
+
+                      <Field
+                        htmlFor="field-inviteeCount"
+                        label="Number of Invitees *"
+                        error={fieldErrors.inviteeCount}
+                        hint="People personally invited by the group leader. Counted within the paid seats."
+                      >
+                        <input
+                          type="number"
+                          min={0}
+                          max={seatsCount}
+                          value={inviteeCount}
+                          onChange={(e) => {
+                            setInviteeCount(e.target.value);
+                            clearErr("inviteeCount");
+                          }}
+                          {...fp("inviteeCount")}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Field
+                        htmlFor="field-genderCounts"
+                        label="Male Count *"
+                        error={fieldErrors.genderCounts}
+                        hint="Include male children in this count."
+                      >
+                        <input
+                          type="number"
+                          min={0}
+                          max={seatsCount}
+                          value={genderCounts.male}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
+                            setGenderCounts((prev) => ({ ...prev, male: value }));
+                            clearErr("genderCounts");
+                          }}
+                          {...fp("genderCounts")}
+                        />
+                      </Field>
+                      <Field htmlFor="field-genderCounts-female" label="Female Count *">
+                        <input
+                          id="field-genderCounts-female"
+                          type="number"
+                          min={0}
+                          max={seatsCount}
+                          value={genderCounts.female}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
+                            setGenderCounts((prev) => ({ ...prev, female: value }));
+                            clearErr("genderCounts");
+                          }}
+                          className={inputCls(Boolean(fieldErrors.genderCounts))}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Field
+                        htmlFor="field-firstTimeCounts"
+                        label="First Time — Yes *"
+                        error={fieldErrors.firstTimeCounts}
+                        hint="First time attending a conference in HOREMOW."
+                      >
+                        <input
+                          type="number"
+                          min={0}
+                          max={seatsCount}
+                          value={firstTimeCounts.yes}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
+                            setFirstTimeCounts((prev) => ({ ...prev, yes: value }));
+                            clearErr("firstTimeCounts");
+                          }}
+                          {...fp("firstTimeCounts")}
+                        />
+                      </Field>
+                      <Field htmlFor="field-firstTimeCounts-no" label="First Time — No *">
+                        <input
+                          id="field-firstTimeCounts-no"
+                          type="number"
+                          min={0}
+                          max={seatsCount}
+                          value={firstTimeCounts.no}
+                          onChange={(e) => {
+                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
+                            setFirstTimeCounts((prev) => ({ ...prev, no: value }));
+                            clearErr("firstTimeCounts");
+                          }}
+                          className={inputCls(Boolean(fieldErrors.firstTimeCounts))}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
+                        <input
+                          id="field-hasChildren"
+                          type="checkbox"
+                          checked={hasChildren}
+                          aria-invalid={fieldErrors.hasChildren ? true : undefined}
+                          aria-describedby={fieldErrors.hasChildren ? "field-hasChildren-error" : undefined}
+                          onChange={(e) => {
+                            setHasChildren(e.target.checked);
+                            setChildCount(e.target.checked ? 1 : 0);
+                            clearErr("hasChildren");
+                            clearErr("childCount");
+                          }}
+                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
+                        />
+                        Children are attending with the group
+                      </label>
+                      {fieldErrors.hasChildren && (
+                        <p id="field-hasChildren-error" role="alert" className="text-[11px] font-medium text-red-600">
+                          {fieldErrors.hasChildren}
+                        </p>
+                      )}
+                      {hasChildren && (
+                        <Field
+                          htmlFor="field-childCount"
+                          label="Number of Children *"
+                          error={fieldErrors.childCount}
+                          hint="Children are included in paid seats and in every count above."
+                        >
+                          <input
+                            type="number"
+                            min={1}
+                            max={seatsCount}
+                            value={childCount}
+                            onChange={(e) => {
+                              setChildCount(Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0)));
+                              clearErr("childCount");
+                            }}
+                            {...fp("childCount", "sm:max-w-xs")}
+                          />
+                        </Field>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
+
+              {!isGroup && (
+                <div className="space-y-4 border-t border-gray-100 pt-8">
+                  <SectionTitle
+                    title="Attendee details"
+                    note="These answers are part of the paid registration record."
+                  />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field htmlFor="field-gender" label="Gender *" error={fieldErrors.gender}>
+                      <div id="field-gender" className="grid grid-cols-2 gap-2" tabIndex={-1}>
+                        {(["male", "female"] as const).map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={gender === value}
+                            onClick={() => {
+                              setGender(value);
+                              clearErr("gender");
+                            }}
+                            className={`cursor-pointer rounded-xl border px-3 py-3 text-xs font-bold transition-all ${
+                              gender === value
+                                ? "border-[#1FA396] bg-[#EAF9F7] text-[#0E7A6E] shadow-sm"
+                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                            }`}
+                          >
+                            {value === "male" ? "Male" : "Female"}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <Field
+                      htmlFor="field-firstTime"
+                      label="Is it your first time attending a conference in HOREMOW? *"
+                      error={fieldErrors.firstTime}
+                    >
+                      <div id="field-firstTime" className="grid grid-cols-2 gap-2" tabIndex={-1}>
+                        {(["yes", "no"] as const).map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={firstTime === value}
+                            onClick={() => {
+                              setFirstTime(value);
+                              clearErr("firstTime");
+                            }}
+                            className={`cursor-pointer rounded-xl border px-3 py-3 text-xs font-bold transition-all ${
+                              firstTime === value
+                                ? "border-[#1FA396] bg-[#EAF9F7] text-[#0E7A6E] shadow-sm"
+                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                            }`}
+                          >
+                            {value === "yes" ? "Yes" : "No"}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+                </div>
+              )}
 
               {/* Contact information */}
               <div className="space-y-4 border-t border-gray-100 pt-8">

@@ -107,7 +107,7 @@ export default function ProgrammePage() {
             <section className="bg-white rounded-[24px] border border-gray-200 p-8 sm:p-12 shadow-sm text-center space-y-4">
               <div className="w-14 h-14 rounded-full bg-[#EAF9F7] text-[#0E7A6E] mx-auto flex items-center justify-center"><BookOpen className="w-7 h-7" /></div>
               <h2 className="text-xl font-bold text-[#111320]">The full programme will be released at the conference</h2>
-              <p className="text-sm text-[#6B7280] max-w-lg mx-auto leading-relaxed">The official printed programme booklet will be available at the conference. Check back here for updates as sessions are announced.</p>
+              <p className="text-sm text-[#6B7280] max-w-lg mx-auto leading-relaxed">The full programme will be released at the conference. Check back here for updates as sessions are announced.</p>
               <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 font-medium bg-gray-50 px-4 py-2 rounded-full border border-gray-100"><Calendar className="w-3.5 h-3.5" />8–11 December 2026</span>
             </section>
           ) : (

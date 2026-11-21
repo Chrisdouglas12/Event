@@ -1,7 +1,7 @@
 {
   "name": "IHGC 2026 Staff Scanner",
   "short_name": "Gate Scanner",
-  "description": "Offline-first ticket scanner and booklet issuance PWA for Horemow IHGC 2026",
+  "description": "Offline-first paid-ticket gate scanner PWA for Horemow IHGC 2026",
   "start_url": "/staff/scanner",
   "display": "standalone",
   "background_color": "#0E1020",

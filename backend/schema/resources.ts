@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-// Binary assets (booklet, programme, etc.) stored directly in MongoDB so
+// Binary assets (programme, graphics, etc.) stored directly in MongoDB so
 // deployments do not depend on local files surviving a rebuild.
 const resourceSchema = new mongoose.Schema(
   {

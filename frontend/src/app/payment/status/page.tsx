@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
-import { BookletDownload } from "@/components/ticket/booklet-download";
+import { OrderQrCard } from "@/components/ticket/order-qr-card";
 import { SITE_CONFIG } from "@/config/site";
 
 // Origin of the backend (no trailing slash, no /api). Unset = same origin.
@@ -47,7 +47,7 @@ type TicketBundle = {
     groupName: string | null;
   };
   participants: Ticket[];
-  group: { id: string; totalSeats: number; claimedSeats: number } | null;
+  group: { id: string; totalSeats: number; claimedSeats: number; qrToken?: string } | null;
 };
 
 type Phase = "checking" | "pending" | "timeout" | "need_phone" | "failed" | "error" | "ready";
@@ -201,11 +201,11 @@ async function renderTicketCanvas(ticket: Ticket, qrDataUrl: string): Promise<HT
 
   // Instructions (kept inside the bottom margin)
   ctx.fillStyle = "#111320";
-  fitText(ctx, "Show this QR code at the booklet desk", contentWidth, 32, 600, 22);
-  ctx.fillText("Show this QR code at the booklet desk", W / 2, 1395);
+  fitText(ctx, "Show this QR code at the camp gate for check-in.", contentWidth, 32, 600, 22);
+  ctx.fillText("Show this QR code at the camp gate for check-in.", W / 2, 1395);
   ctx.fillStyle = "#6B7280";
-  fitText(ctx, "to collect your conference booklet. Do not share this code.", contentWidth, 26, 400, 18);
-  ctx.fillText("to collect your conference booklet. Do not share this code.", W / 2, 1440);
+  fitText(ctx, "Keep your screen brightness up and do not share this code.", contentWidth, 26, 400, 18);
+  ctx.fillText("Keep your screen brightness up and do not share this code.", W / 2, 1440);
 
   return canvas;
 }
@@ -317,8 +317,8 @@ function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }
         </div>
 
         <p className="text-xs text-gray-600 leading-relaxed max-w-sm mx-auto">
-          Show this QR code at the booklet desk to collect your conference booklet. Turn your screen brightness up when
-          scanning, and do not share this code.
+          Show this QR code at the camp gate for check-in. Turn your screen brightness up when scanning, and do not share
+          this code.
         </p>
 
         {err && (
@@ -374,6 +374,8 @@ function StatusContent() {
   const params = useSearchParams();
   const reference = (params.get("ref") || params.get("reference") || params.get("trxref") || "").trim();
   const access = (params.get("access") || "").trim();
+  const callbackToken = (params.get("ck") || "").trim();
+  const paypalToken = (params.get("token") || "").trim();
   const isCancelled = params.get("cancelled") === "true" || params.get("cancelled") === "1";
 
   const [phase, setPhase] = useState<Phase>("checking");
@@ -382,6 +384,8 @@ function StatusContent() {
   const [phoneInput, setPhoneInput] = useState("+234 ");
   const attempts = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const checkoutTokenRef = useRef("");
+  const providerRefRef = useRef("");
 
   const check = useCallback(
     async (phone: string) => {
@@ -390,7 +394,13 @@ function StatusContent() {
         const res = await fetch(`${API_BASE}/api/checkout/verify`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference, access: access || undefined, phone: phone || undefined }),
+          body: JSON.stringify({
+            reference,
+            access: access || undefined,
+            phone: phone || undefined,
+            checkoutToken: checkoutTokenRef.current || undefined,
+            providerRef: providerRefRef.current || undefined,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Could not check payment status.");
@@ -440,22 +450,33 @@ function StatusContent() {
       return;
     }
 
-    // A ticket already loaded on this device shows instantly (works with weak signal at the venue).
-    try {
-      const cached = localStorage.getItem(`ihgc_tickets_${reference}`);
-      if (cached) {
-        setBundle(JSON.parse(cached) as TicketBundle);
-        setPhase("ready");
-        return;
-      }
-    } catch (_) {}
-
+    // The token saved at checkout is authoritative; the callback copy may be
+    // provisional (PayPal signs it before it knows the provider order ID).
+    let savedToken = "";
     let savedPhone = "";
     try {
+      savedToken = localStorage.getItem(`ihgc_checkout_${reference}`) || "";
       const raw = localStorage.getItem("ihgc_last_checkout");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed?.reference === reference && typeof parsed.phone === "string") savedPhone = parsed.phone;
+      }
+    } catch (_) {}
+
+    checkoutTokenRef.current = savedToken || callbackToken;
+    providerRefRef.current = paypalToken;
+
+    // A ticket already loaded on this device shows instantly (works with weak signal at the venue).
+    try {
+      const cached = localStorage.getItem(`ihgc_tickets_${reference}`);
+      if (cached) {
+        const cachedBundle = JSON.parse(cached) as TicketBundle;
+        const groupNeedsFreshToken = !!cachedBundle.group && !cachedBundle.group.qrToken;
+        if (!groupNeedsFreshToken) {
+          setBundle(cachedBundle);
+          setPhase("ready");
+          return;
+        }
       }
     } catch (_) {}
 
@@ -466,7 +487,7 @@ function StatusContent() {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [reference, isCancelled, check]);
+  }, [reference, isCancelled, callbackToken, paypalToken, check]);
 
   const retry = (phone: string) => {
     if (timer.current) clearTimeout(timer.current);
@@ -519,11 +540,25 @@ function StatusContent() {
           </p>
         </div>
 
-        {bundle.participants.map((t) => (
-          <TicketCard key={t.id} ticket={t} bundle={bundle} />
-        ))}
-
-        <BookletDownload />
+        {bundle.group?.qrToken ? (
+          <>
+            <OrderQrCard
+              orderReference={bundle.order.reference}
+              token={bundle.group.qrToken}
+              seats={bundle.group.totalSeats}
+            />
+            <div className="max-w-md w-full rounded-[20px] border border-gray-100 bg-white p-5 text-center text-xs text-gray-600">
+              <p className="font-semibold text-[#111320]">
+                {bundle.order.groupName || "Group"} · {bundle.group.totalSeats} paid seats
+              </p>
+              <p className="mt-1">
+                Scan the group QR once at the gate to check in every paid seat, including children.
+              </p>
+            </div>
+          </>
+        ) : (
+          bundle.participants.map((t) => <TicketCard key={t.id} ticket={t} bundle={bundle} />)
+        )}
 
         <div className="max-w-md w-full print:hidden">
           <HelpLine />

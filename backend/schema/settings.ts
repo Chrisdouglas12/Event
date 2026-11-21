@@ -115,21 +115,6 @@ const eventSettingsSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
-    bankName: {
-      type: String,
-      maxlength: 128,
-      trim: true,
-    },
-    bankAccountName: {
-      type: String,
-      maxlength: 128,
-      trim: true,
-    },
-    bankAccountNumber: {
-      type: String,
-      maxlength: 32,
-      trim: true,
-    },
     capacityLimit: {
       // null = uncapped
       type: Number,
@@ -175,7 +160,7 @@ const providerRouteSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: PAYMENT_PROVIDERS,
-        message: 'primaryProvider must be one of: paystack, paypal, manual_transfer',
+        message: 'primaryProvider must be one of: paystack, paypal',
       },
       required: true,
     },
@@ -183,10 +168,10 @@ const providerRouteSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: PAYMENT_PROVIDERS,
-        message: 'fallbackProvider must be one of: paystack, paypal, manual_transfer',
+        message: 'fallbackProvider must be one of: paystack, paypal',
       },
       required: true,
-      default: 'manual_transfer',
+      default: 'paypal',
     },
     isEnabled: {
       type: Boolean,

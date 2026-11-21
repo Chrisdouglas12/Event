@@ -130,7 +130,7 @@ export default function ConferencePage() {
               Programme
             </h2>
             <div className="rounded-[18px] border border-gray-200 bg-[#F8FAFC] p-6 text-sm leading-relaxed text-[#6B7280]">
-              The official programme booklet will be available at the conference on 8 December 2026. Session details have not been supplied.
+              The full programme will be available at the conference on 8 December 2026. Session details have not been supplied.
             </div>
           </div>
 
