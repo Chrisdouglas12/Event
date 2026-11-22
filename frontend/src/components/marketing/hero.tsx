@@ -11,10 +11,16 @@ import { useLandingSettings } from "@/components/marketing/landing-settings";
 import { SITE_CONFIG } from "@/config/site";
 
 export function Hero() {
-  const { theme, heroDatesLabel, startsAt, endsAt } = useLandingSettings();
+  const { eventName, theme, heroDatesLabel, startsAt, endsAt } =
+    useLandingSettings();
 
   return (
-    <section className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden">
+    <section
+      data-scene="hero"
+      data-trace-node
+      data-trace-label="Hero"
+      className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden"
+    >
       {/* Heavenly sun/halo behind the WebGL globe (mobile only; hidden on desktop) */}
       <div aria-hidden className="hero-heaven absolute inset-0 pointer-events-none lg:hidden" />
 
@@ -120,7 +126,8 @@ export function Hero() {
                 startsAt={startsAt}
                 endsAt={endsAt}
                 theme={theme}
-                title="International Holiness General Conference 2026"
+                title={eventName}
+                logoSrc={SITE_CONFIG.logo.src}
               />
             </div>
           </ParallaxLayer>

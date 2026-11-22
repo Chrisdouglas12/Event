@@ -149,6 +149,15 @@ h1, h2, h3, h4, h5, h6 {
     0 24px 70px rgba(2, 8, 18, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
   color: var(--color-ink);
+  transition: border-color 260ms ease, box-shadow 260ms ease;
+}
+
+.landing-card:hover {
+  border-color: rgba(142, 227, 214, 0.38);
+  box-shadow:
+    0 28px 80px rgba(2, 8, 18, 0.32),
+    0 0 0 1px rgba(142, 227, 214, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* Opaque-enough backgrounds instead of backdrop-filter: blurring every card
@@ -560,6 +569,221 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* ============ GLOBE ORBIT INTRO ============ */
+.intro-root {
+  color: #ffffff;
+  font-family: var(--font-heading);
+}
+
+.intro-root canvas {
+  pointer-events: none;
+}
+
+.intro-vignette {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(14, 122, 110, 0.16), transparent 44%),
+    linear-gradient(180deg, rgba(5, 11, 22, 0.62) 0%, transparent 32%, transparent 62%, rgba(5, 11, 22, 0.82) 100%);
+}
+
+.intro-grid {
+  background-image:
+    linear-gradient(rgba(142, 227, 214, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(142, 227, 214, 0.055) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle at center, black, transparent 72%);
+  animation: intro-grid-drift 28s linear infinite;
+}
+
+.intro-brand {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  transition:
+    opacity 800ms ease,
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intro-brand-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.intro-logo-tile {
+  box-shadow:
+    0 20px 70px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 50px rgba(142, 227, 214, 0.12);
+}
+
+.intro-progress-fill {
+  transform-origin: left center;
+  animation: intro-progress 3.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intro-leaving {
+  animation: intro-dissolve 760ms ease-in forwards;
+}
+
+@keyframes intro-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 64px 64px, 64px 64px; }
+}
+
+@keyframes intro-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes intro-dissolve {
+  from { opacity: 1; transform: scale(1); filter: blur(0); }
+  to { opacity: 0; transform: scale(1.035); filter: blur(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-grid,
+  .intro-progress-fill,
+  .intro-leaving {
+    animation: none;
+  }
+  .intro-brand {
+    transition: none;
+  }
+}
+
+/* ============ SCROLL TRACE ============ */
+.joined-flow {
+  position: relative;
+}
+
+.joined-flow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(14, 122, 110, 0.09),
+    transparent 16%,
+    transparent 84%,
+    rgba(14, 122, 110, 0.09)
+  );
+}
+
+.trace-trail {
+  background: linear-gradient(
+    180deg,
+    rgba(142, 227, 214, 0.05),
+    rgba(142, 227, 214, 0.9) 12%,
+    rgba(142, 227, 214, 0.9) 88%,
+    rgba(142, 227, 214, 0.05)
+  );
+  box-shadow: 0 0 14px rgba(142, 227, 214, 0.75);
+  transition: height 120ms linear, width 120ms linear;
+}
+
+.trace-connector {
+  opacity: 0.8;
+}
+
+.trace-connector::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 46px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(142, 227, 214, 0.9));
+  box-shadow: 0 0 12px rgba(142, 227, 214, 0.7);
+  animation: trace-connector-flow 3.2s ease-in-out infinite;
+}
+
+.trace-node-dot {
+  transition: box-shadow 260ms ease, transform 260ms ease;
+}
+
+.trace-car {
+  transition: top 120ms linear;
+  filter: drop-shadow(0 0 10px rgba(142, 227, 214, 0.45));
+}
+
+.trace-car-glow {
+  background: radial-gradient(circle, rgba(142, 227, 214, 0.24), transparent 68%);
+  animation: trace-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes trace-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes trace-connector-flow {
+  0%, 100% { opacity: 0.25; transform: translateX(-10px); }
+  50% { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trace-car-glow,
+  .trace-connector::after {
+    animation: none;
+  }
+  .trace-trail,
+  .trace-car {
+    transition: none;
+  }
+}
+
+/* ============ ORBITAL COUNTDOWN ============ */
+.countdown-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.countdown-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 14% 28%, rgba(142, 227, 214, 0.1), transparent 46%);
+}
+
+.countdown-orbit-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgba(142, 227, 214, 0.3);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.countdown-orbit-ring-a {
+  width: 112%;
+  height: 52%;
+  animation: countdown-orbit-a 16s linear infinite;
+}
+
+.countdown-orbit-ring-b {
+  width: 96%;
+  height: 86%;
+  border-color: rgba(142, 227, 214, 0.14);
+  animation: countdown-orbit-b 22s linear infinite;
+}
+
+@keyframes countdown-orbit-a {
+  from { transform: translate(-50%, -50%) rotate(-18deg); }
+  to { transform: translate(-50%, -50%) rotate(342deg); }
+}
+
+@keyframes countdown-orbit-b {
+  from { transform: translate(-50%, -50%) rotate(28deg); }
+  to { transform: translate(-50%, -50%) rotate(-332deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-orbit-ring {
+    animation: none;
+  }
 }
 
 /* ============ HERO ANIMATIONS ============ */

@@ -6,7 +6,12 @@ import { SITE_CONFIG } from "@/config/site";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[#0E1020]/85 text-gray-300">
+    <footer
+      data-scene="arrival"
+      data-trace-node
+      data-trace-label="Footer"
+      className="w-full bg-[#0E1020]/85 text-gray-300"
+    >
       {/* 3-Column Main Footer */}
       <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">

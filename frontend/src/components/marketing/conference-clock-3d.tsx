@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { LANDING_THEME } from "@/config/landing-theme";
 
 type ConferenceClock3DProps = {
   /** Countdown deadline in ms (Date.now() scale). null = hands rest at 12. */
@@ -103,6 +104,24 @@ function makeFaceCanvas(title: string, theme: string) {
   glow.addColorStop(1, "rgba(142,227,214,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, size, size);
+
+  // Globe graticule ties the clock face to the hero/splash globe language.
+  ctx.save();
+  ctx.strokeStyle = "rgba(142,227,214,0.16)";
+  ctx.lineWidth = 2;
+  for (let lat = -3; lat <= 3; lat += 1) {
+    const y = cy + lat * 62;
+    const rx = Math.sqrt(Math.max(0, 330 * 330 - (lat * 62) ** 2));
+    ctx.beginPath();
+    ctx.ellipse(cx, y, rx, rx * 0.22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (let lon = -3; lon <= 3; lon += 1) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(lon) * 55 + 18, 330, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // Text band rings
   ctx.strokeStyle = "rgba(255,255,255,0.14)";
@@ -251,6 +270,27 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         lip.position.z = 0.118;
         clock.add(lip);
 
+        // Orbital rings around the case, echoing the globe and scroll trace.
+        const orbitMaterial = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          transparent: true,
+          opacity: 0.34,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const orbitA = new THREE.Mesh(
+          new THREE.TorusGeometry(1.2, 0.007, 10, 180),
+          orbitMaterial
+        );
+        orbitA.rotation.x = Math.PI / 2.5;
+        clock.add(orbitA);
+        const orbitB = new THREE.Mesh(
+          new THREE.TorusGeometry(1.28, 0.005, 10, 180),
+          orbitMaterial
+        );
+        orbitB.rotation.set(0.4, 0.8, Math.PI / 3);
+        clock.add(orbitB);
+
         // ---------- Dial ----------
         const faceTex = new THREE.CanvasTexture(makeFaceCanvas(title, theme));
         faceTex.colorSpace = THREE.SRGBColorSpace;
@@ -292,7 +332,13 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             logoTex = tex;
             const img = tex.image as { width: number; height: number };
             const aspect = img && img.height ? img.width / img.height : 1;
-            logo.scale.set(aspect > 1 ? 1 : aspect, aspect > 1 ? 1 / aspect : 1, 1);
+            // Fit the wide HOREMOW wordmark inside the mint ring without clipping.
+            const base = 0.6;
+            const maxWidth = 0.46;
+            const maxHeight = 0.18;
+            const width = Math.min(maxWidth, maxHeight * aspect);
+            const height = width / aspect;
+            logo.scale.set(width / base, height / base, 1);
             logoMat.map = tex;
             logoMat.opacity = 1;
             logoMat.needsUpdate = true;
@@ -393,12 +439,20 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         let inView = true;
         let tabVisible = !document.hidden;
         let firstFrame = true;
+        let lastRender = 0;
+        const frameInterval = 1000 / LANDING_THEME.motion.webglFps;
         const TAU = Math.PI * 2;
 
         const frame = () => {
           raf = 0;
           if (disposed) return;
-          const t = performance.now() / 1000;
+          const nowMs = performance.now();
+          if (nowMs - lastRender < frameInterval) {
+            schedule();
+            return;
+          }
+          lastRender = nowMs;
+          const t = nowMs / 1000;
 
           // Hands = time left. They turn backwards as the countdown runs down.
           const tgt = targetRef.current;
@@ -417,6 +471,10 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           clock.rotation.y += (ty - clock.rotation.y) * 0.07;
           clock.rotation.x += (tx - clock.rotation.x) * 0.07;
           clock.position.y = Math.sin(t * 1.1) * 0.03 * sway;
+
+          // Orbital rings keep turning even when the hands barely move.
+          orbitA.rotation.z = t * 0.16;
+          orbitB.rotation.z = -t * 0.11;
 
           // Highlight slides across the glass as it tilts
           glareTex.offset.x = clock.rotation.y * 0.35;
