@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { LANDING_THEME } from "@/config/landing-theme";
 
 type ConferenceClock3DProps = {
   /** Countdown deadline in ms (Date.now() scale). null = hands rest at 12. */
@@ -105,24 +104,6 @@ function makeFaceCanvas(title: string, theme: string) {
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, size, size);
 
-  // Globe graticule ties the clock face to the hero/splash globe language.
-  ctx.save();
-  ctx.strokeStyle = "rgba(142,227,214,0.16)";
-  ctx.lineWidth = 2;
-  for (let lat = -3; lat <= 3; lat += 1) {
-    const y = cy + lat * 62;
-    const rx = Math.sqrt(Math.max(0, 330 * 330 - (lat * 62) ** 2));
-    ctx.beginPath();
-    ctx.ellipse(cx, y, rx, rx * 0.22, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  for (let lon = -3; lon <= 3; lon += 1) {
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, Math.abs(lon) * 55 + 18, 330, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
-
   // Text band rings
   ctx.strokeStyle = "rgba(255,255,255,0.14)";
   ctx.lineWidth = 2;
@@ -183,7 +164,7 @@ function makeGlareCanvas() {
   const g = ctx.createLinearGradient(0, 0, 256, 256);
   g.addColorStop(0, "rgba(255,255,255,0)");
   g.addColorStop(0.4, "rgba(255,255,255,0)");
-  g.addColorStop(0.5, "rgba(255,255,255,0.5)");
+  g.addColorStop(0.5, "rgba(255,255,255,0.3)");
   g.addColorStop(0.6, "rgba(255,255,255,0)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = g;
@@ -277,18 +258,22 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         const graphiteLight = new THREE.MeshStandardMaterial({ color: 0x59606b, metalness: 0.9, roughness: 0.28 });
         const mint = new THREE.MeshBasicMaterial({ color: 0x8ee3d6 });
 
-        const caseGeo = new THREE.CylinderGeometry(1.09, 1.12, 0.24, 96, 1);
+        // The case sits BEHIND the dial: its front face is at z = 0.08, the dial at z = 0.1.
+        const caseGeo = new THREE.CylinderGeometry(1.09, 1.12, 0.2, 96, 1);
         caseGeo.rotateX(Math.PI / 2);
-        clock.add(new THREE.Mesh(caseGeo, graphite));
+        const caseMesh = new THREE.Mesh(caseGeo, graphite);
+        caseMesh.position.z = -0.02;
+        clock.add(caseMesh);
 
         const bezel = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.085, 28, 160), graphiteLight);
-        bezel.position.z = 0.115;
+        bezel.position.z = 0.1;
         clock.add(bezel);
 
         const lip = new THREE.Mesh(new THREE.TorusGeometry(0.915, 0.012, 12, 160), mint);
-        lip.position.z = 0.118;
+        lip.position.z = 0.11;
         clock.add(lip);
 
+<<<<<<< HEAD
         // Orbital rings around the case, echoing the globe and scroll trace.
         const orbitMaterial = new THREE.MeshBasicMaterial({
           color: 0x8ee3d6,
@@ -408,31 +393,33 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         clock.add(pulseRing);
         let pulseProgress = 1;
 
+=======
+>>>>>>> dcb5da2 (save my local changes)
         // ---------- Dial ----------
         const faceTex = new THREE.CanvasTexture(makeFaceCanvas(title, theme));
         faceTex.colorSpace = THREE.SRGBColorSpace;
         faceTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
         const face = new THREE.Mesh(
           new THREE.CircleGeometry(0.92, 128),
-          new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.6, metalness: 0.15 })
+          new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.85, metalness: 0 })
         );
         face.position.z = 0.1;
         clock.add(face);
 
         // Logo in the centre
         const logoBack = new THREE.Mesh(
-          new THREE.CircleGeometry(0.31, 64),
+          new THREE.CircleGeometry(0.36, 64),
           new THREE.MeshStandardMaterial({ color: 0x0b0f1a, roughness: 0.7 })
         );
         logoBack.position.z = 0.102;
         clock.add(logoBack);
 
         const logoMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
-        const logo = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), logoMat);
+        const logo = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), logoMat);
         logo.position.z = 0.104;
         clock.add(logo);
 
-        const logoRing = new THREE.Mesh(new THREE.TorusGeometry(0.315, 0.008, 10, 96), mint);
+        const logoRing = new THREE.Mesh(new THREE.TorusGeometry(0.365, 0.008, 10, 96), mint);
         logoRing.position.z = 0.105;
         clock.add(logoRing);
 
@@ -463,13 +450,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             logoTex = tex;
             const img = tex.image as { width: number; height: number };
             const aspect = img && img.height ? img.width / img.height : 1;
-            // Fit the wide HOREMOW wordmark inside the mint ring without clipping.
-            const base = 0.6;
-            const maxWidth = 0.46;
-            const maxHeight = 0.18;
-            const width = Math.min(maxWidth, maxHeight * aspect);
-            const height = width / aspect;
-            logo.scale.set(width / base, height / base, 1);
+            logo.scale.set(aspect > 1 ? 1 : aspect, aspect > 1 ? 1 / aspect : 1, 1);
             logoMat.map = tex;
             logoMat.opacity = 1;
             logoMat.needsUpdate = true;
@@ -545,7 +526,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             transparent: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            opacity: 0.9,
+            opacity: 0.6,
           })
         );
         glare.position.z = 0.205;
@@ -625,15 +606,19 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         let inView = true;
         let tabVisible = !document.hidden;
         let firstFrame = true;
+<<<<<<< HEAD
         let lastRender = 0;
         let lastFrameAt = performance.now();
         let lastLitTicks = -1;
         const frameInterval = 1000 / LANDING_THEME.motion.webglFps;
+=======
+>>>>>>> dcb5da2 (save my local changes)
         const TAU = Math.PI * 2;
 
         const frame = () => {
           raf = 0;
           if (disposed) return;
+<<<<<<< HEAD
           const nowMs = performance.now();
           if (nowMs - lastRender < frameInterval) {
             schedule();
@@ -643,6 +628,9 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           lastFrameAt = nowMs;
           lastRender = nowMs;
           const t = nowMs / 1000;
+=======
+          const t = performance.now() / 1000;
+>>>>>>> dcb5da2 (save my local changes)
 
           // Hands = time left. They turn backwards as the countdown runs down.
           const tgt = targetRef.current;
@@ -687,6 +675,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           }
           clock.position.y = Math.sin(t * 1.1) * 0.03 * sway;
 
+<<<<<<< HEAD
           // Orbital rings and the HOREMOW badge keep the showcase alive.
           orbitA.rotation.z = t * 0.16;
           orbitB.rotation.z = -t * 0.11;
@@ -712,6 +701,8 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             pulseRing.visible = false;
           }
 
+=======
+>>>>>>> dcb5da2 (save my local changes)
           // Highlight slides across the glass as it tilts
           glareTex.offset.x = clock.rotation.y * 0.35;
           glareTex.offset.y = -clock.rotation.x * 0.3;

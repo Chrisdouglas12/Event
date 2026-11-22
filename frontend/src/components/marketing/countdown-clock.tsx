@@ -65,40 +65,79 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
   };
 }
 
+// Panel outline: chamfered corners like the title plaque. The hairline edge is
+// OUTER minus INNER (evenodd), so the glass itself stays see-through.
+const PANEL_OUTER = [
+  "14px 0",
+  "100% 0",
+  "100% calc(100% - 14px)",
+  "calc(100% - 14px) 100%",
+  "0 100%",
+  "0 14px",
+];
+const PANEL_INNER = [
+  "14.6px 1.5px",
+  "calc(100% - 1.5px) 1.5px",
+  "calc(100% - 1.5px) calc(100% - 14.6px)",
+  "calc(100% - 14.6px) calc(100% - 1.5px)",
+  "1.5px calc(100% - 1.5px)",
+  "1.5px 14.6px",
+];
+const PANEL_SHAPE = `polygon(${PANEL_OUTER.join(", ")})`;
+const PANEL_RING = `polygon(evenodd, ${PANEL_OUTER.join(", ")}, ${PANEL_INNER.join(", ")})`;
+
 const FC_CSS = `
+/* ---------- glass panel (same language as the title plaque) ---------- */
+.cc-wrap{position:relative;width:100%;
+  filter:drop-shadow(0 18px 40px rgba(0,0,0,.35)) drop-shadow(0 0 28px rgba(142,227,214,.10))}
+.cc-glass{position:relative;overflow:hidden;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);
+  background:linear-gradient(120deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.04) 55%,rgba(142,227,214,.10) 100%)}
+.cc-border{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(142,227,214,.4) 45%,rgba(255,255,255,.08))}
+.cc-bar{position:absolute;left:0;top:0;bottom:0;width:3px;z-index:2;background:linear-gradient(180deg,#8EE3D6,rgba(142,227,214,0))}
+.cc-sweep{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.16) 50%,transparent 62%);
+  background-size:250% 100%;background-position:160% 0;animation:cc-sweep 8s ease-in-out infinite;animation-delay:1.8s}
+@keyframes cc-sweep{0%,55%{background-position:160% 0}100%{background-position:-60% 0}}
+.cc-clock-glow{position:absolute;inset:6%;border-radius:9999px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(142,227,214,.30),transparent 72%);filter:blur(14px);animation:cc-breathe 5s ease-in-out infinite}
+@keyframes cc-breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.06);opacity:1}}
+
+/* ---------- flip tiles ---------- */
 .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,104px));gap:8px}
 @media (min-width:640px){.fc-grid{gap:12px}}
 
 .fc-tile{position:relative;aspect-ratio:.86;container-type:inline-size;perspective:520px;border-radius:7px;
-  background:#1b1d22;box-shadow:0 14px 30px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.04)}
+  background:#151925;box-shadow:0 14px 30px rgba(0,0,0,.4),inset 0 0 0 1px rgba(142,227,214,.10)}
 
 /* Static halves */
 .fc-half{position:absolute;left:0;right:0;height:50%;overflow:hidden}
-.fc-top{top:0;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#2d3037 0%,#23262c 100%)}
-.fc-bottom{bottom:0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#1d2025 0%,#17191d 100%)}
+.fc-top{top:0;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#252c3d 0%,#1b2131 100%)}
+.fc-bottom{bottom:0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#181d2b 0%,#121622 100%)}
 
 /* The number is as tall as the whole tile, so each half shows half of it */
 .fc-num{position:absolute;left:0;width:100%;height:200%;display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;color:#e3e7ec;font-size:66cqw}
-.fc-wide .fc-num{font-size:48cqw}
+  font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;color:#e8eef2;font-size:62cqw;
+  text-shadow:0 0 18px rgba(142,227,214,.14)}
+.fc-wide .fc-num{font-size:46cqw}
 .fc-top .fc-num,.fc-flap-front .fc-num{top:0}
 .fc-bottom .fc-num,.fc-flap-back .fc-num{bottom:0}
 
 /* Flipping flaps */
 .fc-flap{position:absolute;left:0;right:0;height:50%;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.fc-flap-front{top:0;z-index:3;transform-origin:50% 100%;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#2d3037,#23262c)}
-.fc-flap-back{bottom:0;z-index:2;transform-origin:50% 0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#1d2025,#17191d);transform:rotateX(90deg)}
+.fc-flap-front{top:0;z-index:3;transform-origin:50% 100%;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#252c3d,#1b2131)}
+.fc-flap-back{bottom:0;z-index:2;transform-origin:50% 0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#181d2b,#121622);transform:rotateX(90deg)}
 .fc-flap-front.fc-run{animation:fc-front .32s ease-in forwards}
 .fc-flap-back.fc-run{animation:fc-back .32s ease-out .32s forwards}
 @keyframes fc-front{from{transform:rotateX(0)}to{transform:rotateX(-90deg)}}
 @keyframes fc-back{from{transform:rotateX(90deg)}to{transform:rotateX(0)}}
 
-.fc-split{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;z-index:4;background:#07080a;box-shadow:0 1px 0 rgba(255,255,255,.05)}
-.fc-label{position:absolute;left:9px;bottom:7px;z-index:5;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a919c}
+.fc-split{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;z-index:4;background:#06080d;box-shadow:0 1px 0 rgba(255,255,255,.05)}
+.fc-label{position:absolute;left:9px;bottom:7px;z-index:5;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a95a8}
 .fc-tile[data-unit="seconds"] .fc-label{color:#8EE3D6}
 
 @media (prefers-reduced-motion:reduce){
-  .fc-flap-front.fc-run,.fc-flap-back.fc-run{animation:none}
+  .fc-flap-front.fc-run,.fc-flap-back.fc-run,.cc-sweep,.cc-clock-glow{animation:none}
   .fc-flap-front{transform:rotateX(-90deg)}
   .fc-flap-back{transform:none}
 }
@@ -183,6 +222,7 @@ export function CountdownClock({
     title ?? (SITE_CONFIG as { eventTitle?: string }).eventTitle ?? "International Holiness General Conference 2026";
 
   return (
+<<<<<<< HEAD
     <div className="countdown-shell flex w-full flex-col items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#14161c]/90 to-[#0c0d11]/90 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-md sm:flex-row sm:gap-6 sm:p-5">
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
@@ -229,7 +269,51 @@ export function CountdownClock({
             {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
           </span>
         )}
+=======
+    <div className="cc-wrap">
+      <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
+
+      <div
+        className="cc-glass flex flex-col items-center gap-4 p-4 sm:flex-row sm:gap-6 sm:p-5"
+        style={{ clipPath: PANEL_SHAPE }}
+      >
+        <span aria-hidden className="cc-bar" />
+        <span aria-hidden className="cc-sweep" />
+
+        {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
+        <div className="relative z-[2] shrink-0">
+          <span aria-hidden className="cc-clock-glow" />
+          <ConferenceClock3D
+            target={target}
+            title={dialTitle}
+            theme={theme}
+            logoSrc={SITE_CONFIG.logo.src}
+            className="h-[168px] w-[168px] sm:h-[200px] sm:w-[200px]"
+          />
+        </div>
+
+        {/* Flip countdown */}
+        <div className="relative z-[2] w-full min-w-0 flex-1">
+          <p className="mb-3 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#8EE3D6] sm:justify-start">
+            <span aria-hidden className="h-px w-5 bg-[#8EE3D6]/70" />
+            {caption}
+          </p>
+
+          <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
+            <FlipUnit value={days} label="Days" unit="days" />
+            <FlipUnit value={hours} label="Hours" unit="hours" />
+            <FlipUnit value={minutes} label="Minutes" unit="minutes" />
+            <FlipUnit value={seconds} label="Seconds" unit="seconds" />
+          </div>
+
+          <span className="sr-only" role="timer">
+            {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
+          </span>
+        </div>
+>>>>>>> dcb5da2 (save my local changes)
       </div>
+
+      <div aria-hidden className="cc-border" style={{ clipPath: PANEL_RING }} />
     </div>
   );
 }

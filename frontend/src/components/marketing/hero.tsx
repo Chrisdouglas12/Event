@@ -44,7 +44,98 @@ export function Hero() {
               The remote glass plaque is kept as the accessible fallback inside
               HeroTitleStage; WebGL fades over it once the intro is finished. */}
           <ParallaxLayer speed={0.1} className="w-full">
+<<<<<<< HEAD
             <HeroTitleStage theme={theme} logoSrc={SITE_CONFIG.logo.src} />
+=======
+            <div
+              className="hb-wrap w-full [--s:44px] sm:[--s:56px]"
+              onPointerMove={onPlaqueMove}
+            >
+              <div className="relative grid grid-rows-2 gap-1 sm:gap-1.5">
+                {/* TOP PLATE: conference name */}
+                <div className="hero-fade relative" style={{ animationDelay: "0.2s" }}>
+                  <div
+                    className="hb-plate hb-top relative flex h-full flex-col justify-center py-4 pl-4 pr-10 sm:py-5 sm:pl-6 sm:pr-14"
+                    style={{ clipPath: shape(TOP_OUTER) }}
+                  >
+                    <span aria-hidden className="hb-bar" />
+                    <span aria-hidden className="hb-sweep" />
+                    <span aria-hidden className="hb-spot" />
+                    <h1 className="relative z-[2] whitespace-nowrap text-[4.2vw] font-extrabold uppercase leading-[1.1] tracking-tight text-white [text-shadow:0_2px_18px_rgba(142,227,214,0.3)] sm:text-3xl">
+                      INTERNATIONAL HOLINESS
+                    </h1>
+                    <h2 className="relative z-[2] mt-0.5 whitespace-nowrap text-[3.2vw] font-bold uppercase leading-[1.2] tracking-wide text-[#8EE3D6] sm:mt-1 sm:text-xl">
+                      GENERAL CONFERENCE 2026
+                    </h2>
+                  </div>
+                  <div
+                    aria-hidden
+                    className="hb-border hb-border-top"
+                    style={{ clipPath: ring(TOP_OUTER, TOP_INNER) }}
+                  />
+                </div>
+
+                {/* BOTTOM PLATE: theme, never more than 2 lines */}
+                <div className="hero-fade relative" style={{ animationDelay: "0.5s" }}>
+                  <div
+                    className="hb-plate hb-bot relative flex h-full flex-col justify-center py-4 pl-4 sm:py-5 sm:pl-6"
+                    style={{ clipPath: shape(BOT_OUTER) }}
+                  >
+                    <span aria-hidden className="hb-sweep" />
+                    <span aria-hidden className="hb-spot" />
+                    {/* Big faded quote mark */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute right-[calc(var(--s)+6px)] -top-3 select-none font-serif text-[88px] leading-none text-[#8EE3D6]/15 sm:text-[110px]"
+                    >
+                      &ldquo;
+                    </span>
+
+                    <span className="relative z-[2] inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#8EE3D6] sm:text-sm">
+                      <span aria-hidden className="h-px w-5 bg-[#8EE3D6]/70" />
+                      THEME
+                    </span>
+
+                    {/* Right padding keeps the text clear of the slanted edge */}
+                    <FitTwoLines
+                      text={`\u201C${theme}\u201D`}
+                      minFont={10}
+                      className="relative z-[2] mt-1 pr-[calc(var(--s)+8px)] text-[13px] font-extrabold leading-snug tracking-tight text-white sm:mt-1.5 sm:text-xl md:text-2xl"
+                    />
+                  </div>
+                  <div
+                    aria-hidden
+                    className="hb-border hb-border-bot"
+                    style={{ clipPath: ring(BOT_OUTER, BOT_INNER) }}
+                  />
+                </div>
+
+                {/* LOGO MEDALLION: sits in the notch and bridges both plates */}
+                <div className="hb-medal">
+                  <span aria-hidden className="hb-medal-glow" />
+                  <span aria-hidden className="hb-medal-orbit">
+                    <span className="hb-medal-dot" />
+                  </span>
+                  <span aria-hidden className="hb-medal-ring" />
+                  <div className="hb-medal-core">
+                    <div className="relative h-full w-full p-[3px]">
+                      <div className="relative h-full w-full">
+                        <Image
+                          src={SITE_CONFIG.logo.src}
+                          alt={SITE_CONFIG.logo.alt}
+                          fill
+                          priority
+                          fetchPriority="high"
+                          sizes="(max-width: 639px) 44px, 56px"
+                          className="object-contain"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+>>>>>>> dcb5da2 (save my local changes)
           </ParallaxLayer>
 
           {/* Layer 4: 3D logo clock + flip countdown */}
