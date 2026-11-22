@@ -27,14 +27,19 @@ export async function getSession() {
   }
 }
 
-export async function requireRole(requiredRole: string) {
+export async function requireAnyRole(allowedRoles: string[]) {
   const user = await getSession();
-  
+
   if (!user) return null;
 
-  if (user.role === requiredRole || user.role === "admin") {
+  if (user.role === "admin" || allowedRoles.includes(user.role)) {
     return user;
   }
-  
+
   return null;
+}
+
+/** Preserves the original single-role contract, including the admin override. */
+export async function requireRole(requiredRole: string) {
+  return requireAnyRole([requiredRole]);
 }

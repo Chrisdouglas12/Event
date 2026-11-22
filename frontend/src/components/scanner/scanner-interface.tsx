@@ -24,8 +24,8 @@ export function ScannerInterface() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <main className="min-h-[100svh] bg-[#0A0D18] font-body text-white selection:bg-[#8EE3D6] selection:text-[#0E1020]">
-      <div className="relative mx-auto flex h-[100svh] min-h-[640px] w-full max-w-[480px] flex-col overflow-hidden bg-[#0E1020] shadow-[0_0_80px_rgba(0,0,0,0.5)] sm:min-h-[720px] sm:border-x sm:border-white/10">
+    <main className="fixed inset-0 z-[100] flex bg-[#0A0D18] font-body text-white selection:bg-[#8EE3D6] selection:text-[#0E1020]">
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0E1020] shadow-[0_0_80px_rgba(0,0,0,0.5)] sm:mx-auto sm:h-[100dvh] sm:max-w-[480px] sm:border-x sm:border-white/10">
         {/* Top Viewfinder Area */}
         <section className="relative min-h-0 flex-1 overflow-hidden bg-[#0A0D18]">
           <video
@@ -223,7 +223,7 @@ export function ScannerInterface() {
         </section>
 
         {/* Bottom Operations Sheet */}
-        <section className="relative z-20 shrink-0 rounded-t-[32px] bg-white px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-3.5 text-[#111320] shadow-[0_-16px_45px_rgba(0,0,0,0.25)]">
+        <section className="relative z-20 max-h-[54svh] shrink-0 overflow-y-auto overscroll-contain rounded-t-[32px] bg-white px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-3.5 text-[#111320] shadow-[0_-16px_45px_rgba(0,0,0,0.25)] sm:max-h-none sm:overflow-visible">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" aria-hidden="true" />
 
           {/* Connectivity Status */}

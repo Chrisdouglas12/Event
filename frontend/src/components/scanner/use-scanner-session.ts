@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
+import { useRef, useState } from "react";
+import { useQrScanner } from "@/components/scanner/use-qr-scanner";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
@@ -17,16 +17,43 @@ export type ScanStatus =
     }
   | { type: "forged" | "error"; message: string };
 
-export function useScannerSession() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const lastScanRef = useRef<string>("");
+/**
+ * randomUUID() is unavailable on insecure origins (e.g. a phone opening the
+ * dev server over http://192.168.x.x). getRandomValues() still works, so use it
+ * as the fallback and keep a final non-crypto fallback for very old browsers.
+ */
+function makeIdempotencyKey(): string {
+  const cryptoApi = globalThis.crypto;
 
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraStarting, setCameraStarting] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [torchEnabled, setTorchEnabled] = useState(false);
+  if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+
+  if (cryptoApi && typeof cryptoApi.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
+function normalizeManualCode(value: string): string {
+  return value.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+export function useScannerSession() {
+  const lastScanRef = useRef<string>("");
+  const processScanRef = useRef<(token: string) => Promise<void>>(async () => {});
+
+  // The camera hook owns the stream, decoder, torch and image upload. It stays
+  // independent of React state changes so a scan cannot restart the loop.
+  const scanner = useQrScanner((value) => {
+    void processScanRef.current(value);
+  });
+
   const [standId, setStandId] = useState("Gate A");
   const [manualCode, setManualCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,87 +67,6 @@ export function useScannerSession() {
     return match ? decodeURIComponent(match[1]) : null;
   };
 
-  // ── Real-time QR decoding ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!cameraActive || busy || scanResult.type !== "idle") return;
-
-    let frameId = 0;
-    let isScanning = true;
-
-    const scanFrame = () => {
-      if (!isScanning) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-
-      if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (ctx) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-          });
-          if (code?.data) {
-            isScanning = false;
-            void processScan(code.data);
-            return;
-          }
-        }
-      }
-      frameId = requestAnimationFrame(scanFrame);
-    };
-
-    scanFrame();
-    return () => {
-      isScanning = false;
-      cancelAnimationFrame(frameId);
-    };
-    // processScan is intentionally re-created each render; the effect only needs
-    // to restart when scanning readiness changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraActive, busy, scanResult.type]);
-
-  const startCamera = async () => {
-    setCameraStarting(true);
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        streamRef.current = stream;
-        setCameraActive(true);
-      }
-    } catch (err: any) {
-      setCameraError(err.message || "Camera unavailable. Check browser permissions.");
-    } finally {
-      setCameraStarting(false);
-    }
-  };
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setCameraActive(false);
-    setTorchEnabled(false);
-  };
-
-  const toggleTorch = async () => {
-    if (!streamRef.current) return;
-    const track = streamRef.current.getVideoTracks()[0];
-    try {
-      await track.applyConstraints({ advanced: [{ torch: !torchEnabled }] } as unknown as MediaTrackConstraints);
-      setTorchEnabled(!torchEnabled);
-    } catch {
-      setCameraError("Torch is not supported on this device.");
-    }
-  };
-
-  // ── Gate check-in ────────────────────────────────────────────────────────
   const processScan = async (token: string) => {
     setBusy(true);
     setScanResult({ type: "idle" });
@@ -144,10 +90,18 @@ export function useScannerSession() {
           standId,
           scanType: "arrival",
           clientTimestamp: new Date().toISOString(),
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: makeIdempotencyKey(),
         }),
       });
       const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401 || res.status === 403) {
+        setScanResult({
+          type: "error",
+          message: "Your session has expired. Please log in again.",
+        });
+        return;
+      }
 
       if (data.result === "forged" || res.status === 404) {
         setScanResult({ type: "forged", message: data.error || "Invalid or forged ticket." });
@@ -167,7 +121,10 @@ export function useScannerSession() {
       }
 
       if (!res.ok || data.result !== "valid") {
-        setScanResult({ type: "error", message: data.error || "Scan failed. Please try again." });
+        setScanResult({
+          type: "error",
+          message: data.error || "Scan failed. Please try again.",
+        });
         return;
       }
 
@@ -187,8 +144,10 @@ export function useScannerSession() {
     }
   };
 
+  processScanRef.current = processScan;
+
   const submitManual = async () => {
-    const value = manualCode.trim();
+    const value = normalizeManualCode(manualCode);
     if (!value) return;
     setManualCode("");
     await processScan(value);
@@ -228,12 +187,7 @@ export function useScannerSession() {
   };
 
   return {
-    videoRef,
-    canvasRef,
-    cameraActive,
-    cameraStarting,
-    cameraError,
-    torchEnabled,
+    ...scanner,
     standId,
     manualCode,
     busy,
@@ -243,15 +197,8 @@ export function useScannerSession() {
     lastScanToken: lastScanRef.current,
     updateStandId: setStandId,
     setManualCode,
-    startCamera,
-    stopCamera,
-    toggleTorch,
-    clearCameraError: () => setCameraError(null),
     submitManual,
     dismissResult,
     handleFullSync,
-    scanImageFile: async (_file: File) => {
-      setCameraError("Image scanning requires a decoder. Please scan the physical QR.");
-    },
   };
 }

@@ -57,6 +57,80 @@ function hashQrToken(raw: string): string {
   return crypto.createHash('sha256').update(raw.trim()).digest('hex');
 }
 
+const REFERENCE_PATTERN = /^HGC-[A-Z0-9]{6}$/;
+
+function participantTokenFor(participantId: unknown): string {
+  const value = secret();
+  if (!value || value.length < 16) return '';
+  return crypto
+    .createHmac('sha256', value)
+    .update(`participant:${String(participantId)}`)
+    .digest('base64url')
+    .slice(0, 32);
+}
+
+function groupTokenFor(orderId: unknown): string {
+  return `HGCGROUP.${String(orderId)}.${accessTokenFor(orderId)}`;
+}
+
+/**
+ * Printed ticket references are short and human-friendly; QR codes carry the
+ * signed token. Resolve a reference to the same signed token so manual entry
+ * goes through the identical paid/status checks as a camera scan.
+ */
+async function resolveReferenceToken(reference: string): Promise<string | null> {
+  const normalized = reference.trim().toUpperCase();
+  if (!REFERENCE_PATTERN.test(normalized)) return null;
+
+  const participant: any = await Participant.findOne({
+    refCode: normalized,
+    deletedAt: null,
+  })
+    .select('_id orderId groupId')
+    .lean();
+
+  if (participant) {
+    const order: any = await Order.findOne({
+      _id: participant.orderId,
+      status: 'paid',
+    })
+      .select('_id')
+      .lean();
+    if (!order) return null;
+
+    // Any seat in a group resolves to the group pass, so one reference can
+    // never check in only part of a paid group.
+    if (participant.groupId) {
+      const group: any = await Group.findOne({ _id: participant.groupId })
+        .select('orderId')
+        .lean();
+      if (!group) return null;
+      return accessTokenFor(group.orderId) ? groupTokenFor(group.orderId) : null;
+    }
+
+    return participantTokenFor(participant._id) || null;
+  }
+
+  const order: any = await Order.findOne({ reference: normalized, status: 'paid' })
+    .select('_id isGroup')
+    .lean();
+  if (!order) return null;
+
+  if (order.isGroup) {
+    return accessTokenFor(order._id) ? groupTokenFor(order._id) : null;
+  }
+
+  const firstParticipant: any = await Participant.findOne({
+    orderId: order._id,
+    deletedAt: null,
+  })
+    .sort({ createdAt: 1, _id: 1 })
+    .select('_id')
+    .lean();
+
+  return firstParticipant ? participantTokenFor(firstParticipant._id) || null : null;
+}
+
 function unknownParticipantId(): mongoose.Types.ObjectId {
   return new mongoose.Types.ObjectId();
 }
@@ -78,7 +152,7 @@ async function alreadyRecorded(idempotencyKey: string): Promise<GateScanResponse
 
 /** Records one gate scan. A group QR checks in every paid seat on the order. */
 export async function recordGateScan(input: GateScanInput): Promise<GateScanResponse> {
-  const token = String(input.qrToken || '').trim();
+  let token = String(input.qrToken || '').trim();
   const standId = String(input.standId || '').trim();
   if (!token || !standId) throw new Error('qrToken and standId are required');
 
@@ -104,6 +178,14 @@ export async function recordGateScan(input: GateScanInput): Promise<GateScanResp
     });
     return { result: 'forged', error };
   };
+
+  // Manual gate entry uses the printed reference; convert it to the signed
+  // token before any check-in work so both entry paths share one validator.
+  if (REFERENCE_PATTERN.test(token.toUpperCase())) {
+    const resolved = await resolveReferenceToken(token);
+    if (!resolved) return createForgedEvent('Ticket reference not found or not paid.');
+    token = resolved;
+  }
 
   if (token.startsWith('HGCGROUP.')) {
     const parts = token.split('.');
