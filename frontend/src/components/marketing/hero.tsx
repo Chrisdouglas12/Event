@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar } from "lucide-react";
-import { Countdown } from "@/components/ui/countdown";
+import { CountdownClock } from "@/components/marketing/count-down-clock";
 import { HeroBackground } from "@/components/marketing/hero-background";
 import { ParallaxLayer } from "@/components/marketing/parallax-layer";
 import { FitTwoLines } from "@/components/marketing/fit-two-lines";
@@ -110,10 +110,18 @@ export function Hero() {
             </div>
           </ParallaxLayer>
 
-          {/* Layer 4: Countdown */}
-          <ParallaxLayer speed={0.16}>
-            <div className="hero-fade pt-1 pb-1" style={{ animationDelay: "0.8s" }}>
-              <Countdown startsAt={startsAt} endsAt={endsAt} />
+          {/* Layer 4: Countdown clock (3D dial + flip tiles) */}
+          <ParallaxLayer speed={0.16} className="w-full">
+            <div
+              className="hero-fade pt-1 pb-1 w-full max-w-[560px]"
+              style={{ animationDelay: "0.8s" }}
+            >
+              <CountdownClock
+                startsAt={startsAt}
+                endsAt={endsAt}
+                theme={theme}
+                title="International Holiness General Conference 2026"
+              />
             </div>
           </ParallaxLayer>
 

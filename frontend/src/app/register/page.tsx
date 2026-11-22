@@ -32,6 +32,7 @@ const INITIAL_PHONE = "+234 ";
 const MIN_NGN_PER_PASS_MINOR = 200_000;
 // Old versions saved drafts here. Nothing is saved any more; the key is purged on load.
 const LEGACY_DRAFT_KEY = "ihgc_draft_registration";
+const TOTAL_STEPS = 6;
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string;
@@ -65,21 +66,21 @@ type FieldErrors = Partial<Record<FieldKey, string>>;
 const FIELD_ORDER: FieldKey[] = [
   "groupName",
   "seats",
+  "country",
+  "state",
   "inviteeCount",
-  "genderCounts",
   "hasChildren",
   "childCount",
+  "genderCounts",
   "gender",
   "firstTime",
   "payerName",
   "payerPhone",
   "payerEmail",
-  "country",
-  "state",
   "guardianName",
   "guardianPhone",
-  "customNairaAmount",
   "groupAttendance",
+  "customNairaAmount",
   "consent",
   "turnstile",
 ];
@@ -87,7 +88,7 @@ const FIELD_ORDER: FieldKey[] = [
 const ATTENDANCE_OPTIONS = [
   ["physically", "Physically"],
   ["online", "Online"],
-  ["not_sure", "Not Sure"],
+  ["not_sure", "Not sure"],
 ] as const;
 
 const ATTENDANCE_IDS = {
@@ -110,6 +111,236 @@ function toE164Phone(phone: string): string | null {
   if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
   return null;
 }
+
+/* ---------- Design tokens + component styles ----------
+ * Mobile-first. All colours come from the --r-* tokens below, which switch
+ * automatically in dark mode. Scoped to .r-root so nothing leaks to the
+ * site header or footer.
+ */
+const STYLES = `
+.r-root{
+  --r-card:#ffffff; --r-subtle:#F5F7FA; --r-tint:#E7F6F3; --r-tint-border:#BFE7E0;
+  --r-border:#DDE3EA; --r-border-strong:#B7C1CD;
+  --r-text:#0F1424; --r-muted:#4F5A6A; --r-faint:#7A8595;
+  --r-primary:#0E7A6E; --r-primary-hover:#0A645A; --r-on-primary:#ffffff; --r-brand-text:#0B6B60;
+  --r-ring:rgba(31,163,150,.38);
+  --r-danger:#B42318; --r-danger-bg:#FEF3F2; --r-danger-border:#F1A9A2;
+  --r-success:#0E7A6E; --r-warn:#8A4B08; --r-warn-bg:#FFF6E5; --r-warn-border:#F2CC8F;
+  --r-navy:#0E1020; --r-mint:#8EE3D6;
+  --r-shadow:0 1px 2px rgba(10,16,32,.06), 0 18px 48px rgba(5,10,25,.28);
+  --r-pad:16px;
+}
+@media (min-width:640px){ .r-root{ --r-pad:28px; } }
+@media (min-width:1024px){ .r-root{ --r-pad:36px; } }
+@media (prefers-color-scheme: dark){
+  .r-root{
+    --r-card:#10162A; --r-subtle:#0B1022; --r-tint:#0F2A2B; --r-tint-border:#1E4B49;
+    --r-border:#252F47; --r-border-strong:#3A4766;
+    --r-text:#EAEEF6; --r-muted:#B0B9CA; --r-faint:#8590A5;
+    --r-primary:#2CC5B3; --r-primary-hover:#4AD6C5; --r-on-primary:#04201C; --r-brand-text:#7FE0D2;
+    --r-ring:rgba(44,197,179,.45);
+    --r-danger:#FF9C93; --r-danger-bg:#2B1316; --r-danger-border:#6B2A2E;
+    --r-success:#5FD9C8; --r-warn:#FBCB7A; --r-warn-bg:#2A2110; --r-warn-border:#6B5320;
+    --r-shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 48px rgba(0,0,0,.5);
+  }
+}
+
+.r-card{ color-scheme:light dark; color:var(--r-text); background:var(--r-card); border:1px solid var(--r-border); border-radius:0; box-shadow:var(--r-shadow); }
+
+/* Sticky header + progress */
+.r-head{ position:sticky; top:60px; z-index:20; background:var(--r-navy); color:#fff; border-radius:0; }
+.r-head-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:48px; padding:6px var(--r-pad); }
+.r-head-steps{ font-size:13px; font-weight:600; color:var(--r-mint); }
+.r-head-brand{ display:none; align-items:center; gap:12px; min-width:0; }
+.r-head-sep{ width:1px; height:20px; background:rgba(255,255,255,.2); }
+.r-head-tag{ font-size:13px; font-weight:600; color:var(--r-mint); }
+.r-head-clock{ display:flex; align-items:center; gap:8px; font-size:12px; color:rgba(255,255,255,.72); }
+@media (min-width:640px){ .r-head-brand{ display:flex; } .r-head-steps{ display:none; } }
+.r-progress{ height:3px; background:rgba(255,255,255,.12); }
+.r-progress span{ display:block; height:100%; background:var(--r-mint); transition:width .35s ease; }
+
+/* Hero */
+.r-hero{ padding:24px var(--r-pad) 8px; }
+.r-title{ font-size:26px; line-height:1.15; font-weight:800; letter-spacing:-.02em; }
+@media (min-width:640px){ .r-title{ font-size:30px; } }
+.r-meta{ display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:14px; color:var(--r-muted); }
+.r-meta span{ display:inline-flex; align-items:center; gap:6px; }
+.r-meta svg{ width:16px; height:16px; color:var(--r-primary); }
+.r-sub{ margin-top:12px; font-size:14px; line-height:1.5; color:var(--r-muted); }
+
+/* Steps */
+.r-form{ padding:0 var(--r-pad); }
+.r-step{ padding:26px 0; border-top:1px solid var(--r-border); }
+.r-step-head{ display:flex; gap:12px; align-items:flex-start; margin-bottom:16px; }
+.r-badge{ flex:none; width:28px; height:28px; border-radius:999px; display:grid; place-items:center; font-size:13px; font-weight:700; background:var(--r-subtle); color:var(--r-muted); border:1.5px solid var(--r-border-strong); transition:background .2s,color .2s,border-color .2s; }
+.r-badge[data-done=true]{ background:var(--r-primary); border-color:var(--r-primary); color:var(--r-on-primary); }
+.r-badge svg{ width:15px; height:15px; }
+.r-step-title{ font-size:18px; font-weight:700; line-height:1.3; }
+.r-step-note{ margin-top:2px; font-size:13.5px; line-height:1.45; color:var(--r-muted); }
+
+.r-grid{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:640px){
+  .r-grid--2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .r-grid--3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .r-span2{ grid-column:span 2; }
+}
+
+/* Fields */
+.r-field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.r-label{ font-size:14px; font-weight:600; }
+.r-hint{ font-size:12.5px; line-height:1.4; color:var(--r-muted); }
+.r-error{ display:flex; gap:6px; align-items:flex-start; font-size:12.5px; font-weight:500; line-height:1.4; color:var(--r-danger); }
+.r-error svg{ width:15px; height:15px; flex:none; margin-top:1px; }
+.r-wrap{ position:relative; }
+.r-narrow{ max-width:280px; }
+
+.r-input{ width:100%; min-height:48px; padding:11px 14px; font:inherit; font-size:16px; color:var(--r-text); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:10px; appearance:none; transition:border-color .15s, box-shadow .15s, background .15s; }
+.r-input::placeholder{ color:var(--r-faint); }
+.r-input:hover:not(:disabled){ border-color:var(--r-faint); }
+.r-input:focus-visible{ outline:none; border-color:var(--r-primary); box-shadow:0 0 0 4px var(--r-ring); }
+.r-input[aria-invalid=true]{ border-color:var(--r-danger); background:var(--r-danger-bg); }
+.r-input[aria-invalid=true]:focus-visible{ box-shadow:0 0 0 4px var(--r-danger-border); }
+.r-input:disabled{ cursor:not-allowed; background:var(--r-subtle); color:var(--r-faint); }
+.r-input[readonly]{ background:var(--r-subtle); font-weight:700; }
+.r-input--lead{ padding-left:46px; }
+.r-input--trail{ padding-right:46px; }
+.r-input--lead-sm{ padding-left:34px; }
+.r-lead, .r-trail{ position:absolute; top:50%; transform:translateY(-50%); display:flex; align-items:center; color:var(--r-faint); }
+.r-lead{ left:14px; font-size:18px; line-height:1; pointer-events:none; }
+.r-lead--text{ font-size:16px; font-weight:700; color:var(--r-text); }
+.r-trail{ right:12px; }
+.r-lead svg, .r-trail svg{ width:18px; height:18px; }
+.r-valid{ color:var(--r-success); pointer-events:none; }
+.r-chevron{ right:8px; padding:8px; border:0; background:none; border-radius:8px; color:var(--r-faint); cursor:pointer; }
+.r-chevron:hover:not(:disabled){ color:var(--r-primary); }
+.r-chevron:disabled{ opacity:.5; cursor:not-allowed; }
+.r-chevron svg{ transition:transform .2s; }
+.r-chevron[data-open=true] svg{ transform:rotate(180deg); }
+
+/* Dropdown */
+.r-list{ position:absolute; z-index:50; left:0; right:0; top:calc(100% + 6px); max-height:264px; overflow:auto; padding:6px; background:var(--r-card); border:1px solid var(--r-border); border-radius:12px; box-shadow:0 18px 40px rgba(5,10,25,.3); overscroll-behavior:contain; }
+.r-option{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:8px; font-size:15px; cursor:pointer; }
+.r-option[data-active=true]{ background:var(--r-tint); color:var(--r-brand-text); }
+.r-option[aria-selected=true]{ font-weight:700; }
+.r-empty{ padding:14px 12px; font-size:14px; color:var(--r-muted); }
+
+/* Choice buttons */
+.r-choices{ display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.r-choices--3{ grid-template-columns:minmax(0,1fr); }
+@media (min-width:480px){ .r-choices--3{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.r-choice{ display:flex; align-items:center; justify-content:center; min-height:48px; padding:10px 14px; font:inherit; font-size:15px; font-weight:600; color:var(--r-muted); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:10px; cursor:pointer; transition:border-color .15s, background .15s, color .15s, box-shadow .15s; }
+.r-choice:hover{ border-color:var(--r-primary); color:var(--r-text); }
+.r-choice[aria-pressed=true]{ border-color:var(--r-primary); background:var(--r-tint); color:var(--r-brand-text); box-shadow:inset 0 0 0 1px var(--r-primary); }
+.r-choice:focus-visible, .r-typecard:focus-visible, .r-switch:focus-visible, .r-chip:focus-visible, .r-curbtn:focus-visible{ outline:none; box-shadow:0 0 0 4px var(--r-ring); }
+
+/* Registration type */
+.r-type{ display:grid; gap:12px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:480px){ .r-type{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.r-typecard{ display:flex; gap:12px; align-items:flex-start; padding:16px; font:inherit; text-align:left; color:var(--r-text); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
+.r-typecard:hover{ border-color:var(--r-primary); }
+.r-typecard[aria-pressed=true]{ border-color:var(--r-primary); background:var(--r-tint); box-shadow:inset 0 0 0 1px var(--r-primary); }
+.r-typeicon{ flex:none; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--r-subtle); color:var(--r-muted); transition:background .15s, color .15s; }
+.r-typecard[aria-pressed=true] .r-typeicon{ background:var(--r-primary); color:var(--r-on-primary); }
+.r-typeicon svg{ width:20px; height:20px; }
+.r-typetitle{ display:block; font-size:16px; font-weight:700; }
+.r-typesub{ display:block; margin-top:2px; font-size:13px; line-height:1.4; color:var(--r-muted); }
+
+/* Panels + reveal */
+.r-panel{ display:flex; flex-direction:column; gap:18px; padding:16px; background:var(--r-subtle); border:1px solid var(--r-border); border-radius:14px; }
+@media (min-width:640px){ .r-panel{ padding:20px; } }
+.r-reveal{ animation:r-in .22s ease-out; }
+@keyframes r-in{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+
+/* Switch rows */
+.r-switch{ display:flex; align-items:center; gap:12px; width:100%; min-height:56px; padding:12px 14px; font:inherit; text-align:left; color:var(--r-text); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:12px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
+.r-switch[aria-checked=true]{ border-color:var(--r-primary); background:var(--r-tint); }
+.r-switch-text{ flex:1; font-size:14.5px; font-weight:600; line-height:1.35; }
+.r-switch-text small{ display:block; margin-top:2px; font-size:12.5px; font-weight:400; color:var(--r-muted); }
+.r-track{ flex:none; position:relative; width:44px; height:26px; border-radius:999px; background:var(--r-border-strong); transition:background .2s; }
+.r-track::after{ content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:transform .2s; }
+.r-switch[aria-checked=true] .r-track{ background:var(--r-primary); }
+.r-switch[aria-checked=true] .r-track::after{ transform:translateX(18px); }
+
+/* Number stepper */
+.r-stepper{ display:flex; align-items:stretch; overflow:hidden; background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:10px; transition:border-color .15s, box-shadow .15s; }
+.r-stepper:focus-within{ border-color:var(--r-primary); box-shadow:0 0 0 4px var(--r-ring); }
+.r-stepper[data-invalid=true]{ border-color:var(--r-danger); background:var(--r-danger-bg); }
+.r-stepper button{ flex:none; display:grid; place-items:center; width:48px; min-height:45px; border:0; background:var(--r-subtle); color:var(--r-text); cursor:pointer; }
+.r-stepper button:hover:not(:disabled){ background:var(--r-tint); color:var(--r-brand-text); }
+.r-stepper button:disabled{ opacity:.4; cursor:not-allowed; }
+.r-stepper button svg{ width:18px; height:18px; }
+.r-stepper input{ flex:1; width:100%; min-width:0; border:0; background:transparent; text-align:center; font:inherit; font-size:17px; font-weight:700; color:var(--r-text); -moz-appearance:textfield; appearance:textfield; }
+.r-stepper input:focus{ outline:none; }
+.r-stepper input::-webkit-outer-spin-button, .r-stepper input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+/* Tally */
+.r-tally{ display:flex; flex-direction:column; gap:6px; }
+.r-meter{ height:6px; overflow:hidden; border-radius:999px; background:var(--r-border); }
+.r-meter span{ display:block; height:100%; background:var(--r-primary); transition:width .25s ease, background .2s; }
+.r-tally-text{ display:flex; gap:6px; align-items:flex-start; font-size:13px; line-height:1.4; color:var(--r-muted); }
+.r-tally-text svg{ width:15px; height:15px; flex:none; margin-top:1px; }
+.r-tally[data-state=ok] .r-tally-text{ color:var(--r-success); font-weight:600; }
+.r-tally[data-state=bad] .r-meter span{ background:var(--r-danger); }
+.r-tally[data-state=bad] .r-tally-text{ color:var(--r-danger); font-weight:500; }
+
+/* Chips + currency */
+.r-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.r-chip{ min-height:38px; padding:8px 14px; font:inherit; font-size:13.5px; font-weight:600; color:var(--r-muted); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:999px; cursor:pointer; transition:border-color .15s, background .15s, color .15s; }
+.r-chip:hover{ border-color:var(--r-primary); color:var(--r-text); }
+.r-chip[aria-pressed=true]{ border-color:var(--r-primary); background:var(--r-tint); color:var(--r-brand-text); }
+.r-cur{ display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (min-width:640px){ .r-cur{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.r-curbtn{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-height:64px; padding:12px; font:inherit; text-align:left; color:var(--r-text); background:var(--r-card); border:1.5px solid var(--r-border-strong); border-radius:12px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
+.r-curbtn:hover:not(:disabled){ border-color:var(--r-primary); }
+.r-curbtn[aria-pressed=true]{ border-color:var(--r-primary); background:var(--r-tint); box-shadow:inset 0 0 0 1px var(--r-primary); }
+.r-curbtn:disabled{ opacity:.5; cursor:not-allowed; }
+.r-curcode{ display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:700; }
+.r-curprice{ font-size:12.5px; line-height:1.35; color:var(--r-muted); }
+.r-note{ font-size:14px; line-height:1.5; color:var(--r-muted); }
+
+/* Consent + summary */
+.r-consent{ display:flex; gap:12px; align-items:flex-start; padding:14px; font-size:14px; line-height:1.5; color:var(--r-muted); background:var(--r-subtle); border:1.5px solid var(--r-border-strong); border-radius:12px; cursor:pointer; transition:border-color .15s, background .15s; }
+.r-consent[data-invalid=true]{ border-color:var(--r-danger); background:var(--r-danger-bg); }
+.r-consent input{ flex:none; width:20px; height:20px; margin-top:2px; accent-color:var(--r-primary); }
+.r-consent a{ color:var(--r-brand-text); font-weight:600; text-decoration:underline; }
+.r-summary{ margin:0; padding:16px; background:var(--r-subtle); border:1px solid var(--r-border); border-radius:14px; }
+.r-row{ display:flex; justify-content:space-between; gap:16px; padding:6px 0; font-size:14px; }
+.r-row dt{ color:var(--r-muted); }
+.r-row dd{ margin:0; font-weight:600; text-align:right; }
+.r-total{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-top:8px; padding-top:14px; border-top:1px dashed var(--r-border-strong); }
+.r-total-label{ font-size:14px; color:var(--r-muted); }
+.r-total-value{ font-size:30px; font-weight:800; line-height:1; letter-spacing:-.02em; }
+
+/* Alerts */
+.r-alert{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; font-size:13.5px; line-height:1.45; color:var(--r-danger); background:var(--r-danger-bg); border:1px solid var(--r-danger-border); border-radius:12px; }
+.r-alert svg{ width:18px; height:18px; flex:none; margin-top:1px; }
+.r-alert--warn{ color:var(--r-warn); background:var(--r-warn-bg); border-color:var(--r-warn-border); }
+.r-linkbtn{ padding:0; font:inherit; font-weight:700; color:inherit; text-decoration:underline; background:none; border:0; cursor:pointer; }
+
+/* Sticky pay bar (sits at the end of the card, sticks to the viewport bottom while the form is on screen) */
+.r-bar{ position:sticky; bottom:0; z-index:25; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px var(--r-pad) max(10px, env(safe-area-inset-bottom)); background:var(--r-card); background:color-mix(in srgb, var(--r-card) 92%, transparent); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-top:1px solid var(--r-border); border-radius:0; }
+.r-bar-total{ display:flex; flex-direction:column; min-width:0; line-height:1.2; }
+.r-bar-total small{ font-size:12px; color:var(--r-muted); }
+.r-bar-total strong{ font-size:20px; font-weight:800; white-space:nowrap; }
+.r-pay{ flex:1 1 auto; max-width:380px; display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:48px; padding:0 20px; font:inherit; font-size:16px; font-weight:700; color:var(--r-on-primary); background:var(--r-primary); border:0; border-radius:12px; cursor:pointer; transition:background .15s, transform .1s; }
+.r-pay:hover:not(:disabled){ background:var(--r-primary-hover); }
+.r-pay:active:not(:disabled){ transform:scale(.99); }
+.r-pay:focus-visible{ outline:none; box-shadow:0 0 0 4px var(--r-ring); }
+.r-pay:disabled{ opacity:.55; cursor:not-allowed; }
+.r-pay svg{ width:18px; height:18px; }
+.r-spin{ width:18px; height:18px; border:2.5px solid currentColor; border-right-color:transparent; border-radius:50%; animation:r-spin .7s linear infinite; }
+@keyframes r-spin{ to{ transform:rotate(360deg); } }
+
+@media (min-width:640px){
+  .r-card{ border-radius:18px; }
+  .r-head{ border-radius:18px 18px 0 0; }
+  .r-bar{ border-radius:0 0 18px 18px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .r-root *, .r-root *::before, .r-root *::after{ animation:none !important; transition:none !important; }
+}
+`;
 
 /* ---------- Inline icons ---------- */
 
@@ -186,19 +417,68 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </Icon>
+  );
+}
+
+function MinusIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M5 12h14" />
+    </Icon>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </Icon>
+  );
+}
+
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </Icon>
+  );
+}
+
+function TicketIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M3.5 8.5a2 2 0 0 0 0 7V18a1.5 1.5 0 0 0 1.5 1.5h14A1.5 1.5 0 0 0 20.5 18v-2.5a2 2 0 0 1 0-7V6A1.5 1.5 0 0 0 19 4.5H5A1.5 1.5 0 0 0 3.5 6z" />
+      <path d="M14 5v14" strokeDasharray="2 3" />
+    </Icon>
+  );
+}
+
 /* ---------- Shared form pieces ---------- */
 
-const inputBase =
-  "w-full rounded-lg border px-3.5 py-2.5 text-sm text-[#111320] placeholder:text-gray-400 transition-colors focus:outline-none focus:ring-2";
-const inputOk = "border-gray-200 bg-[#F9FAFB] focus:border-[#1FA396] focus:bg-white focus:ring-[#8EE3D6]/40";
-const inputBad = "border-red-400 bg-red-50 focus:border-red-500 focus:bg-white focus:ring-red-200";
-const inputCls = (bad: boolean, extra = "") => `${inputBase} ${bad ? inputBad : inputOk} ${extra}`;
+const inputCls = (extra = "") => `r-input ${extra}`.trim();
 
 const normaliseSearch = (text: string) =>
   text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+
+const toInt = (value: string) => Number.parseInt(value, 10) || 0;
 
 function Field({
   htmlFor,
@@ -214,20 +494,171 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-xs font-semibold text-[#111320]">
+    <div className="r-field">
+      <label htmlFor={htmlFor} className="r-label">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-[11px] text-gray-500">{hint}</p>}
+      {hint && !error && <p className="r-hint">{hint}</p>}
       {error && (
-        <p
-          id={`${htmlFor}-error`}
-          role="alert"
-          className="flex items-start gap-1.5 text-[11px] font-medium text-red-600"
-        >
-          <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+        <p id={`${htmlFor}-error`} role="alert" className="r-error">
+          <AlertIcon />
           <span>{error}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StepHeader({ n, done, title, note }: { n: number; done: boolean; title: string; note?: string }) {
+  return (
+    <div className="r-step-head">
+      <span className="r-badge" data-done={done ? "true" : "false"} aria-hidden>
+        {done ? <CheckIcon /> : n}
+      </span>
+      <div>
+        <h2 className="r-step-title">
+          {title}
+          {done && <span className="sr-only"> (complete)</span>}
+        </h2>
+        {note && <p className="r-step-note">{note}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ToggleRow({
+  id,
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  description?: string;
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="r-switch"
+    >
+      <span className="r-switch-text">
+        {label}
+        {description && <small>{description}</small>}
+      </span>
+      <span className="r-track" aria-hidden />
+    </button>
+  );
+}
+
+/** Number input with large − / + buttons. Typing still works. */
+function NumberField({
+  id,
+  value,
+  min = 0,
+  max,
+  onChange,
+  onBlur,
+  invalid,
+  describedBy,
+  label,
+}: {
+  id: string;
+  value: string | number;
+  min?: number;
+  max?: number;
+  onChange: (next: string) => void;
+  onBlur?: () => void;
+  invalid?: boolean;
+  describedBy?: string;
+  label: string;
+}) {
+  const parsed = Number.parseInt(String(value), 10);
+  const current = Number.isFinite(parsed) ? parsed : 0;
+  const canDecrease = current > min;
+  const canIncrease = max === undefined || current < max;
+
+  return (
+    <div className="r-stepper" data-invalid={invalid ? "true" : undefined}>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Decrease ${label}`}
+        disabled={!canDecrease}
+        onClick={() => onChange(String(Math.max(min, current - 1)))}
+      >
+        <MinusIcon />
+      </button>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        value={value}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Increase ${label}`}
+        disabled={!canIncrease}
+        onClick={() => onChange(String(Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, current + 1))))}
+      >
+        <PlusIcon />
+      </button>
+    </div>
+  );
+}
+
+/** Live "x of y" meter for counts that must add up to the participant total. */
+function Tally({
+  id,
+  current,
+  total,
+  unit,
+  error,
+}: {
+  id: string;
+  current: number;
+  total: number;
+  unit: string;
+  error?: string;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  const matched = total > 0 && current === total;
+  const state = error ? "bad" : matched ? "ok" : "idle";
+
+  let text: string;
+  if (total <= 0) text = "Enter the number of participants first.";
+  else if (matched) text = `All ${total} ${unit} assigned`;
+  else if (current < total) text = `${total - current} of ${total} ${unit} still to assign`;
+  else text = `${current - total} over. Reduce a count so the total is ${total}.`;
+
+  return (
+    <div className="r-tally" data-state={state}>
+      <div className="r-meter" aria-hidden>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      {error ? (
+        <p id={id} role="alert" className="r-tally-text">
+          <AlertIcon />
+          <span>{error}</span>
+        </p>
+      ) : (
+        <p className="r-tally-text" aria-live="polite">
+          {matched && <CheckIcon />}
+          <span>{text}</span>
         </p>
       )}
     </div>
@@ -348,17 +779,15 @@ function SearchableSelect({
   return (
     <div
       ref={rootRef}
-      className="relative"
+      className="r-wrap"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           resetToValue();
         }
       }}
     >
-      <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-        {renderLeading?.(value) ?? (
-          disabled ? <LockIcon className="h-4 w-4" /> : <SearchIcon className="h-4 w-4" />
-        )}
+      <div className="r-lead">
+        {renderLeading?.(value) ?? (disabled ? <LockIcon /> : <SearchIcon />)}
       </div>
 
       <input
@@ -395,6 +824,7 @@ function SearchableSelect({
         tabIndex={-1}
         aria-hidden="true"
         disabled={disabled}
+        data-open={open}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
           if (disabled) return;
@@ -402,20 +832,15 @@ function SearchableSelect({
           setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
           inputRef.current?.focus();
         }}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 transition-transform hover:text-[#0E7A6E] disabled:cursor-not-allowed disabled:opacity-50"
+        className="r-trail r-chevron"
       >
-        <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDownIcon />
       </button>
 
       {open && !disabled && (
-        <div
-          ref={listRef}
-          id={`${id}-options`}
-          role="listbox"
-          className="absolute z-30 mt-1.5 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white p-1 shadow-[0_16px_40px_rgba(15,23,42,0.16)]"
-        >
+        <div ref={listRef} id={`${id}-options`} role="listbox" className="r-list">
           {filtered.length === 0 ? (
-            <div className="px-3 py-3 text-xs text-gray-400">{emptyMessage}</div>
+            <div className="r-empty">{emptyMessage}</div>
           ) : (
             filtered.map((option, index) => (
               <div
@@ -427,9 +852,7 @@ function SearchableSelect({
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => commit(option)}
-                className={`cursor-pointer rounded-md px-3 py-2 text-xs transition-colors sm:text-sm ${
-                  index === activeIndex ? "bg-[#E8F7F4] text-[#0E7A6E]" : "text-[#111320] hover:bg-gray-50"
-                } ${option === value ? "font-semibold" : ""}`}
+                className="r-option"
               >
                 {renderOption ? renderOption(option) : option}
               </div>
@@ -437,15 +860,6 @@ function SearchableSelect({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function SectionTitle({ title, note }: { title: string; note?: string }) {
-  return (
-    <div>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">{title}</h2>
-      {note && <p className="mt-1 text-[11px] text-gray-500">{note}</p>}
     </div>
   );
 }
@@ -507,6 +921,7 @@ export default function RegisterPage() {
   const selectedFlag = countryFlag(selectedCountry);
   const inviteeNumber = hasInvitees ? Number(inviteeCount) || 0 : 0;
   const returningCount = Math.max(0, seatsCount - inviteeNumber);
+  const groupAttendanceTotal = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
 
   /* ---------- Reset helpers ---------- */
 
@@ -563,12 +978,33 @@ export default function RegisterPage() {
       return next;
     });
 
+  // Validates a single field when the user leaves it, so mistakes show up
+  // straight away instead of only after pressing Pay.
+  const blurValidate = (key: FieldKey) => {
+    const message = validate()[key];
+    setFieldErrors((prev) => {
+      if (message) return prev[key] === message ? prev : { ...prev, [key]: message };
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   // Props shared by every text input: id, invalid state, error wiring and styling.
-  const fp = (key: FieldKey, extra = "") => ({
+  const fp = (key: FieldKey, extra = "", validateOnBlur = true) => ({
     id: `field-${key}`,
     "aria-invalid": fieldErrors[key] ? true : undefined,
     "aria-describedby": fieldErrors[key] ? `field-${key}-error` : undefined,
-    className: inputCls(Boolean(fieldErrors[key]), extra),
+    className: inputCls(extra),
+    ...(validateOnBlur ? { onBlur: () => blurValidate(key) } : {}),
+  });
+
+  // Same wiring for the stepper inputs.
+  const nf = (key: FieldKey) => ({
+    id: `field-${key}`,
+    invalid: Boolean(fieldErrors[key]),
+    describedBy: fieldErrors[key] ? `field-${key}-error` : undefined,
   });
 
   const focusField = (key: FieldKey) => {
@@ -642,7 +1078,7 @@ export default function RegisterPage() {
           },
           "expired-callback": () => setTurnstileToken(null),
           "error-callback": () => setTurnstileToken(null),
-          theme: "light",
+          theme: "auto",
         });
       }
     };
@@ -743,6 +1179,27 @@ export default function RegisterPage() {
     return errs;
   };
 
+  /* ---------- Live completion (drives the step badges + progress bar) ---------- */
+
+  const live = validate();
+  const hasErr = (...keys: FieldKey[]) => keys.some((k) => live[k]);
+  const seatsOk = Number.isInteger(parsedSeats) && parsedSeats >= 2 && parsedSeats <= 500;
+  const stepDone = {
+    type: true,
+    details: isGroup
+      ? !hasErr("groupName", "seats", "country", "state", "inviteeCount", "hasChildren", "childCount", "genderCounts")
+      : !hasErr("gender", "firstTime"),
+    contact:
+      !hasErr("payerName", "payerPhone", "payerEmail", "guardianName", "guardianPhone") &&
+      (isGroup || !hasErr("country", "state")),
+    attendance: isGroup ? seatsOk && !hasErr("groupAttendance") && groupAttendanceTotal === parsedSeats : true,
+    payment: totalMinor !== null && !hasErr("customNairaAmount"),
+    review: !hasErr("consent", "turnstile"),
+  };
+  const doneCount = Object.values(stepDone).filter(Boolean).length;
+  const progress = Math.round((doneCount / TOTAL_STEPS) * 100);
+  const firstInvalidKey = FIELD_ORDER.find((k) => fieldErrors[k]);
+
   /* ---------- Submit ---------- */
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -841,7 +1298,6 @@ export default function RegisterPage() {
     }
   };
 
-  const groupAttendanceTotal = groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
   const submitDisabled =
     loading ||
     configState !== "ready" ||
@@ -862,7 +1318,7 @@ export default function RegisterPage() {
     <>
       <Field
         htmlFor="field-country"
-        label={isGroup ? "Group Nation / Country *" : "Country of Residence *"}
+        label={isGroup ? "Group country" : "Country of residence"}
         error={fieldErrors.country}
         hint={isGroup ? "Applied to every participant in this group." : undefined}
       >
@@ -872,26 +1328,28 @@ export default function RegisterPage() {
           options={COUNTRIES}
           placeholder="Search countries..."
           emptyMessage="No countries match your search"
-          inputProps={fp("country", "pl-10 pr-10")}
+          inputProps={fp("country", "r-input--lead r-input--trail", false)}
           onTyping={() => {
             clearErr("country");
             clearErr("state");
           }}
           onChange={handleCountryChange}
-          renderLeading={(value) => (
-            <span className="text-base leading-none" aria-hidden>
-              {countryFlag(value)}
-            </span>
-          )}
+          renderLeading={(value) => <span aria-hidden>{countryFlag(value)}</span>}
           renderOption={(option) => {
             const flag = countryFlag(option);
             const badge = countryCurrencyBadge(option);
             return (
-              <span className="flex items-center gap-2">
-                <span aria-hidden className="text-base leading-none">{flag}</span>
-                <span className="min-w-0 truncate">{option}</span>
-                <span aria-hidden className="ml-auto text-sm text-gray-400">{badge}</span>
-              </span>
+              <>
+                <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
+                  {flag}
+                </span>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {option}
+                </span>
+                <span aria-hidden style={{ marginLeft: "auto", opacity: 0.6 }}>
+                  {badge}
+                </span>
+              </>
             );
           }}
         />
@@ -899,7 +1357,7 @@ export default function RegisterPage() {
 
       <Field
         htmlFor="field-state"
-        label={`${isGroup ? "Group State" : "State of Residence"}${isNigeria ? " *" : ""}`}
+        label={isGroup ? "Group state" : "State of residence"}
         error={fieldErrors.state}
         hint={
           isNigeria
@@ -916,10 +1374,7 @@ export default function RegisterPage() {
           placeholder={isNigeria ? "Search Nigerian states..." : "Select Nigeria first"}
           emptyMessage="No states match your search"
           disabled={!isNigeria}
-          inputProps={fp(
-            "state",
-            "pl-10 pr-10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-          )}
+          inputProps={fp("state", "r-input--lead r-input--trail", false)}
           onTyping={() => clearErr("state")}
           onChange={(next) => {
             setState(next);
@@ -930,28 +1385,77 @@ export default function RegisterPage() {
     </>
   );
 
+  const phoneValid = Boolean(toE164Phone(payerPhone));
+  const emailValid = EMAIL_RE.test(payerEmail.trim());
+  const nairaChips: { label: string; minor: number }[] = [{ label: "Minimum", minor: minimumNairaMinor }];
+  if (typeof pricesMinor.NGN === "number" && pricesMinor.NGN !== minimumNairaMinor) {
+    nairaChips.push({ label: "Standard", minor: pricesMinor.NGN });
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-[#07101e]">
+    <div className="r-root flex min-h-screen flex-col bg-[#07101e]">
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
       <Header />
 
-      {/* Fixed globe on the left, registration on the right. */}
-      <section className="relative w-full overflow-hidden px-[2px] pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
+      {/* Fixed globe on the left, registration on the right.
+          overflow-x-clip (not overflow-hidden) so the sticky form header can stick. */}
+      <section className="relative w-full overflow-x-clip px-[2px] pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
         <div className="fixed inset-0 z-0 opacity-60">
           <HeroBackground align="left" desktopLift={-10} mobileLift={-50} shrinkOnScroll richAtmosphere />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/20 to-[#0E1020]/50" />
         </div>
 
+        {/* Phones and tablets: headline over the bottom of the globe area */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-[340px] items-end sm:h-[400px] lg:hidden">
+          <div className="w-full bg-gradient-to-t from-[#07101e] via-[#07101e]/75 to-transparent px-5 pb-5 pt-16 sm:px-10">
+            <p className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl">
+              Join us at IHGC 2026
+            </p>
+            <p className="mt-1.5 max-w-md text-sm leading-relaxed text-white/75">
+              Register yourself or your whole chapter. Your QR ticket is issued instantly.
+            </p>
+          </div>
+        </div>
+
         <div className="relative z-10 mx-auto grid max-w-[1240px] grid-cols-1 lg:grid-cols-12 lg:gap-8">
-          <div className="hidden lg:block lg:col-span-5" />
-          <div data-hero-content className="space-y-6 lg:col-span-7">
-            {/* Form card */}
-            <div className="relative rounded-[4px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-              {/* Sticky form header: sits flush under the site header. */}
-              <div className="sticky top-[60px] z-20 overflow-hidden rounded-t-[4px] bg-[#0E1020]">
-              {/* Compact, unique form header. */}
-              <div className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#0E1020] px-3 py-3 sm:px-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-24 shrink-0 items-center justify-center">
+          {/* Desktop: how it works, pinned to the lower left beside the globe */}
+          <div className="hidden lg:col-span-5 lg:flex lg:flex-col lg:justify-end">
+            <div className="sticky bottom-10 rounded-2xl bg-gradient-to-t from-[#07101e]/90 via-[#07101e]/60 to-transparent p-6 pt-20 text-white">
+              <h2 className="text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl">Join us at IHGC 2026</h2>
+              <p className="mt-3 max-w-md text-base leading-relaxed text-white/75">
+                Register yourself or your whole chapter in a few minutes.
+              </p>
+              <ol className="mt-6 space-y-4">
+                {[
+                  ["Fill in the form", "Register one person, or a chapter or zone of 2 to 500."],
+                  [
+                    "Pay with Paystack",
+                    `Choose ${CURRENCY_LIST.slice(0, -1).join(", ")} or ${CURRENCY_LIST[CURRENCY_LIST.length - 1]}.`,
+                  ],
+                  ["Get your QR ticket", "It is issued instantly."],
+                ].map(([title, text], index) => (
+                  <li key={title} className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#8EE3D6] text-sm font-bold text-[#0E1020]">
+                      {index + 1}
+                    </span>
+                    <span>
+                      <span className="block font-semibold">{title}</span>
+                      <span className="block text-sm text-white/70">{text}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+          <div data-hero-content className="lg:col-span-7">
+            <div className="r-card">
+              {/* Sticky header with completion progress */}
+              <div className="r-head">
+                <div className="r-head-row">
+                  <span className="r-head-steps">
+                    {doneCount} of {TOTAL_STEPS} steps done
+                  </span>
+                  <div className="r-head-brand">
                     <Image
                       src={SITE_CONFIG.logo.src}
                       alt="Horemow"
@@ -961,699 +1465,796 @@ export default function RegisterPage() {
                       style={{ width: "auto" }}
                       priority
                     />
+                    <span className="r-head-sep" />
+                    <span className="r-head-tag">Registration</span>
+                  </div>
+                  <div className="r-head-clock">
+                    <span className="sm:hidden">Starts in</span>
+                    <span className="hidden sm:inline">Conference starts in</span>
+                    <Countdown compact />
+                  </div>
+                </div>
+                <div
+                  className="r-progress"
+                  role="progressbar"
+                  aria-label="Registration progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress}
+                >
+                  <span style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="r-hero">
+                <h1 className="r-title">Register for IHGC 2026</h1>
+                <div className="r-meta">
+                  <span>
+                    <CalendarIcon />
+                    8 – 11 Dec 2026
                   </span>
-                  <span className="h-5 w-px bg-white/20" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
-                    Registration
+                  <span>
+                    <PinIcon />
+                    Kwali, Abuja
+                  </span>
+                  <span>
+                    <TicketIcon />
+                    Instant QR ticket
                   </span>
                 </div>
+                <p className="r-sub">Complete the steps below. Every field is required.</p>
 
-                <div className="flex items-center gap-1.5 rounded-full bg-white/10 p-1">
-                  {CURRENCY_LIST.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      disabled={configState !== "ready"}
-                      aria-pressed={currency === c}
-                      title={CURRENCIES[c].label}
-                      onClick={() => {
-                        setCurrency(c);
-                        clearErr("customNairaAmount");
-                      }}
-                      className={`flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all ${
-                        currency === c
-                          ? "bg-white text-[#0E1020] shadow-xs"
-                          : "text-white/70 hover:text-white"
-                      } ${configState !== "ready" ? "cursor-not-allowed opacity-50" : ""}`}
-                    >
-                      <span aria-hidden className="text-sm leading-none">
-                        {CURRENCIES[c].flag}
-                      </span>
-                      <span>{c}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#151829] px-3 py-2 sm:px-8">
-                <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
-                  Conference starts in
-                </span>
-                <Countdown compact />
-              </div>
-              </div>
-
-              <div className="px-3 pb-4 pt-4 sm:px-8">
-                <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[#111320] sm:text-2xl">
-                  Register For IHGC 2026
-                </h1>
-                <p className="mt-1.5 text-xs text-gray-500 sm:text-sm">
-                  8 – 11 Dec 2026 <span className="mx-1.5 text-gray-300">•</span> Kwali, Abuja
-                  <span className="mx-1.5 text-gray-300">•</span> Instant QR Ticket
-                </p>
-              </div>
-
-            {/* Form body */}
-            <form
-              id="register-form"
-              noValidate
-              onSubmit={handleSubmit}
-              className="space-y-6 p-4 sm:space-y-8 sm:p-8 lg:p-10"
-            >
-              {/* Participant type */}
-              <div>
-                <div className="grid grid-cols-2 gap-3 rounded-[4px] bg-[#F3F4F6] p-1" role="group" aria-label="Registration type">
-                  <button
-                    type="button"
-                    aria-pressed={!isGroup}
-                    onClick={() => switchMode(false)}
-                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-[4px] py-3 text-xs font-bold transition-all sm:text-sm ${
-                      !isGroup ? "bg-white text-[#0E1020] shadow-2xs" : "text-gray-500 hover:text-black"
-                    }`}
-                  >
-                    <UserIcon className="h-4 w-4" />
-                    <span>Individual Participant</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    aria-pressed={isGroup}
-                    onClick={() => switchMode(true)}
-                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-[4px] py-3 text-xs font-bold transition-all sm:text-sm ${
-                      isGroup ? "bg-white text-[#0E1020] shadow-2xs" : "text-gray-500 hover:text-black"
-                    }`}
-                  >
-                    <UsersIcon className="h-4 w-4" />
-                    <span>Group Participant</span>
-                  </button>
-                </div>
-
-                {/* Group extra fields */}
-                {isGroup && (
-                  <div className="mt-6 animate-in fade-in space-y-4 rounded-[16px] border border-[#CDEFEA] bg-[#EAF9F7] p-5 duration-200">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Field htmlFor="field-groupName" label="Chapter / Zone Name *" error={fieldErrors.groupName}>
-                        <input
-                          type="text"
-                          placeholder="e.g. Horemow Lagos Central"
-                          value={groupName}
-                          onChange={(e) => {
-                            setGroupName(e.target.value);
-                            clearErr("groupName");
-                          }}
-                          {...fp("groupName")}
-                        />
-                      </Field>
-
-                      {locationFields}
-
-                      <Field htmlFor="field-seats" label="Number of Participants *" error={fieldErrors.seats}>
-                        <input
-                          type="number"
-                          min={2}
-                          max={500}
-                          value={seatsInput}
-                          onChange={(e) => {
-                            setSeatsInput(e.target.value);
-                            clearErr("seats");
-                            clearErr("groupAttendance");
-                            clearErr("genderCounts");
-                            if (!hasInvitees) clearErr("inviteeCount");
-                          }}
-                          onBlur={() => {
-                            const parsed = Number.parseInt(seatsInput, 10);
-                            setSeatsInput(String(Math.min(500, Math.max(0, Number.isFinite(parsed) ? parsed : 0))));
-                          }}
-                          {...fp("seats")}
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
-                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
-                        <input
-                          id="field-hasInvitees"
-                          type="checkbox"
-                          checked={hasInvitees}
-                          onChange={(e) => {
-                            setHasInvitees(e.target.checked);
-                            setInviteeCount(e.target.checked ? "1" : "0");
-                            clearErr("inviteeCount");
-                          }}
-                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
-                        />
-                        Do you have new comers / invitees registering with you?
-                      </label>
-                      {hasInvitees && (
-                        <Field
-                          htmlFor="field-inviteeCount"
-                          label="Number of New Comers / Invitees *"
-                          error={fieldErrors.inviteeCount}
-                          hint="These participants are recorded as first-time attendees."
-                        >
-                          <input
-                            type="number"
-                            min={1}
-                            max={seatsCount}
-                            value={inviteeCount}
-                            onChange={(e) => {
-                              setInviteeCount(e.target.value);
-                              clearErr("inviteeCount");
-                            }}
-                            {...fp("inviteeCount", "sm:max-w-xs")}
-                          />
-                        </Field>
-                      )}
-                      <p className="text-[11px] text-gray-500">
-                        {hasInvitees
-                          ? `${inviteeNumber} first-time · ${returningCount} returning attendant${returningCount === 1 ? "" : "s"}.`
-                          : `All ${seatsCount} participants will be recorded as returning attendants.`}
-                      </p>
-                    </div>
-
-                    <div className="space-y-3 rounded-[12px] border border-[#CDEFEA] bg-white/70 p-4">
-                      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[#0E7A6E]">
-                        <input
-                          id="field-hasChildren"
-                          type="checkbox"
-                          checked={hasChildren}
-                          aria-invalid={fieldErrors.hasChildren ? true : undefined}
-                          aria-describedby={fieldErrors.hasChildren ? "field-hasChildren-error" : undefined}
-                          onChange={(e) => {
-                            setHasChildren(e.target.checked);
-                            setChildCount(e.target.checked ? 1 : 0);
-                            clearErr("hasChildren");
-                            clearErr("childCount");
-                          }}
-                          className="rounded border-[#8EE3D6] text-[#0E7A6E] focus:ring-[#8EE3D6]"
-                        />
-                        Are you registering any children?
-                      </label>
-                      {fieldErrors.hasChildren && (
-                        <p id="field-hasChildren-error" role="alert" className="text-[11px] font-medium text-red-600">
-                          {fieldErrors.hasChildren}
-                        </p>
-                      )}
-                      {hasChildren && (
-                        <Field
-                          htmlFor="field-childCount"
-                          label="Number of Children *"
-                          error={fieldErrors.childCount}
-                          hint="Children are included in the participant count and every KPI above."
-                        >
-                          <input
-                            type="number"
-                            min={1}
-                            max={seatsCount}
-                            value={childCount}
-                            onChange={(e) => {
-                              setChildCount(Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0)));
-                              clearErr("childCount");
-                            }}
-                            {...fp("childCount", "sm:max-w-xs")}
-                          />
-                        </Field>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Field
-                        htmlFor="field-genderCounts"
-                        label="Number of Brothers *"
-                        error={fieldErrors.genderCounts}
-                        hint="Include boys in this count."
-                      >
-                        <input
-                          type="number"
-                          min={0}
-                          max={seatsCount}
-                          value={genderCounts.male}
-                          onChange={(e) => {
-                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
-                            setGenderCounts((prev) => ({ ...prev, male: value }));
-                            clearErr("genderCounts");
-                          }}
-                          {...fp("genderCounts")}
-                        />
-                      </Field>
-                      <Field
-                        htmlFor="field-genderCounts-female"
-                        label="Number of Sisters *"
-                        hint="Include girls in this count."
-                      >
-                        <input
-                          id="field-genderCounts-female"
-                          type="number"
-                          min={0}
-                          max={seatsCount}
-                          value={genderCounts.female}
-                          onChange={(e) => {
-                            const value = Math.max(0, Math.min(seatsCount, Number.parseInt(e.target.value, 10) || 0));
-                            setGenderCounts((prev) => ({ ...prev, female: value }));
-                            clearErr("genderCounts");
-                          }}
-                          className={inputCls(Boolean(fieldErrors.genderCounts))}
-                        />
-                      </Field>
-                    </div>
+                {configState === "error" && (
+                  <div role="alert" className="r-alert" style={{ marginTop: 14 }}>
+                    <AlertIcon />
+                    <span>Registration pricing could not be loaded. Refresh the page to try again.</span>
+                  </div>
+                )}
+                {configState === "ready" && !registrationOpen && (
+                  <div role="status" className="r-alert r-alert--warn" style={{ marginTop: 14 }}>
+                    <AlertIcon />
+                    <span>Online registration is closed.</span>
                   </div>
                 )}
               </div>
 
-              {!isGroup && (
-                <div className="space-y-4 border-t border-gray-100 pt-8">
-                  <SectionTitle
-                    title="Attendee details"
-                    note="These answers are part of the paid registration record."
+              <form id="register-form" noValidate onSubmit={handleSubmit} className="r-form">
+                {/* Step 1: type */}
+                <div className="r-step" style={{ borderTop: 0 }}>
+                  <StepHeader n={1} done={stepDone.type} title="Who are you registering?" />
+                  <div className="r-type" role="group" aria-label="Registration type">
+                    <button
+                      type="button"
+                      className="r-typecard"
+                      aria-pressed={!isGroup}
+                      onClick={() => switchMode(false)}
+                    >
+                      <span className="r-typeicon">
+                        <UserIcon />
+                      </span>
+                      <span>
+                        <span className="r-typetitle">Individual</span>
+                        <span className="r-typesub">Register one person</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="r-typecard"
+                      aria-pressed={isGroup}
+                      onClick={() => switchMode(true)}
+                    >
+                      <span className="r-typeicon">
+                        <UsersIcon />
+                      </span>
+                      <span>
+                        <span className="r-typetitle">Group</span>
+                        <span className="r-typesub">Register a chapter or zone together</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Step 2: group details / attendee details */}
+                <div className="r-step">
+                  <StepHeader
+                    n={2}
+                    done={stepDone.details}
+                    title={isGroup ? "Group details" : "About you"}
+                    note={
+                      isGroup
+                        ? "Tell us about your chapter or zone."
+                        : "These answers are part of the paid registration record."
+                    }
                   />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field htmlFor="field-gender" label="Gender *" error={fieldErrors.gender}>
-                      <div id="field-gender" className="grid grid-cols-2 gap-2" tabIndex={-1}>
-                        {(["male", "female"] as const).map((value) => (
-                          <button
-                            key={value}
-                            type="button"
-                            aria-pressed={gender === value}
-                            onClick={() => {
-                              setGender(value);
-                              clearErr("gender");
+
+                  {isGroup ? (
+                    <div className="r-panel r-reveal">
+                      <div className="r-grid r-grid--2">
+                        <Field htmlFor="field-groupName" label="Chapter / zone name" error={fieldErrors.groupName}>
+                          <input
+                            type="text"
+                            placeholder="e.g. Horemow Lagos Central"
+                            value={groupName}
+                            onChange={(e) => {
+                              setGroupName(e.target.value);
+                              clearErr("groupName");
                             }}
-                            className={`cursor-pointer rounded-xl border px-3 py-3 text-xs font-bold transition-all ${
-                              gender === value
-                                ? "border-[#1FA396] bg-[#EAF9F7] text-[#0E7A6E] shadow-sm"
-                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                            }`}
+                            {...fp("groupName")}
+                          />
+                        </Field>
+
+                        <Field
+                          htmlFor="field-seats"
+                          label="Number of participants"
+                          error={fieldErrors.seats}
+                          hint="Everyone attending, children included."
+                        >
+                          <NumberField
+                            {...nf("seats")}
+                            label="participants"
+                            value={seatsInput}
+                            min={2}
+                            max={500}
+                            onChange={(next) => {
+                              setSeatsInput(next);
+                              clearErr("seats");
+                              clearErr("groupAttendance");
+                              clearErr("genderCounts");
+                              if (!hasInvitees) clearErr("inviteeCount");
+                            }}
+                            onBlur={() => {
+                              const parsed = Number.parseInt(seatsInput, 10);
+                              const clamped = Math.min(500, Math.max(0, Number.isFinite(parsed) ? parsed : 0));
+                              setSeatsInput(String(clamped));
+                              if (clamped >= 2) clearErr("seats");
+                              else setFieldErrors((prev) => ({ ...prev, seats: "Enter a number between 2 and 500." }));
+                            }}
+                          />
+                        </Field>
+
+                        {locationFields}
+                      </div>
+
+                      <div className="space-y-3">
+                        <ToggleRow
+                          id="field-hasInvitees"
+                          checked={hasInvitees}
+                          onChange={(next) => {
+                            setHasInvitees(next);
+                            setInviteeCount(next ? "1" : "0");
+                            clearErr("inviteeCount");
+                          }}
+                          label="Do you have new comers / invitees registering with you?"
+                          description={
+                            hasInvitees
+                              ? `${inviteeNumber} first-time · ${returningCount} returning attendant${returningCount === 1 ? "" : "s"}`
+                              : `All ${seatsCount} participants will be recorded as returning attendants.`
+                          }
+                        />
+                        {hasInvitees && (
+                          <div className="r-reveal r-narrow">
+                            <Field
+                              htmlFor="field-inviteeCount"
+                              label="Number of new comers / invitees"
+                              error={fieldErrors.inviteeCount}
+                              hint="These participants are recorded as first-time attendees."
+                            >
+                              <NumberField
+                                {...nf("inviteeCount")}
+                                label="invitees"
+                                value={inviteeCount}
+                                min={1}
+                                max={seatsCount}
+                                onChange={(next) => {
+                                  setInviteeCount(next);
+                                  clearErr("inviteeCount");
+                                }}
+                              />
+                            </Field>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <ToggleRow
+                          id="field-hasChildren"
+                          checked={hasChildren}
+                          onChange={(next) => {
+                            setHasChildren(next);
+                            setChildCount(next ? 1 : 0);
+                            clearErr("hasChildren");
+                            clearErr("childCount");
+                          }}
+                          label="Are you registering any children?"
+                        />
+                        {fieldErrors.hasChildren && (
+                          <p id="field-hasChildren-error" role="alert" className="r-error">
+                            <AlertIcon />
+                            <span>{fieldErrors.hasChildren}</span>
+                          </p>
+                        )}
+                        {hasChildren && (
+                          <div className="r-reveal r-narrow">
+                            <Field
+                              htmlFor="field-childCount"
+                              label="Number of children"
+                              error={fieldErrors.childCount}
+                              hint="Children are included in the participant count."
+                            >
+                              <NumberField
+                                {...nf("childCount")}
+                                label="children"
+                                value={childCount}
+                                min={1}
+                                max={seatsCount}
+                                onChange={(next) => {
+                                  setChildCount(Math.max(0, Math.min(seatsCount, toInt(next))));
+                                  clearErr("childCount");
+                                }}
+                              />
+                            </Field>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="r-grid r-grid--2">
+                          <Field
+                            htmlFor="field-genderCounts"
+                            label="Number of brothers"
+                            hint="Include boys in this count."
                           >
-                            {value === "male" ? "Brother" : "Sister"}
-                          </button>
-                        ))}
+                            <NumberField
+                              id="field-genderCounts"
+                              label="brothers"
+                              value={genderCounts.male}
+                              min={0}
+                              max={seatsCount}
+                              invalid={Boolean(fieldErrors.genderCounts)}
+                              describedBy={fieldErrors.genderCounts ? "field-genderCounts-error" : undefined}
+                              onChange={(next) => {
+                                const value = Math.max(0, Math.min(seatsCount, toInt(next)));
+                                setGenderCounts((prev) => ({ ...prev, male: value }));
+                                clearErr("genderCounts");
+                              }}
+                            />
+                          </Field>
+                          <Field
+                            htmlFor="field-genderCounts-female"
+                            label="Number of sisters"
+                            hint="Include girls in this count."
+                          >
+                            <NumberField
+                              id="field-genderCounts-female"
+                              label="sisters"
+                              value={genderCounts.female}
+                              min={0}
+                              max={seatsCount}
+                              invalid={Boolean(fieldErrors.genderCounts)}
+                              describedBy={fieldErrors.genderCounts ? "field-genderCounts-error" : undefined}
+                              onChange={(next) => {
+                                const value = Math.max(0, Math.min(seatsCount, toInt(next)));
+                                setGenderCounts((prev) => ({ ...prev, female: value }));
+                                clearErr("genderCounts");
+                              }}
+                            />
+                          </Field>
+                        </div>
+                        <Tally
+                          id="field-genderCounts-error"
+                          current={genderCounts.male + genderCounts.female}
+                          total={seatsCount}
+                          unit="participants"
+                          error={fieldErrors.genderCounts}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="r-grid r-grid--2">
+                      <Field htmlFor="field-gender" label="Gender" error={fieldErrors.gender}>
+                        <div id="field-gender" role="group" aria-label="Gender" className="r-choices" tabIndex={-1}>
+                          {(["male", "female"] as const).map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              className="r-choice"
+                              aria-pressed={gender === value}
+                              onClick={() => {
+                                setGender(value);
+                                clearErr("gender");
+                              }}
+                            >
+                              {value === "male" ? "Brother" : "Sister"}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+
+                      <Field
+                        htmlFor="field-firstTime"
+                        label="Is it your first time attending a conference in HOREMOW?"
+                        error={fieldErrors.firstTime}
+                      >
+                        <div
+                          id="field-firstTime"
+                          role="group"
+                          aria-label="First time attending"
+                          className="r-choices"
+                          tabIndex={-1}
+                        >
+                          {(["yes", "no"] as const).map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              className="r-choice"
+                              aria-pressed={firstTime === value}
+                              onClick={() => {
+                                setFirstTime(value);
+                                clearErr("firstTime");
+                              }}
+                            >
+                              {value === "yes" ? "Yes" : "No"}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+                    </div>
+                  )}
+                </div>
+
+                {/* Step 3: contact */}
+                <div className="r-step">
+                  <StepHeader
+                    n={3}
+                    done={stepDone.contact}
+                    title={isGroup ? "Group leader details" : "Your contact details"}
+                    note={isGroup ? "The person registering and paying for the group." : undefined}
+                  />
+
+                  <div className="r-grid r-grid--2">
+                    {!isGroup && locationFields}
+
+                    <Field htmlFor="field-payerName" label="Full name" error={fieldErrors.payerName}>
+                      <div className="r-wrap">
+                        <input
+                          type="text"
+                          autoComplete="name"
+                          placeholder="Brother / Sister Full Name"
+                          value={payerName}
+                          onChange={(e) => {
+                            setPayerName(e.target.value);
+                            clearErr("payerName");
+                          }}
+                          {...fp("payerName", "r-input--trail")}
+                        />
+                        {payerName.trim() && !fieldErrors.payerName && (
+                          <span className="r-trail r-valid">
+                            <CheckIcon />
+                          </span>
+                        )}
                       </div>
                     </Field>
 
                     <Field
-                      htmlFor="field-firstTime"
-                      label="Is it your first time attending a conference in HOREMOW? *"
-                      error={fieldErrors.firstTime}
+                      htmlFor="field-payerPhone"
+                      label="Phone number"
+                      error={fieldErrors.payerPhone}
+                      hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
                     >
-                      <div id="field-firstTime" className="grid grid-cols-2 gap-2" tabIndex={-1}>
-                        {(["yes", "no"] as const).map((value) => (
-                          <button
-                            key={value}
-                            type="button"
-                            aria-pressed={firstTime === value}
-                            onClick={() => {
-                              setFirstTime(value);
-                              clearErr("firstTime");
-                            }}
-                            className={`cursor-pointer rounded-xl border px-3 py-3 text-xs font-bold transition-all ${
-                              firstTime === value
-                                ? "border-[#1FA396] bg-[#EAF9F7] text-[#0E7A6E] shadow-sm"
-                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                            }`}
-                          >
-                            {value === "yes" ? "Yes" : "No"}
-                          </button>
-                        ))}
+                      <div className="r-wrap">
+                        <span className="r-lead" aria-hidden>
+                          {selectedFlag}
+                        </span>
+                        <input
+                          type="tel"
+                          autoComplete="tel"
+                          placeholder={`${selectedDial} 801 234 5678`}
+                          value={payerPhone}
+                          onChange={(e) => {
+                            setPayerPhone(e.target.value);
+                            clearErr("payerPhone");
+                          }}
+                          {...fp("payerPhone", "r-input--lead r-input--trail")}
+                        />
+                        {phoneValid && !fieldErrors.payerPhone && (
+                          <span className="r-trail r-valid">
+                            <CheckIcon />
+                          </span>
+                        )}
                       </div>
                     </Field>
+
+                    <div className="r-span2">
+                      <Field htmlFor="field-payerEmail" label="Email address" error={fieldErrors.payerEmail}>
+                        <div className="r-wrap">
+                          <input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            autoCapitalize="none"
+                            placeholder="name@example.com"
+                            value={payerEmail}
+                            onChange={(e) => {
+                              setPayerEmail(e.target.value);
+                              clearErr("payerEmail");
+                            }}
+                            {...fp("payerEmail", "r-input--trail")}
+                          />
+                          {emailValid && !fieldErrors.payerEmail && (
+                            <span className="r-trail r-valid">
+                              <CheckIcon />
+                            </span>
+                          )}
+                        </div>
+                      </Field>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Contact information */}
-              <div className="space-y-4 border-t border-gray-100 pt-8">
-                <SectionTitle title={isGroup ? "Group leader details" : "Personal information"} />
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {!isGroup && locationFields}
-
-                  <Field htmlFor="field-payerName" label="Full Name *" error={fieldErrors.payerName}>
-                    <input
-                      type="text"
-                      autoComplete="name"
-                      placeholder="Brother / Sister Full Name"
-                      value={payerName}
-                      onChange={(e) => {
-                        setPayerName(e.target.value);
-                        clearErr("payerName");
-                      }}
-                      {...fp("payerName")}
-                    />
-                  </Field>
-
-                  <Field
-                    htmlFor="field-payerPhone"
-                    label="Phone Number *"
-                    error={fieldErrors.payerPhone}
-                    hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
-                  >
-                    <input
-                      type="tel"
-                      autoComplete="tel"
-                      placeholder={`${selectedDial} 801 234 5678`}
-                      value={payerPhone}
-                      onChange={(e) => {
-                        setPayerPhone(e.target.value);
-                        clearErr("payerPhone");
-                      }}
-                      {...fp("payerPhone")}
-                    />
-                  </Field>
-
-                  <Field htmlFor="field-payerEmail" label="Email Address *" error={fieldErrors.payerEmail}>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="name@example.com"
-                      value={payerEmail}
-                      onChange={(e) => {
-                        setPayerEmail(e.target.value);
-                        clearErr("payerEmail");
-                      }}
-                      {...fp("payerEmail")}
-                    />
-                  </Field>
-
-                </div>
-
-                {/* Minor checkbox */}
-                {!isGroup && (
-                  <div className="space-y-3 pt-2">
-                    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-gray-700">
-                      <input
-                        type="checkbox"
+                  {!isGroup && (
+                    <div className="space-y-4" style={{ marginTop: 18 }}>
+                      <ToggleRow
+                        id="field-isMinor"
                         checked={isMinor}
-                        onChange={(e) => {
-                          setIsMinor(e.target.checked);
+                        onChange={(next) => {
+                          setIsMinor(next);
                           clearErr("guardianName");
                           clearErr("guardianPhone");
                         }}
-                        className="rounded border-gray-300 text-[#0E1020] focus:ring-[#8EE3D6]"
+                        label="Participant is under 18 years of age"
+                        description="A parent or guardian's details are needed."
                       />
-                      <span>Participant is under 18 years of age</span>
-                    </label>
 
-                    {isMinor && (
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <Field
-                          htmlFor="field-guardianName"
-                          label="Parent / Guardian Name *"
-                          error={fieldErrors.guardianName}
-                        >
-                          <input
-                            type="text"
-                            placeholder="Parent / Guardian Name"
-                            value={guardianName}
-                            onChange={(e) => {
-                              setGuardianName(e.target.value);
-                              clearErr("guardianName");
-                            }}
-                            {...fp("guardianName")}
-                          />
-                        </Field>
-                        <Field
-                          htmlFor="field-guardianPhone"
-                          label="Parent / Guardian Phone *"
-                          error={fieldErrors.guardianPhone}
-                        >
-                          <input
-                            type="tel"
-                            placeholder="Parent / Guardian Phone"
-                            value={guardianPhone}
-                            onChange={(e) => {
-                              setGuardianPhone(e.target.value);
-                              clearErr("guardianPhone");
-                            }}
-                            {...fp("guardianPhone")}
-                          />
-                        </Field>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* NGN payment amount */}
-              {currency === "NGN" && (
-                <div className="space-y-3 border-t border-gray-100 pt-8">
-                  <SectionTitle title="Payment" />
-                  <Field
-                    htmlFor="field-customNairaAmount"
-                    label={isGroup ? "Payment Amount (₦)" : "Payment Amount (₦) *"}
-                    error={fieldErrors.customNairaAmount}
-                    hint={
-                      isGroup
-                        ? "Calculated automatically from the standard price and your participant count."
-                        : `Minimum ${formatMoneyMinor(minimumNairaMinor, "NGN")} for ${effectiveSeats} ${
-                            effectiveSeats === 1 ? "participant" : "participants"
-                          }.`
-                    }
-                  >
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      step="1"
-                      readOnly={isGroup}
-                      value={
-                        isGroup
-                          ? standardGroupNairaMinor !== null
-                            ? String(standardGroupNairaMinor / 100)
-                            : ""
-                          : customNairaAmount
-                      }
-                      onChange={(e) => {
-                        if (isGroup) return;
-                        setCustomNairaAmount(e.target.value);
-                        clearErr("customNairaAmount");
-                      }}
-                      {...fp("customNairaAmount", "font-bold sm:max-w-xs")}
-                    />
-                  </Field>
-                </div>
-              )}
-
-              {/* Attendance mode */}
-              <div className="space-y-3 border-t border-gray-100 pt-8">
-                {isGroup ? (
-                  <>
-                    <SectionTitle
-                      title="How will the group attend? *"
-                      note={`Enter a count for each mode. The counts must add up to all ${seatsCount} participants.`}
-                    />
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      {ATTENDANCE_OPTIONS.map(([key, label]) => {
-                        const id = ATTENDANCE_IDS[key];
-                        const bad = Boolean(fieldErrors.groupAttendance);
-                        return (
-                          <Field key={key} htmlFor={id} label={label}>
-                            <input
-                              id={id}
-                              type="number"
-                              min={0}
-                              max={seatsCount}
-                              value={groupAttendance[key]}
-                              aria-invalid={bad ? true : undefined}
-                              aria-describedby={bad ? "field-groupAttendance-error" : undefined}
-                              onChange={(e) => {
-                                setGroupAttendance({
-                                  ...groupAttendance,
-                                  [key]: Math.max(0, Math.min(seatsCount, parseInt(e.target.value, 10) || 0)),
-                                });
-                                clearErr("groupAttendance");
-                              }}
-                              className={inputCls(bad, "font-bold")}
-                            />
-                          </Field>
-                        );
-                      })}
+                      {isMinor && (
+                        <div className="r-panel r-reveal">
+                          <div className="r-grid r-grid--2">
+                            <Field
+                              htmlFor="field-guardianName"
+                              label="Parent / guardian name"
+                              error={fieldErrors.guardianName}
+                            >
+                              <input
+                                type="text"
+                                placeholder="Parent / Guardian Name"
+                                value={guardianName}
+                                onChange={(e) => {
+                                  setGuardianName(e.target.value);
+                                  clearErr("guardianName");
+                                }}
+                                {...fp("guardianName")}
+                              />
+                            </Field>
+                            <Field
+                              htmlFor="field-guardianPhone"
+                              label="Parent / guardian phone"
+                              error={fieldErrors.guardianPhone}
+                            >
+                              <input
+                                type="tel"
+                                placeholder="Parent / Guardian Phone"
+                                value={guardianPhone}
+                                onChange={(e) => {
+                                  setGuardianPhone(e.target.value);
+                                  clearErr("guardianPhone");
+                                }}
+                                {...fp("guardianPhone")}
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {fieldErrors.groupAttendance ? (
-                      <p
-                        id="field-groupAttendance-error"
-                        role="alert"
-                        className="flex items-start gap-1.5 text-[11px] font-medium text-red-600"
-                      >
-                        <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-                        <span>{fieldErrors.groupAttendance}</span>
-                      </p>
-                    ) : (
-                      <div className="text-xs text-gray-500">
-                        Counted: <strong className="text-[#111320]">{groupAttendanceTotal}</strong> / {seatsCount}
+                  )}
+                </div>
+
+                {/* Step 4: attendance */}
+                <div className="r-step">
+                  <StepHeader
+                    n={4}
+                    done={stepDone.attendance}
+                    title={isGroup ? "How will the group attend?" : "How will you attend?"}
+                    note={
+                      isGroup
+                        ? seatsCount > 0
+                          ? `Enter a count for each mode. The counts must add up to all ${seatsCount} participants.`
+                          : "Set the number of participants in step 2 first."
+                        : undefined
+                    }
+                  />
+
+                  {isGroup ? (
+                    <div className="space-y-3">
+                      <div className="r-grid r-grid--3">
+                        {ATTENDANCE_OPTIONS.map(([key, label]) => {
+                          const id = ATTENDANCE_IDS[key];
+                          return (
+                            <Field key={key} htmlFor={id} label={label}>
+                              <NumberField
+                                id={id}
+                                label={label.toLowerCase()}
+                                value={groupAttendance[key]}
+                                min={0}
+                                max={seatsCount}
+                                invalid={Boolean(fieldErrors.groupAttendance)}
+                                describedBy={fieldErrors.groupAttendance ? "field-groupAttendance-error" : undefined}
+                                onChange={(next) => {
+                                  setGroupAttendance({
+                                    ...groupAttendance,
+                                    [key]: Math.max(0, Math.min(seatsCount, toInt(next))),
+                                  });
+                                  clearErr("groupAttendance");
+                                }}
+                              />
+                            </Field>
+                          );
+                        })}
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <SectionTitle title="How will you attend? *" />
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <Tally
+                        id="field-groupAttendance-error"
+                        current={groupAttendanceTotal}
+                        total={seatsCount}
+                        unit="participants"
+                        error={fieldErrors.groupAttendance}
+                      />
+                    </div>
+                  ) : (
+                    <div className="r-choices r-choices--3" role="group" aria-label="Attendance mode">
                       {ATTENDANCE_OPTIONS.map(([value, label]) => (
                         <button
                           key={value}
                           type="button"
+                          className="r-choice"
                           aria-pressed={attendanceMode === value}
                           onClick={() => setAttendanceMode(value)}
-                          className={`cursor-pointer rounded-xl border px-3 py-3 text-xs font-bold transition-all ${
-                            attendanceMode === value
-                              ? "border-[#1FA396] bg-[#EAF9F7] text-[#0E7A6E] shadow-sm"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                          }`}
                         >
                           {label}
                         </button>
                       ))}
                     </div>
-                  </>
-                )}
-              </div>
-
-              {/* Consent */}
-              <div className="space-y-2 border-t border-gray-100 pt-8">
-                <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 text-xs leading-snug transition-colors ${
-                    fieldErrors.consent
-                      ? "border-red-400 bg-red-50 text-red-800"
-                      : "border-gray-200 bg-[#F9FAFB] text-gray-600"
-                  }`}
-                >
-                  <input
-                    id="field-consent"
-                    type="checkbox"
-                    checked={consent}
-                    aria-invalid={fieldErrors.consent ? true : undefined}
-                    aria-describedby={fieldErrors.consent ? "field-consent-error" : undefined}
-                    onChange={(e) => {
-                      setConsent(e.target.checked);
-                      clearErr("consent");
-                    }}
-                    className="mt-0.5 rounded border-gray-300 text-[#0E1020] focus:ring-[#8EE3D6]"
-                  />
-                  <span>
-                    I understand that registration fees are non-refundable. I consent to personal data processing
-                    under the{" "}
-                    <Link href="/privacy" className="font-semibold text-black underline">
-                      Privacy Policy
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/terms" className="font-semibold text-black underline">
-                      Terms
-                    </Link>
-                    .
-                  </span>
-                </label>
-                {fieldErrors.consent && (
-                  <p
-                    id="field-consent-error"
-                    role="alert"
-                    className="flex items-start gap-1.5 text-[11px] font-medium text-red-600"
-                  >
-                    <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-                    <span>{fieldErrors.consent}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Turnstile */}
-              {TURNSTILE_SITE_KEY && (
-                <div className="space-y-2">
-                  <div
-                    id="field-turnstile"
-                    ref={turnstileRef}
-                    className={`min-h-[65px] rounded-lg ${fieldErrors.turnstile ? "ring-2 ring-red-300" : ""}`}
-                  />
-                  {fieldErrors.turnstile && (
-                    <p role="alert" className="flex items-start gap-1.5 text-[11px] font-medium text-red-600">
-                      <AlertIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-                      <span>{fieldErrors.turnstile}</span>
-                    </p>
                   )}
                 </div>
-              )}
-            </form>
-          </div>
 
-          {/* Order summary (sticky on desktop) */}
-          <aside>
-            <div className="rounded-[4px] border border-gray-100 bg-white p-4 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:p-8 lg:sticky lg:top-24">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order summary</h2>
+                {/* Step 5: payment */}
+                <div className="r-step">
+                  <StepHeader
+                    n={5}
+                    done={stepDone.payment}
+                    title="Payment"
+                    note="Choose the currency you want to pay in."
+                  />
 
-              <dl className="mt-5 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-gray-500">Registration</dt>
-                  <dd className="font-semibold text-[#111320]">{isGroup ? "Group" : "Individual"}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-gray-500">{effectiveSeats === 1 ? "Participant" : "Participants"}</dt>
-                  <dd className="font-semibold text-[#111320]">{effectiveSeats}</dd>
-                </div>
-                {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className="text-gray-500">Standard price per participant</dt>
-                    <dd className="font-semibold text-[#111320]">{formatMoneyMinor(unitMinor, currency)}</dd>
+                  <div className="r-cur" role="group" aria-label="Payment currency">
+                    {CURRENCY_LIST.map((c) => {
+                      const price = pricesMinor[c];
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          className="r-curbtn"
+                          disabled={configState !== "ready"}
+                          aria-pressed={currency === c}
+                          title={CURRENCIES[c].label}
+                          onClick={() => {
+                            setCurrency(c);
+                            clearErr("customNairaAmount");
+                          }}
+                        >
+                          <span className="r-curcode">
+                            <span aria-hidden>{CURRENCIES[c].flag}</span>
+                            {c}
+                          </span>
+                          {typeof price === "number" && (
+                            <span className="r-curprice">{formatMoneyMinor(price, c)} per participant</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-gray-500">Pay with</dt>
-                  <dd className="font-semibold text-[#111320]">Paystack</dd>
-                </div>
-              </dl>
 
-              <div className="mt-5 flex items-end justify-between gap-4 border-t border-gray-100 pt-5">
-                <span className="text-sm text-gray-500">Total ({currency})</span>
-                <span className="text-3xl font-black tracking-tight text-[#111320]">{formattedTotal}</span>
+                  <div style={{ marginTop: 18 }}>
+                    {currency === "NGN" ? (
+                      <>
+                        <Field
+                          htmlFor="field-customNairaAmount"
+                          label="Payment amount"
+                          error={fieldErrors.customNairaAmount}
+                          hint={
+                            isGroup
+                              ? "Calculated automatically from the standard price and your participant count."
+                              : `Minimum ${formatMoneyMinor(minimumNairaMinor, "NGN")} for ${effectiveSeats} ${
+                                  effectiveSeats === 1 ? "participant" : "participants"
+                                }.`
+                          }
+                        >
+                          <div className="r-wrap r-narrow">
+                            <span className="r-lead r-lead--text" aria-hidden>
+                              ₦
+                            </span>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              step="1"
+                              readOnly={isGroup}
+                              value={
+                                isGroup
+                                  ? standardGroupNairaMinor !== null
+                                    ? String(standardGroupNairaMinor / 100)
+                                    : ""
+                                  : customNairaAmount
+                              }
+                              onChange={(e) => {
+                                if (isGroup) return;
+                                setCustomNairaAmount(e.target.value);
+                                clearErr("customNairaAmount");
+                              }}
+                              {...fp("customNairaAmount", "r-input--lead-sm")}
+                              style={{ fontWeight: 700 }}
+                            />
+                          </div>
+                        </Field>
+
+                        {!isGroup && (
+                          <div className="r-chips" role="group" aria-label="Quick amounts">
+                            {nairaChips.map((chip) => (
+                              <button
+                                key={chip.label}
+                                type="button"
+                                className="r-chip"
+                                aria-pressed={customNairaMinor === chip.minor}
+                                onClick={() => {
+                                  setCustomNairaAmount(String(chip.minor / 100));
+                                  clearErr("customNairaAmount");
+                                }}
+                              >
+                                {chip.label} {formatMoneyMinor(chip.minor, "NGN")}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="r-note">
+                        {typeof unitMinor === "number"
+                          ? `You will pay ${formatMoneyMinor(unitMinor, currency)} per participant in ${currency}.`
+                          : `The ${currency} price is not available right now.`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 6: review */}
+                <div className="r-step">
+                  <StepHeader n={6} done={stepDone.review} title="Review and pay" />
+
+                  <dl className="r-summary">
+                    <div className="r-row">
+                      <dt>Registration</dt>
+                      <dd>{isGroup ? "Group" : "Individual"}</dd>
+                    </div>
+                    {isGroup && groupName.trim() && (
+                      <div className="r-row">
+                        <dt>Chapter / zone</dt>
+                        <dd>{groupName.trim()}</dd>
+                      </div>
+                    )}
+                    <div className="r-row">
+                      <dt>{effectiveSeats === 1 ? "Participant" : "Participants"}</dt>
+                      <dd>{effectiveSeats}</dd>
+                    </div>
+                    {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
+                      <div className="r-row">
+                        <dt>Standard price per participant</dt>
+                        <dd>{formatMoneyMinor(unitMinor, currency)}</dd>
+                      </div>
+                    )}
+                    <div className="r-row">
+                      <dt>Pay with</dt>
+                      <dd>Paystack</dd>
+                    </div>
+                    <div className="r-total">
+                      <span className="r-total-label">Total ({currency})</span>
+                      <span className="r-total-value">{formattedTotal}</span>
+                    </div>
+                  </dl>
+
+                  <div style={{ marginTop: 18 }} className="space-y-3">
+                    <label className="r-consent" data-invalid={fieldErrors.consent ? "true" : undefined}>
+                      <input
+                        id="field-consent"
+                        type="checkbox"
+                        checked={consent}
+                        aria-invalid={fieldErrors.consent ? true : undefined}
+                        aria-describedby={fieldErrors.consent ? "field-consent-error" : undefined}
+                        onChange={(e) => {
+                          setConsent(e.target.checked);
+                          clearErr("consent");
+                        }}
+                      />
+                      <span>
+                        I understand that registration fees are non-refundable. I consent to personal data
+                        processing under the <Link href="/privacy">Privacy Policy</Link> and{" "}
+                        <Link href="/terms">Terms</Link>.
+                      </span>
+                    </label>
+                    {fieldErrors.consent && (
+                      <p id="field-consent-error" role="alert" className="r-error">
+                        <AlertIcon />
+                        <span>{fieldErrors.consent}</span>
+                      </p>
+                    )}
+
+                    {TURNSTILE_SITE_KEY && (
+                      <div className="space-y-2">
+                        <div
+                          id="field-turnstile"
+                          ref={turnstileRef}
+                          style={{ minHeight: 65, borderRadius: 10 }}
+                          className={fieldErrors.turnstile ? "ring-2 ring-red-400" : ""}
+                        />
+                        {fieldErrors.turnstile && (
+                          <p role="alert" className="r-error">
+                            <AlertIcon />
+                            <span>{fieldErrors.turnstile}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {errorCount > 0 && (
+                      <div role="alert" className="r-alert">
+                        <AlertIcon />
+                        <span>
+                          {errorCount === 1 ? "1 field needs" : `${errorCount} fields need`} your attention. Correct
+                          the highlighted {errorCount === 1 ? "field" : "fields"} and try again.{" "}
+                          {firstInvalidKey && (
+                            <button type="button" className="r-linkbtn" onClick={() => focusField(firstInvalidKey)}>
+                              Go to the first one
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {error && (
+                      <div role="alert" className="r-alert">
+                        <AlertIcon />
+                        <span>{error}</span>
+                      </div>
+                    )}
+
+                    <p className="r-note" style={{ fontSize: 13 }}>
+                      You will be taken to Paystack to complete your payment.
+                    </p>
+                  </div>
+                </div>
+              </form>
+
+              {/* Pay bar: follows you down the form, then rests here at the end. */}
+              <div className="r-bar">
+                <div className="r-bar-total">
+                  <small>Total ({currency})</small>
+                  <strong>{formattedTotal}</strong>
+                </div>
+                <button type="submit" form="register-form" disabled={submitDisabled} className="r-pay">
+                  {loading ? (
+                    <>
+                      <span className="r-spin" aria-hidden />
+                      <span>Initializing secure checkout...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LockIcon />
+                      <span>
+                        {configState === "ready" && !registrationOpen
+                          ? "Registration closed"
+                          : totalMinor === null
+                            ? "Loading price..."
+                            : `Pay ${formattedTotal}`}
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
-
-              {/* Messages */}
-              <div className="mt-6 space-y-3">
-                {errorCount > 0 && (
-                  <div
-                    role="alert"
-                    className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700"
-                  >
-                    <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>
-                      {errorCount === 1 ? "1 field needs" : `${errorCount} fields need`} your attention. Correct the
-                      highlighted {errorCount === 1 ? "field" : "fields"} and try again.
-                    </span>
-                  </div>
-                )}
-                {error && (
-                  <div
-                    role="alert"
-                    className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700"
-                  >
-                    <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
-                {configState === "error" && (
-                  <p role="alert" className="text-xs text-red-700">
-                    Registration pricing could not be loaded.
-                  </p>
-                )}
-                {configState === "ready" && !registrationOpen && (
-                  <p role="status" className="text-xs text-amber-800">
-                    Online registration is closed.
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                form="register-form"
-                disabled={submitDisabled}
-                className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[6px] bg-[#0E1020] px-6 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition-all duration-200 hover:bg-[#1A1D36] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <LockIcon className="h-4 w-4 text-[#8EE3D6]" />
-                <span>
-                  {loading
-                    ? "Initializing Secure Checkout..."
-                    : totalMinor === null
-                      ? "Loading price..."
-                      : `Pay ${formattedTotal}`}
-                </span>
-              </button>
             </div>
-          </aside>
           </div>
         </div>
       </section>
