@@ -191,6 +191,21 @@ function makeGlareCanvas() {
   return c;
 }
 
+/** Soft radial sprite used for the orbiting logo beacon and second-hand head. */
+function makeGlowCanvas() {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext("2d")!;
+  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gradient.addColorStop(0, "rgba(255,255,255,0.9)");
+  gradient.addColorStop(0.32, "rgba(255,255,255,0.3)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 256, 256);
+  return c;
+}
+
 export function ConferenceClock3D({ target, title, theme, logoSrc, className = "" }: ConferenceClock3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const fallbackRef = useRef<HTMLDivElement>(null);
@@ -222,8 +237,12 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           powerPreference: "high-performance",
         });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
+        renderer.domElement.style.cssText =
+          "display:block;width:100%;height:100%;touch-action:pan-y";
         host.appendChild(renderer.domElement);
+
+        const glowTex = new THREE.CanvasTexture(makeGlowCanvas());
+        glowTex.colorSpace = THREE.SRGBColorSpace;
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
@@ -291,6 +310,104 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         orbitB.rotation.set(0.4, 0.8, Math.PI / 3);
         clock.add(orbitB);
 
+        // ---------- Countdown progress ring ----------
+        // One instanced draw call lights 60 physical ticks as seconds run down.
+        const tickLitColor = new THREE.Color(0x8ee3d6);
+        const tickDimColor = new THREE.Color(0x3a4657);
+        const progressTicks = new THREE.InstancedMesh(
+          new THREE.BoxGeometry(0.014, 0.07, 0.014),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.92 }),
+          60
+        );
+        const tickMatrix = new THREE.Matrix4();
+        for (let i = 0; i < 60; i += 1) {
+          const angle = (i / 60) * Math.PI * 2;
+          tickMatrix.makeRotationZ(-angle);
+          tickMatrix.setPosition(
+            Math.sin(angle) * 1.34,
+            Math.cos(angle) * 1.34,
+            0.035
+          );
+          progressTicks.setMatrixAt(i, tickMatrix);
+          progressTicks.setColorAt(i, tickDimColor);
+        }
+        progressTicks.instanceMatrix.needsUpdate = true;
+        if (progressTicks.instanceColor) progressTicks.instanceColor.needsUpdate = true;
+        clock.add(progressTicks);
+
+        const progressHead = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: glowTex,
+            color: 0x8ee3d6,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        progressHead.scale.set(0.2, 0.2, 1);
+        progressHead.visible = false;
+        clock.add(progressHead);
+
+        // ---------- HOREMOW logo orbit ----------
+        // The image wordmark rides a tilted 3D track above the dial with its
+        // own beacon, so the clock reads as a branded countdown showcase.
+        const logoOrbit = new THREE.Group();
+        logoOrbit.rotation.x = -0.62;
+        clock.add(logoOrbit);
+
+        logoOrbit.add(
+          new THREE.Mesh(
+            new THREE.TorusGeometry(1.44, 0.004, 8, 180),
+            new THREE.MeshBasicMaterial({
+              color: 0x8ee3d6,
+              transparent: true,
+              opacity: 0.22,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+            })
+          )
+        );
+
+        const orbitLogoMat = new THREE.SpriteMaterial({
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        });
+        const orbitLogo = new THREE.Sprite(orbitLogoMat);
+        orbitLogo.visible = false;
+        logoOrbit.add(orbitLogo);
+
+        const orbitBeacon = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: glowTex,
+            color: 0x8ee3d6,
+            transparent: true,
+            opacity: 0.65,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        orbitBeacon.scale.set(0.3, 0.3, 1);
+        orbitBeacon.visible = false;
+        logoOrbit.add(orbitBeacon);
+
+        // Pulse ring fires on pointer/touch interaction.
+        const pulseMat = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          transparent: true,
+          opacity: 0,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const pulseRing = new THREE.Mesh(
+          new THREE.TorusGeometry(1.04, 0.01, 8, 120),
+          pulseMat
+        );
+        pulseRing.visible = false;
+        clock.add(pulseRing);
+        let pulseProgress = 1;
+
         // ---------- Dial ----------
         const faceTex = new THREE.CanvasTexture(makeFaceCanvas(title, theme));
         faceTex.colorSpace = THREE.SRGBColorSpace;
@@ -319,6 +436,20 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         logoRing.position.z = 0.105;
         clock.add(logoRing);
 
+        const logoHaloMat = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          transparent: true,
+          opacity: 0.36,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const logoHalo = new THREE.Mesh(
+          new THREE.TorusGeometry(0.35, 0.006, 8, 96),
+          logoHaloMat
+        );
+        logoHalo.position.z = 0.106;
+        clock.add(logoHalo);
+
         let logoTex: InstanceType<typeof THREE.Texture> | null = null;
         new THREE.TextureLoader().load(
           logoSrc,
@@ -342,6 +473,15 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             logoMat.map = tex;
             logoMat.opacity = 1;
             logoMat.needsUpdate = true;
+
+            // Reuse the same image for the orbiting brand badge.
+            const orbitWidth = 0.46;
+            orbitLogo.scale.set(orbitWidth, orbitWidth / aspect, 1);
+            orbitLogoMat.map = tex;
+            orbitLogoMat.opacity = 1;
+            orbitLogoMat.needsUpdate = true;
+            orbitLogo.visible = true;
+            orbitBeacon.visible = true;
           },
           undefined,
           (err) => console.warn("[ConferenceClock3D] logo failed to load:", err)
@@ -424,15 +564,61 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         ro.observe(host);
 
         // ---------- Pointer ----------
+        // Local pointer/touch interaction: hover tilts, drag spins the dial,
+        // and a tap/click sends a mint pulse through the case.
         const pointer = { x: 0, y: 0 };
+        const drag = { x: 0, y: 0, lastX: 0, lastY: 0 };
         let hasPointer = false;
-        const onPointer = (e: PointerEvent) => {
-          if (e.pointerType === "touch") return;
+        let dragging = false;
+
+        const readPointer = (e: PointerEvent) => {
+          const rect = host.getBoundingClientRect();
+          pointer.x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+          pointer.y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
           hasPointer = true;
-          pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
-          pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
         };
-        window.addEventListener("pointermove", onPointer, { passive: true });
+        const onPointerEnter = (e: PointerEvent) => readPointer(e);
+        const onPointerMove = (e: PointerEvent) => {
+          readPointer(e);
+          if (!dragging) return;
+          drag.x = Math.max(-0.7, Math.min(0.7, drag.x + (e.clientX - drag.lastX) * 0.006));
+          // Touch keeps vertical scrolling, so only mouse/pen rotate on Y.
+          if (e.pointerType !== "touch") {
+            drag.y = Math.max(-0.45, Math.min(0.45, drag.y + (e.clientY - drag.lastY) * 0.006));
+          }
+          drag.lastX = e.clientX;
+          drag.lastY = e.clientY;
+        };
+        const onPointerDown = (e: PointerEvent) => {
+          readPointer(e);
+          dragging = true;
+          drag.lastX = e.clientX;
+          drag.lastY = e.clientY;
+          pulseProgress = 0;
+          try {
+            host.setPointerCapture(e.pointerId);
+          } catch {
+            // Pointer capture is a progressive enhancement.
+          }
+        };
+        const onPointerUp = (e: PointerEvent) => {
+          dragging = false;
+          try {
+            host.releasePointerCapture(e.pointerId);
+          } catch {
+            // Ignore when the pointer was never captured.
+          }
+        };
+        const onPointerLeave = () => {
+          if (!dragging) hasPointer = false;
+        };
+
+        host.addEventListener("pointerenter", onPointerEnter);
+        host.addEventListener("pointermove", onPointerMove, { passive: true });
+        host.addEventListener("pointerdown", onPointerDown);
+        host.addEventListener("pointerup", onPointerUp);
+        host.addEventListener("pointercancel", onPointerUp);
+        host.addEventListener("pointerleave", onPointerLeave);
 
         // ---------- Loop ----------
         let raf = 0;
@@ -440,6 +626,8 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         let tabVisible = !document.hidden;
         let firstFrame = true;
         let lastRender = 0;
+        let lastFrameAt = performance.now();
+        let lastLitTicks = -1;
         const frameInterval = 1000 / LANDING_THEME.motion.webglFps;
         const TAU = Math.PI * 2;
 
@@ -451,6 +639,8 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
             schedule();
             return;
           }
+          const delta = Math.min(0.05, (nowMs - lastFrameAt) / 1000);
+          lastFrameAt = nowMs;
           lastRender = nowMs;
           const t = nowMs / 1000;
 
@@ -464,17 +654,63 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           minuteHand.rotation.z = -(minF / 60) * TAU;
           hourHand.rotation.z = -(hourF / 12) * TAU;
 
-          // Tilt toward the pointer, or sway on its own
+          // Light the countdown ticks from twelve o'clock to the live second.
+          const litTicks = tgt === null ? 0 : Math.ceil(secF);
+          if (litTicks !== lastLitTicks) {
+            lastLitTicks = litTicks;
+            for (let i = 0; i < 60; i += 1) {
+              progressTicks.setColorAt(i, i < litTicks ? tickLitColor : tickDimColor);
+            }
+            if (progressTicks.instanceColor) {
+              progressTicks.instanceColor.needsUpdate = true;
+            }
+          }
+          const secondAngle = (secF / 60) * TAU;
+          progressHead.position.set(
+            Math.sin(secondAngle) * 1.34,
+            Math.cos(secondAngle) * 1.34,
+            0.11
+          );
+          progressHead.visible = tgt !== null && rem > 0;
+
+          // Tilt toward the pointer, sway when idle, and keep drag momentum.
           const sway = reduceMotion ? 0 : 1;
-          const ty = (hasPointer ? pointer.x * 0.45 : Math.sin(t * 0.7) * 0.28) * sway;
-          const tx = (hasPointer ? pointer.y * 0.32 : Math.cos(t * 0.5) * 0.14) * sway;
-          clock.rotation.y += (ty - clock.rotation.y) * 0.07;
-          clock.rotation.x += (tx - clock.rotation.x) * 0.07;
+          const ty =
+            (hasPointer ? pointer.x * 0.4 : Math.sin(t * 0.7) * 0.24) * sway + drag.x;
+          const tx =
+            (hasPointer ? pointer.y * 0.27 : Math.cos(t * 0.5) * 0.13) * sway + drag.y;
+          clock.rotation.y += (ty - clock.rotation.y) * 0.08;
+          clock.rotation.x += (tx - clock.rotation.x) * 0.08;
+          if (!dragging) {
+            drag.x *= 0.9;
+            drag.y *= 0.9;
+          }
           clock.position.y = Math.sin(t * 1.1) * 0.03 * sway;
 
-          // Orbital rings keep turning even when the hands barely move.
+          // Orbital rings and the HOREMOW badge keep the showcase alive.
           orbitA.rotation.z = t * 0.16;
           orbitB.rotation.z = -t * 0.11;
+          logoOrbit.rotation.z = t * 0.24;
+          const logoAngle = t * 0.85;
+          orbitLogo.position.set(
+            Math.cos(logoAngle) * 1.44,
+            Math.sin(logoAngle) * 1.44,
+            0
+          );
+          orbitBeacon.position.copy(orbitLogo.position);
+          orbitBeacon.position.z = -0.01;
+          const haloPulse = 1 + Math.sin(t * 2.1) * 0.07;
+          logoHalo.scale.setScalar(haloPulse);
+          logoHaloMat.opacity = 0.3 + Math.sin(t * 2.1) * 0.11;
+
+          if (pulseProgress < 1) {
+            pulseProgress = Math.min(1, pulseProgress + delta * 1.45);
+            pulseRing.visible = true;
+            pulseRing.scale.setScalar(1 + pulseProgress * 0.72);
+            pulseMat.opacity = (1 - pulseProgress) * 0.65;
+          } else {
+            pulseRing.visible = false;
+          }
 
           // Highlight slides across the glass as it tilts
           glareTex.offset.x = clock.rotation.y * 0.35;
@@ -510,7 +746,12 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           cancelAnimationFrame(raf);
           ro.disconnect();
           io.disconnect();
-          window.removeEventListener("pointermove", onPointer);
+          host.removeEventListener("pointerenter", onPointerEnter);
+          host.removeEventListener("pointermove", onPointerMove);
+          host.removeEventListener("pointerdown", onPointerDown);
+          host.removeEventListener("pointerup", onPointerUp);
+          host.removeEventListener("pointercancel", onPointerUp);
+          host.removeEventListener("pointerleave", onPointerLeave);
           document.removeEventListener("visibilitychange", onVis);
           scene.traverse((o) => {
             const m = o as InstanceType<typeof THREE.Mesh>;
@@ -521,9 +762,11 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           });
           faceTex.dispose();
           glareTex.dispose();
+          glowTex.dispose();
           logoTex?.dispose();
           envTex?.dispose();
           pmrem?.dispose();
+          renderer.forceContextLoss();
           renderer.dispose();
           renderer.domElement.remove();
         };

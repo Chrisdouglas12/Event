@@ -56,10 +56,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============ LANDING TRAVEL DEPTH ============ */
-/* A fixed campground photo sits behind the page, heavily navy-graded so it
-   blends into the surface instead of reading as a separate picture. The photo
-   is its own layer so scroll altitude can pull it back without detaching the
-   page-long gradient. */
+/* The landing surface is navy end to end. Depth comes from the starfield, the
+   orbital geometry and the scroll-synced WebGL layer — no photo backdrop. */
 .landing-navy {
   position: relative;
   isolation: isolate;
@@ -76,28 +74,6 @@ h1, h2, h3, h4, h5, h6 {
     radial-gradient(circle at 82% 34%, rgba(14, 122, 110, 0.14), transparent 32%),
     radial-gradient(circle at 12% 62%, rgba(32, 78, 110, 0.14), transparent 36%);
   box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.35);
-}
-
-.landing-backdrop {
-  position: fixed;
-  inset: -10%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.55;
-  background-image: url("/images/campground_2.jpg");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-  filter: saturate(0.72) contrast(1.04);
-  transform: translate3d(0, var(--drone-lift, 0%), 0) scale(var(--drone-scale, 1.1));
-  transform-origin: center 45%;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-backdrop {
-    transform: none;
-  }
 }
 
 /* A lightweight, fixed star texture that continues behind every section.
@@ -619,11 +595,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .intro-progress-fill {
   transform-origin: left center;
-  animation: intro-progress 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: intro-progress var(--intro-duration, 3.9s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .intro-leaving {
-  animation: intro-dissolve 620ms ease-in forwards;
+  animation: intro-dissolve var(--intro-dissolve, 700ms) ease-in forwards;
 }
 
 @keyframes intro-grid-drift {
@@ -748,6 +724,32 @@ h1, h2, h3, h4, h5, h6 {
   background: radial-gradient(circle at 14% 28%, rgba(142, 227, 214, 0.1), transparent 46%);
 }
 
+.countdown-orbit {
+  cursor: grab;
+}
+
+.countdown-orbit:active {
+  cursor: grabbing;
+}
+
+.countdown-orbit canvas {
+  touch-action: pan-y;
+}
+
+.countdown-orbit-hint {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  color: rgba(142, 227, 214, 0.68);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 .countdown-orbit-ring {
   position: absolute;
   left: 50%;
@@ -829,6 +831,59 @@ h1, h2, h3, h4, h5, h6 {
   animation: hero-fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+/* ============ INTERACTIVE 3D HEADLINE STAGE ============ */
+.hero-title-stage {
+  min-height: 178px;
+}
+
+@media (min-width: 640px) {
+  .hero-title-stage {
+    min-height: 214px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-title-stage {
+    min-height: 248px;
+  }
+}
+
+.hero-title-fallback {
+  pointer-events: auto;
+  transition: opacity 520ms ease;
+}
+
+.hero-title-canvas {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 520ms ease;
+}
+
+.hero-title-stage[data-webgl="ready"] .hero-title-fallback {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero-title-stage[data-webgl="ready"] .hero-title-canvas {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hero-title-canvas canvas {
+  cursor: grab;
+}
+
+.hero-title-canvas canvas:active {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-title-fallback,
+  .hero-title-canvas {
+    transition: none;
+  }
+}
+
 /* light sweep across the highlighted word */
 .hero-shimmer {
   background-image: linear-gradient(100deg, #ffffff 0%, #ffffff 35%, #8ee3d6 50%, #ffffff 65%, #ffffff 100%);
@@ -858,6 +913,214 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 1;
     transform: none;
     filter: none;
+  }
+}
+
+/* ============ FEATURED MINISTERS — NAVY + ORBITAL DEPTH ============ */
+/* This surface replaces the old campground photo. It tucks straight under the
+   dark "Why Attend" band, keeps the section rhythm tight, and gives the cards
+   real 3D depth on touch screens as well as desktop (never hover-only). */
+.ms-root {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    180deg,
+    rgba(14, 16, 32, 0.72) 0%,
+    rgba(7, 16, 30, 0.86) 46%,
+    rgba(5, 10, 20, 0.94) 100%
+  );
+  perspective: 1200px;
+  perspective-origin: 50% 38%;
+}
+
+/* Fine mint seam continuing the divider above into the new surface. */
+.ms-root::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(142, 227, 214, 0.55) 50%,
+    transparent
+  );
+}
+
+.ms-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 62% at 50% 2%, rgba(14, 122, 110, 0.22), transparent 62%),
+    radial-gradient(46% 52% at 8% 88%, rgba(32, 78, 110, 0.2), transparent 72%);
+}
+
+.ms-stars {
+  position: absolute;
+  inset: -12%;
+  opacity: 0.36;
+  background-image:
+    radial-gradient(circle, rgba(142, 227, 214, 0.85) 0 0.8px, transparent 1.2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.55) 0 0.6px, transparent 1px);
+  background-size: 137px 137px, 211px 211px;
+  background-position: 23px 31px, 91px 77px;
+  animation: ms-star-drift 70s ease-in-out infinite;
+}
+
+.ms-glow {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: min(72vw, 640px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(142, 227, 214, 0.16), transparent 66%);
+  filter: blur(18px);
+}
+
+.ms-orbit {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(142, 227, 214, 0.16);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ms-orbit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  height: 6px;
+  width: 6px;
+  margin-left: -3px;
+  border-radius: 9999px;
+  background: #8ee3d6;
+  box-shadow: 0 0 12px rgba(142, 227, 214, 0.8);
+}
+
+.ms-orbit-a {
+  width: min(124vw, 1040px);
+  aspect-ratio: 1 / 0.58;
+  border-color: rgba(142, 227, 214, 0.18);
+  animation: ms-orbit-a 46s linear infinite;
+}
+
+.ms-orbit-b {
+  width: min(100vw, 800px);
+  aspect-ratio: 1 / 0.82;
+  border-color: rgba(142, 227, 214, 0.12);
+  animation: ms-orbit-b 62s linear infinite;
+}
+
+.ms-orbit-c {
+  width: min(72vw, 560px);
+  aspect-ratio: 1;
+  border-style: dashed;
+  border-color: rgba(142, 227, 214, 0.1);
+  animation: ms-orbit-c 90s linear infinite;
+}
+
+@keyframes ms-star-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.3; }
+  50% { transform: translate3d(1.2%, -0.8%, 0); opacity: 0.44; }
+}
+
+@keyframes ms-orbit-a {
+  from { transform: translate(-50%, -50%) rotate(-14deg); }
+  to { transform: translate(-50%, -50%) rotate(346deg); }
+}
+
+@keyframes ms-orbit-b {
+  from { transform: translate(-50%, -50%) rotate(28deg); }
+  to { transform: translate(-50%, -50%) rotate(-332deg); }
+}
+
+@keyframes ms-orbit-c {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* A faint rail between the two cards so they read as one connected block. */
+.ms-stack {
+  position: relative;
+  z-index: 2;
+}
+
+.ms-stack::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(142, 227, 214, 0.26),
+    transparent
+  );
+}
+
+/* Layered elevation + a small tilt at every breakpoint. The three.js pass
+   already writes --section-* on .landing-card, so these transforms extend that
+   depth instead of fighting it. */
+.ms-root .ms-intro,
+.ms-root .mc-card {
+  position: relative;
+  z-index: 2;
+  transform-style: preserve-3d;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.46),
+    0 0 0 1px rgba(142, 227, 214, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.ms-root .ms-intro {
+  transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
+    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
+    scale(var(--section-scale, 1));
+}
+
+.ms-root .mc-card {
+  transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
+    rotateX(calc(var(--section-rotate-x, 0deg) + 1.2deg))
+    rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
+}
+
+@media (min-width: 768px) {
+  .ms-root .mc-card {
+    transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
+      rotateX(calc(var(--section-rotate-x, 0deg) + 2deg))
+      rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
+  }
+}
+
+.ms-root .mc-card:hover {
+  box-shadow:
+    0 38px 96px rgba(0, 0, 0, 0.56),
+    0 0 0 1px rgba(142, 227, 214, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-stars,
+  .ms-orbit {
+    animation: none;
+  }
+
+  .ms-root .ms-intro,
+  .ms-root .mc-card {
+    transform: none !important;
   }
 }
 

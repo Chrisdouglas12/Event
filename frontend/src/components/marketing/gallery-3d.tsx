@@ -164,7 +164,7 @@ export function Gallery3D() {
     let hovering = false;
     let scrollRaf = 0;
     let pointerRaf = 0;
-    let pending: PointerEvent | null = null;
+    let pending: globalThis.PointerEvent | null = null;
 
     const update = () => {
       scrollRaf = 0;
@@ -199,7 +199,7 @@ export function Gallery3D() {
       root.style.setProperty("--py", ((y / r.height) * 2 - 1).toFixed(3));
       pending = null;
     };
-    const onMove = (e: PointerEvent) => {
+    const onMove = (e: globalThis.PointerEvent) => {
       if (e.pointerType === "touch") return;
       hovering = true;
       pending = e;

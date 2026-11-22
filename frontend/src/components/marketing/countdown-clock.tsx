@@ -56,6 +56,8 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
   return {
     phase,
     target,
+    /** False during SSR/first paint so the tiles stay hidden until real. */
+    ready: now !== null,
     days: Math.floor(remaining / 86400000),
     hours: Math.floor(remaining / 3600000) % 24,
     minutes: Math.floor(remaining / 60000) % 60,
@@ -157,14 +159,18 @@ export function CountdownClock({
   endsAt,
   theme,
   title,
+  logoSrc = SITE_CONFIG.logo.src,
 }: {
   startsAt?: DateLike;
   endsAt?: DateLike;
   theme: string;
   /** Conference name printed on the clock dial */
   title?: string;
+  /** HOREMOW image used by the 3D dial and its orbit */
+  logoSrc?: string;
 }) {
-  const { phase, target, days, hours, minutes, seconds } = useConferenceCountdown(startsAt, endsAt);
+  const { phase, target, ready, days, hours, minutes, seconds } =
+    useConferenceCountdown(startsAt, endsAt);
 
   const caption =
     phase === "before"
@@ -177,17 +183,28 @@ export function CountdownClock({
     title ?? (SITE_CONFIG as { eventTitle?: string }).eventTitle ?? "International Holiness General Conference 2026";
 
   return (
-    <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#14161c]/90 to-[#0c0d11]/90 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-md sm:flex-row sm:gap-6 sm:p-5">
+    <div className="countdown-shell flex w-full flex-col items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#14161c]/90 to-[#0c0d11]/90 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-md sm:flex-row sm:gap-6 sm:p-5">
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
-      {/* 3D clock: logo in the middle, conference name + theme around the dial */}
-      <ConferenceClock3D
-        target={target}
-        title={dialTitle}
-        theme={theme}
-        logoSrc={SITE_CONFIG.logo.src}
-        className="h-[168px] w-[168px] shrink-0 sm:h-[200px] sm:w-[200px]"
-      />
+      {/* Interactive 3D HOREMOW clock: orbiting logo, live seconds ring, drag tilt. */}
+      <div
+        className="countdown-orbit relative h-[180px] w-[180px] shrink-0 sm:h-[212px] sm:w-[212px]"
+        role="img"
+        aria-label="Interactive HOREMOW 3D conference countdown clock. Drag to rotate the dial."
+      >
+        <span className="countdown-orbit-ring countdown-orbit-ring-a" />
+        <span className="countdown-orbit-ring countdown-orbit-ring-b" />
+        <ConferenceClock3D
+          target={target}
+          title={dialTitle}
+          theme={theme}
+          logoSrc={logoSrc}
+          className="absolute inset-[6%] h-auto w-auto"
+        />
+        <span className="countdown-orbit-hint" aria-hidden>
+          Drag the dial
+        </span>
+      </div>
 
       {/* Flip countdown */}
       <div className="w-full min-w-0 flex-1">
@@ -195,16 +212,23 @@ export function CountdownClock({
           {caption}
         </p>
 
-        <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
+        <div
+          className={`fc-grid mx-auto transition-opacity duration-300 sm:mx-0 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
+          aria-hidden
+        >
           <FlipUnit value={days} label="Days" unit="days" />
           <FlipUnit value={hours} label="Hours" unit="hours" />
           <FlipUnit value={minutes} label="Minutes" unit="minutes" />
           <FlipUnit value={seconds} label="Seconds" unit="seconds" />
         </div>
 
-        <span className="sr-only" role="timer">
-          {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
-        </span>
+        {ready && (
+          <span className="sr-only" role="timer">
+            {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
+          </span>
+        )}
       </div>
     </div>
   );
