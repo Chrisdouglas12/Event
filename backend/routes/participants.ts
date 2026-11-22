@@ -20,7 +20,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PAID_STATUS = 'paid';
 
-type PaymentProvider = 'paystack' | 'paypal';
+type PaymentProvider = 'paystack' | 'flutterwave';
 type Gender = 'male' | 'female';
 type AttendanceMode = 'physically' | 'online' | 'not_sure';
 
@@ -152,7 +152,6 @@ function phonesMatch(a: unknown, b: unknown): boolean {
   return da.length >= 10 && db.length >= 10 && da.slice(-10) === db.slice(-10);
 }
 
-/** Match an indexed phone field by exact E.164 or legacy last-10 storage. */
 function phoneFieldMatch(
   field: string,
   exact: string | null,
@@ -171,25 +170,21 @@ function attendanceModeOrFallback(value: unknown): AttendanceMode {
 }
 
 /**
- * Every supported currency is now charged through Paystack. The selected
- * currency is passed to Paystack at initialization; international payment
- * availability is controlled by the Paystack account settings, not by this
- * application disabling the option in the form.
+ * NGN → Paystack. USD/EUR/GBP → Flutterwave.
  */
-function providerFor(_currency: string): PaymentProvider {
-  return 'paystack';
+function providerFor(currency: string): PaymentProvider {
+  if (currency === 'NGN') return 'paystack';
+  return 'flutterwave';
 }
 
 function providerConfigured(provider: PaymentProvider): boolean {
-  return provider === 'paystack' && !!process.env.PAYSTACK_SECRET_KEY;
+  if (provider === 'paystack') return !!process.env.PAYSTACK_SECRET_KEY;
+  if (provider === 'flutterwave') return !!process.env.FLW_SECRET_KEY;
+  return false;
 }
 
 function frontendUrl(): string {
   return (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
-}
-
-function minorToDecimal(minor: number): string {
-  return (minor / 100).toFixed(2);
 }
 
 const MAX_TICKETS = (() => {
@@ -222,7 +217,7 @@ async function ensureStandardTicketType(): Promise<any | null> {
         const doc: any = await TicketType.findOneAndUpdate(
           { name },
           { $setOnInsert: { isActive: true, prices } },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
+          { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
         );
         return doc && doc.isActive ? doc : null;
       } finally {
@@ -372,130 +367,87 @@ async function verifyPaystack(data: CheckoutData): Promise<'paid' | 'pending' | 
   return 'pending';
 }
 
-function paypalBase(): string {
-  return process.env.PAYPAL_ENVIRONMENT === 'live'
-    ? 'https://api-m.paypal.com'
-    : 'https://api-m.sandbox.paypal.com';
-}
+// ─── FLUTTERWAVE V3 (HOSTED CHECKOUT) ───────────────────────────────────────
 
-async function paypalAccessToken(): Promise<string> {
-  const basic = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
-  ).toString('base64');
-
-  const response = await fetch(`${paypalBase()}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${basic}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
+async function initFlutterwave(data: CheckoutData) {
+  const callbackToken = signCheckout({
+    ...data,
+    providerRef: '',
+    checkoutUrl: '',
   });
-  const data: any = await response.json().catch(() => ({}));
-  if (!response.ok || !data.access_token) throw new Error('PayPal auth failed');
-  return data.access_token;
-}
 
-async function initPaypal(data: CheckoutData) {
-  const accessToken = await paypalAccessToken();
-  const callbackToken = signCheckout({ ...data, providerRef: '', checkoutUrl: '' });
-
-  const response = await fetch(`${paypalBase()}/v2/checkout/orders`, {
+  const response = await fetch('https://api.flutterwave.com/v3/payments', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
       'Content-Type': 'application/json',
-      'PayPal-Request-Id': data.idempotencyKey,
     },
     body: JSON.stringify({
-      intent: 'CAPTURE',
-      purchase_units: [
-        {
-          reference_id: data.reference,
-          custom_id: data.reference,
-          amount: {
-            currency_code: data.currency,
-            value: minorToDecimal(data.totalMinor),
-          },
-        },
-      ],
-      payment_source: {
-        paypal: {
-          experience_context: {
-            user_action: 'PAY_NOW',
-            shipping_preference: 'NO_SHIPPING',
-            return_url: `${frontendUrl()}/payment/status?ref=${encodeURIComponent(data.reference)}&access=${encodeURIComponent(accessTokenFor(data.reference))}&ck=${encodeURIComponent(callbackToken)}`,
-            cancel_url: `${frontendUrl()}/payment/status?ref=${encodeURIComponent(data.reference)}&access=${encodeURIComponent(accessTokenFor(data.reference))}&cancelled=1`,
-          },
-        },
+      tx_ref: data.reference,
+      amount: data.totalMinor / 100, // v3 uses decimal amounts
+      currency: data.currency,
+      redirect_url: `${frontendUrl()}/payment/status?ref=${encodeURIComponent(data.reference)}&access=${encodeURIComponent(accessTokenFor(data.reference))}&ck=${encodeURIComponent(callbackToken)}`,
+      customer: {
+        email: data.payer.email,
+        name: data.payer.name,
+        phonenumber: data.payer.phoneE164,
+      },
+      customizations: {
+        title: 'HGC Ticket',
+        description: data.isGroup ? `Group ticket (${data.seats} seats)` : 'Individual ticket',
+      },
+      meta: {
+        orderId: data.reference,
+        isGroup: data.isGroup,
       },
     }),
   });
+
   const result: any = await response.json().catch(() => ({}));
-  const link = (result.links || []).find((entry: any) => entry.rel === 'payer-action' || entry.rel === 'approve');
-  if (!response.ok || !result.id || !link) {
-    throw new Error(`PayPal create order failed: ${result.message || response.status}`);
+  if (!response.ok || result.status !== 'success' || !result.data?.link) {
+    throw new Error(`Flutterwave initialize failed: ${result.message || response.status}`);
   }
+
   return {
-    provider: 'paypal' as const,
-    providerRef: String(result.id),
-    checkoutUrl: String(link.href),
+    provider: 'flutterwave' as const,
+    providerRef: data.reference, // v3 uses tx_ref for verification
+    checkoutUrl: String(result.data.link),
   };
 }
 
-function judgePaypalOrder(data: CheckoutData, result: any): 'paid' | 'pending' | 'failed' {
-  if (result.status !== 'COMPLETED') return result.status === 'VOIDED' ? 'failed' : 'pending';
-
-  const capture = result.purchase_units?.[0]?.payments?.captures?.[0];
-  if (!capture) return 'pending';
-  if (capture.status === 'PENDING') return 'pending';
-  if (capture.status !== 'COMPLETED') return 'failed';
-
-  if (
-    capture.amount?.currency_code !== data.currency ||
-    capture.amount?.value !== minorToDecimal(data.totalMinor)
-  ) {
-    console.error('[verify] PayPal amount/currency mismatch', {
-      reference: data.reference,
-      paid: capture.amount,
-      expected: minorToDecimal(data.totalMinor),
-    });
-    return 'failed';
-  }
-  return 'paid';
-}
-
-async function capturePaypal(data: CheckoutData): Promise<'paid' | 'pending' | 'failed'> {
-  if (!data.providerRef) return 'pending';
-  const accessToken = await paypalAccessToken();
-  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
-
+async function verifyFlutterwave(data: CheckoutData): Promise<'paid' | 'pending' | 'failed'> {
+  // v3 verification uses tx_ref (or transaction_id from redirect)
+  const txRef = data.providerRef || data.reference;
+  
   const response = await fetch(
-    `${paypalBase()}/v2/checkout/orders/${encodeURIComponent(data.providerRef)}/capture`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'PayPal-Request-Id': `cap_${data.reference}` },
-      body: '{}',
-    }
+    `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`,
+    { headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` } }
   );
   const result: any = await response.json().catch(() => ({}));
 
-  if (response.ok) return judgePaypalOrder(data, result);
-
-  const issues: string[] = (result.details || []).map((detail: any) => detail.issue);
-  if (issues.includes('ORDER_NOT_APPROVED')) return 'pending';
-
-  if (issues.includes('ORDER_ALREADY_CAPTURED')) {
-    const lookup = await fetch(
-      `${paypalBase()}/v2/checkout/orders/${encodeURIComponent(data.providerRef)}`,
-      { headers }
-    );
-    const current: any = await lookup.json().catch(() => ({}));
-    if (!lookup.ok) throw new Error('PayPal order lookup failed');
-    return judgePaypalOrder(data, current);
+  if (response.status === 404) return 'pending';
+  if (!response.ok || result.status !== 'success' || !result.data) {
+    throw new Error(`Flutterwave verify failed: ${result.message || response.status}`);
   }
 
-  throw new Error(`PayPal capture failed: ${result.message || response.status}`);
+  const tx = result.data;
+  if (tx.status === 'successful') {
+    // v3 amount is in decimals
+    const paidDecimal = Number(tx.amount);
+    const expectedDecimal = data.totalMinor / 100;
+    
+    if (tx.currency !== data.currency || Math.abs(paidDecimal - expectedDecimal) > 0.01) {
+      console.error('[verify] Flutterwave amount/currency mismatch', {
+        reference: data.reference,
+        paid: paidDecimal,
+        expected: expectedDecimal,
+      });
+      return 'failed';
+    }
+    return 'paid';
+  }
+  if (tx.status === 'failed') return 'failed';
+  return 'pending';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -687,8 +639,6 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     }
     const idempotencyKey = `chk_${rawKey}`;
 
-    // A retry from the same browser can reuse the signed session instead of
-    // creating another provider checkout. Nothing is written to the database.
     const resumeData = readCheckout(body.checkoutToken);
     if (resumeData && resumeData.idempotencyKey === idempotencyKey) {
       return res.json({
@@ -794,8 +744,6 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
         const hasChildren = body.hasChildren === true;
         const childCount = hasChildren ? readCount(body.childCount, 'Children count', seats) : 0;
 
-        // Invitees are the first-time attendees. Everyone else in the group is
-        // a returning attendant, so the KPI split is derived rather than typed.
         const firstYes = inviteeCount;
         const firstNo = seats - inviteeCount;
 
@@ -833,8 +781,6 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       return res.status(400).json({ error: `No price is set for ${currency}` });
     }
     let totalMinor = price.amountMinor * seats;
-    // Groups always pay the standard per-participant price; only individuals
-    // may choose a higher contribution amount.
     if (!isGroup && currency === 'NGN' && body.customAmountMinor !== undefined) {
       const customAmountMinor = Number(body.customAmountMinor);
       const minimumContributionMinor = seats * 200_000;
@@ -880,7 +826,9 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     };
 
     try {
-      const info = provider === 'paystack' ? await initPaystack(data) : await initPaypal(data);
+      const info = provider === 'paystack'
+        ? await initPaystack(data)
+        : await initFlutterwave(data);
       const complete: CheckoutData = { ...data, ...info };
       return res.status(201).json({
         reference: complete.reference,
@@ -897,11 +845,6 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Phone-based ticket recovery. Returns only paid tickets tied to the submitted
- * number (payer, participant, guardian or group leader) with enough metadata to
- * identify each QR. Sensitive: rate limited per IP + phone in server.ts.
- */
 router.post('/tickets/lookup', async (req: Request, res: Response) => {
   try {
     const rawPhone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
@@ -966,7 +909,6 @@ router.post('/tickets/lookup', async (req: Request, res: Response) => {
 
     const tickets: any[] = [];
     for (const bundle of bundles) {
-      // Never expose the group management token in a phone-only recovery.
       const safeBundle = {
         order: bundle.order,
         participants: bundle.participants,
@@ -1053,17 +995,17 @@ router.post('/checkout/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // PayPal returns its order ID as `token` in the browser URL. A checkout
-    // token stored before the provider responded may still have an empty
-    // providerRef, so take the provider's own reference when supplied.
+    // Flutterwave v3 redirects back with ?status=...&tx_ref=...&transaction_id=...
     const providerRef = typeof req.body?.providerRef === 'string'
       ? req.body.providerRef.trim()
-      : '';
+      : (typeof req.body?.transaction_id === 'string'
+          ? req.body.transaction_id.trim()
+          : '');
     if (providerRef && !data.providerRef) data.providerRef = providerRef;
 
     const outcome = data.provider === 'paystack'
       ? await verifyPaystack(data)
-      : await capturePaypal(data);
+      : await verifyFlutterwave(data);
 
     if (outcome !== 'paid') return res.json({ status: outcome, reference });
 
@@ -1083,6 +1025,68 @@ router.post('/checkout/verify', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[POST /checkout/verify] error:', error);
     return res.status(502).json({ error: 'Could not confirm payment yet. Please retry.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLUTTERWAVE V3 WEBHOOK
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.post('/webhooks/flutterwave', async (req: Request, res: Response) => {
+  try {
+    const secretHash = process.env.FLW_SECRET_HASH;
+    const signature = req.get('verif-hash');
+
+    if (!secretHash || !signature || !safeEqual(signature, secretHash)) {
+      console.warn('[webhook/flutterwave] Invalid signature');
+      return res.status(401).end();
+    }
+
+    const payload = req.body || {};
+    const event = payload.event; // e.g., 'charge.completed'
+    const data = payload.data;
+
+    // Acknowledge immediately per Flutterwave's 60-second timeout
+    res.status(200).end();
+
+    if (event !== 'charge.completed' || !data) return;
+
+    const txRef = data.tx_ref;
+    const flwStatus = data.status;
+    const txId = data.id;
+
+    if (flwStatus !== 'successful' || !txRef) return;
+
+    const order: any = await Order.findOne({ reference: txRef });
+    if (!order) {
+      console.warn('[webhook/flutterwave] order not found', { txRef });
+      return;
+    }
+
+    if (order.status === PAID_STATUS) return;
+
+    await Payment.findOneAndUpdate(
+      { orderId: order._id, provider: 'flutterwave' },
+      {
+        $set: {
+          status: 'completed',
+          providerRef: String(txId),
+          webhookEventId: String(txId),
+          rawPayload: payload,
+        },
+      },
+      { upsert: false }
+    );
+
+    if (order.status !== PAID_STATUS) {
+      console.log('[webhook/flutterwave] fulfilling order from webhook', { txRef });
+      // If your verify endpoint failed to run (e.g. user closed browser), 
+      // you can trigger a fulfillment here. However, since Flutterwave v3 webhooks 
+      // don't include the full customer custom metadata (like group sizes) by default, 
+      // it's safer to let the user re-verify via /checkout/verify.
+    }
+  } catch (error) {
+    console.error('[POST /webhooks/flutterwave] error:', error);
   }
 });
 

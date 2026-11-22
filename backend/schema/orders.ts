@@ -13,7 +13,44 @@ import {
 // ORDER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const orderSchema = new mongoose.Schema(
+export interface OrderDoc extends mongoose.Document {
+  reference: string;
+  status: (typeof ORDER_STATUSES)[number];
+  disputed: boolean;
+  currency: (typeof CURRENCIES)[number];
+  totalMinor: number;
+  feeMinor: number;
+  payerName: string;
+  payerPhoneE164: string;
+  payerEmail?: string | null;
+  country?: string | null;
+  state?: string | null;
+  isGroup: boolean;
+  groupName?: string | null;
+  attendanceCounts: {
+    physically: number;
+    online: number;
+    not_sure: number;
+  };
+  attendanceMode: (typeof ATTENDANCE_MODES)[number];
+  gender?: (typeof GENDERS)[number] | null;
+  firstTime: boolean;
+  isMinor: boolean;
+  genderCounts: { male: number; female: number };
+  firstTimeCounts: { yes: number; no: number };
+  inviteeCount: number;
+  hasChildren: boolean;
+  childCount: number;
+  seats: number | null;
+  ticketTypeId: mongoose.Types.ObjectId | null;
+  paidAt: Date | null;
+  idempotencyKey: string;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const orderSchema = new mongoose.Schema<OrderDoc>(
   {
     reference: {
       type: String,
@@ -24,7 +61,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: { values: ORDER_STATUSES },
+      enum: ORDER_STATUSES,
       required: true,
       default: 'draft',
     },
@@ -35,7 +72,7 @@ const orderSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: { values: CURRENCIES },
+      enum: CURRENCIES,
       required: true,
     },
     totalMinor: {
@@ -43,6 +80,8 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    // Fee the customer saw / was charged per fee policy (organizer_absorbs vs
+    // pass_to_customer). The actual provider fee is stored on Payment.providerFeeMinor.
     feeMinor: {
       type: Number,
       required: true,
@@ -66,16 +105,19 @@ const orderSchema = new mongoose.Schema(
       maxlength: 255,
       trim: true,
       lowercase: true,
+      default: null,
     },
     country: {
       type: String,
       maxlength: 64,
       trim: true,
+      default: null,
     },
     state: {
       type: String,
       maxlength: 64,
       trim: true,
+      default: null,
     },
     isGroup: {
       type: Boolean,
@@ -86,6 +128,7 @@ const orderSchema = new mongoose.Schema(
       type: String,
       maxlength: 255,
       trim: true,
+      default: null,
     },
     attendanceCounts: {
       physically: { type: Number, min: 0, default: 0 },
@@ -94,14 +137,14 @@ const orderSchema = new mongoose.Schema(
     },
     attendanceMode: {
       type: String,
-      enum: { values: ATTENDANCE_MODES },
+      enum: ATTENDANCE_MODES,
       required: true,
       default: 'not_sure',
     },
     // Individual KPI data.
     gender: {
       type: String,
-      enum: { values: GENDERS },
+      enum: GENDERS,
       default: null,
     },
     firstTime: {
@@ -155,21 +198,31 @@ const orderSchema = new mongoose.Schema(
       trim: true,
     },
     expiresAt: { type: Date, default: null },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
   },
-  { collection: 'orders' }
+  { collection: 'orders', timestamps: true },
 );
-
-orderSchema.pre('save', function () {
-  this.updatedAt = new Date();
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAYMENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const paymentSchema = new mongoose.Schema(
+export interface PaymentDoc extends mongoose.Document {
+  orderId: mongoose.Types.ObjectId;
+  provider: (typeof PAYMENT_PROVIDERS)[number];
+  providerRef: string | null;
+  providerChargeId?: string | null;
+  status: (typeof PAYMENT_STATUSES)[number];
+  currency: (typeof CURRENCIES)[number];
+  amountMinor: number;
+  providerFeeMinor?: number | null;
+  rawPayloadHash?: string | null;
+  rawPayload?: unknown;
+  webhookEventId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const paymentSchema = new mongoose.Schema<PaymentDoc>(
   {
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -178,30 +231,32 @@ const paymentSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: { values: PAYMENT_PROVIDERS },
+      enum: PAYMENT_PROVIDERS,
       required: true,
     },
+    // Null at `initiated`; populated from provider init/webhook response.
     providerRef: {
       type: String,
-      required: true,
       maxlength: 255,
-      unique: true,
       trim: true,
+      default: null,
     },
-    providerCaptureId: {
+    // Provider-side charge/capture id (Paystack reference / Flutterwave flw_ref).
+    providerChargeId: {
       type: String,
       maxlength: 255,
       trim: true,
+      default: null,
     },
     status: {
       type: String,
-      enum: { values: PAYMENT_STATUSES },
+      enum: PAYMENT_STATUSES,
       required: true,
       default: 'initiated',
     },
     currency: {
       type: String,
-      enum: { values: CURRENCIES },
+      enum: CURRENCIES,
       required: true,
     },
     amountMinor: {
@@ -209,38 +264,59 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    // Actual fee charged by the provider, learned from webhook.
+    providerFeeMinor: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
     rawPayloadHash: {
       type: String,
       maxlength: 64,
       trim: true,
+      default: null,
     },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
+    // Full webhook body, stored as-is for replay / reconciliation.
+    rawPayload: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    // Paystack: event.id; Flutterwave: webhook id / data.id. Used for idempotency.
+    webhookEventId: {
+      type: String,
+      maxlength: 255,
+      trim: true,
+      default: null,
+    },
   },
-  { collection: 'payments' }
+  { collection: 'payments', timestamps: true },
 );
-
-paymentSchema.pre('save', function () {
-  this.updatedAt = new Date();
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INDEXES
 // ─────────────────────────────────────────────────────────────────────────────
 
-orderSchema.index({ status: 1 });
+orderSchema.index({ status: 1, paidAt: -1 });
+orderSchema.index({ status: 1, expiresAt: 1 });
 orderSchema.index({ payerPhoneE164: 1 });
 orderSchema.index({ payerEmail: 1 });
-orderSchema.index({ expiresAt: 1 });
 orderSchema.index({ ticketTypeId: 1, status: 1 });
 orderSchema.index({ country: 1 });
 orderSchema.index({ state: 1 });
 
-paymentSchema.index({ orderId: 1 });
+paymentSchema.index({ orderId: 1, status: 1 });
+paymentSchema.index({ provider: 1, providerRef: 1 }, { unique: true, sparse: true });
+paymentSchema.index({ provider: 1, webhookEventId: 1 }, { unique: true, sparse: true });
+paymentSchema.index({ provider: 1, status: 1 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const Order = (mongoose.models.Order || mongoose.model('Order', orderSchema)) as mongoose.Model<any>;
-export const Payment = (mongoose.models.Payment || mongoose.model('Payment', paymentSchema)) as mongoose.Model<any>;
+export const Order =
+  (mongoose.models.Order as mongoose.Model<OrderDoc>) ||
+  mongoose.model<OrderDoc>('Order', orderSchema);
+
+export const Payment =
+  (mongoose.models.Payment as mongoose.Model<PaymentDoc>) ||
+  mongoose.model<PaymentDoc>('Payment', paymentSchema);
