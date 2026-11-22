@@ -81,8 +81,8 @@ const VEHICLE_LANES: {
 }[] = [
   { kind: "aircraft", scene: "air", count: 3, y: 2.4, z: -1.5, size: 2.5, speed: 0.045, wobble: 0.24 },
   { kind: "car", scene: "road", count: 4, y: -1.9, z: 2.4, size: 1.35, speed: 0.085, wobble: 0.02 },
-  { kind: "trekker", scene: "road", count: 5, y: -1.45, z: 2.9, size: 0.85, speed: 0.028, wobble: 0.05 },
-  { kind: "ship", scene: "sea", count: 2, y: -2.2, z: -1.2, size: 2.4, speed: 0.035, wobble: 0.12 },
+  { kind: "ship", scene: "sea", count: 4, y: -2.2, z: -1.2, size: 2.4, speed: 0.035, wobble: 0.12 },
+  { kind: "ship", scene: "sea", count: 2, y: -1.55, z: 0.4, size: 1.7, speed: 0.052, wobble: 0.09, reverse: true },
   { kind: "aircraft", scene: "arrival", count: 2, y: 1.2, z: 0.5, size: 2.2, speed: 0.05, wobble: 0.2, reverse: true },
 ];
 
@@ -462,10 +462,6 @@ export function LandingDepth() {
         const results = await Promise.all(
           kinds.map(async (kind) => {
             try {
-              // Trekkers are procedural silhouettes; no GLB download needed.
-              if (kind === "trekker") {
-                return [kind, createFallbackModel(THREE, kind)] as const;
-              }
               return [kind, await loadTravelModel(THREE, kind)] as const;
             } catch (error) {
               console.warn(`[LandingDepth] ${kind} model unavailable, using fallback:`, error);
@@ -489,12 +485,6 @@ export function LandingDepth() {
             .forEach((vehicle) => {
               const model = createModelInstance(THREE, source, lane.size);
               if (vehicle.reverse) model.rotation.y += Math.PI;
-              const limbs: Three.Object3D[] = [];
-              model.traverse((child) => {
-                const limb = (child as Three.Object3D).userData?.trekkerLimb;
-                if (limb === "left" || limb === "right") limbs.push(child);
-              });
-              if (limbs.length === 2) vehicle.group.userData.trekkerLimbs = limbs;
               vehicle.group.add(model);
             });
         });
@@ -587,13 +577,6 @@ export function LandingDepth() {
           );
           vehicle.group.position.z = mix(vehicle.group.position.z, vehicle.z, damp(6));
           vehicle.group.rotation.z = Math.cos(travel * Math.PI * 2) * 0.06 * vehicle.wobble * 8;
-
-          const limbs = vehicle.group.userData.trekkerLimbs as Three.Object3D[] | undefined;
-          if (limbs && limbs.length === 2) {
-            const stride = Math.sin(time * 6 + vehicle.phase * 10) * 0.55;
-            limbs[0].rotation.z = stride;
-            limbs[1].rotation.z = -stride;
-          }
 
           const scale = Math.max(0.001, weight);
           vehicle.group.scale.setScalar(scale);

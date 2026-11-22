@@ -749,7 +749,7 @@ export function HeroBackground({
         <div
           ref={posterRef}
           className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
-          style={{ translate: mobileLift ? `0 ${mobileLift}px` : undefined } as CSSProperties}
+          style={{ translate: mobileLift ? `0 ${-mobileLift}px` : undefined } as CSSProperties}
         />
         <div ref={hostRef} className="absolute inset-0" />
       </div>

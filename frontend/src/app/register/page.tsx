@@ -937,7 +937,7 @@ export default function RegisterPage() {
       {/* Fixed globe on the left, registration on the right. */}
       <section className="relative w-full overflow-hidden px-[2px] pb-20 pt-[340px] sm:px-8 sm:pt-[400px] lg:min-h-[calc(100vh-60px)] lg:px-6 lg:pb-24 lg:pt-[5px]">
         <div className="fixed inset-0 z-0 opacity-60">
-          <HeroBackground align="left" desktopLift={-10} mobileLift={-10} shrinkOnScroll richAtmosphere />
+          <HeroBackground align="left" desktopLift={-10} mobileLift={-50} shrinkOnScroll richAtmosphere />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/20 to-[#0E1020]/50" />
         </div>
 
@@ -946,19 +946,22 @@ export default function RegisterPage() {
           <div data-hero-content className="space-y-6 lg:col-span-7">
             {/* Form card */}
             <div className="relative rounded-[4px] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-              {/* Sticky form header: freezes 10px below the site header. */}
-              <div className="sticky top-[70px] z-20 rounded-t-[4px]">
+              {/* Sticky form header: sits flush under the site header. */}
+              <div className="sticky top-[60px] z-20 overflow-hidden rounded-t-[4px] bg-[#0E1020]">
               {/* Compact, unique form header. */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-[#0E1020] px-3 py-3 sm:px-5">
+              <div className="flex min-h-[58px] flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#0E1020] px-3 py-3 sm:px-5">
                 <div className="flex items-center gap-3">
-                  <Image
-                    src={SITE_CONFIG.logo.src}
-                    alt="Horemow"
-                    width={96}
-                    height={30}
-                    className="h-6 w-auto translate-y-[10px] object-contain"
-                    style={{ width: "auto" }}
-                  />
+                  <span className="flex h-8 w-24 shrink-0 items-center justify-center">
+                    <Image
+                      src={SITE_CONFIG.logo.src}
+                      alt="Horemow"
+                      width={96}
+                      height={33}
+                      className="h-7 w-auto object-contain"
+                      style={{ width: "auto" }}
+                      priority
+                    />
+                  </span>
                   <span className="h-5 w-px bg-white/20" />
                   <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8EE3D6]">
                     Registration
@@ -1048,14 +1051,6 @@ export default function RegisterPage() {
                 {/* Group extra fields */}
                 {isGroup && (
                   <div className="mt-6 animate-in fade-in space-y-4 rounded-[16px] border border-[#CDEFEA] bg-[#EAF9F7] p-5 duration-200">
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
-                        Group Configuration
-                      </div>
-                      <p className="text-[11px] text-gray-500">
-                        Country and state are counted for every participant in this group and set the phone code below.
-                      </p>
-                    </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field htmlFor="field-groupName" label="Chapter / Zone Name *" error={fieldErrors.groupName}>
                         <input
