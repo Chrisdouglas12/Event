@@ -351,6 +351,7 @@ export function WhyAttend() {
     <section
       ref={sectionRef}
       data-scene="air"
+      data-track="why"
       data-enter
       className="wa-root relative isolate z-20 overflow-hidden"
       style={
