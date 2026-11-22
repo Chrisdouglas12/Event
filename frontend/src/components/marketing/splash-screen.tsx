@@ -33,7 +33,16 @@ function easeOutBack(t: number) {
  */
 export function SplashScreen() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
+  const previousOverflowRef = useRef("");
   const [stage, setStage] = useState<Stage>("entering");
+
+  // Returning null does not unmount this component, so the scroll lock must be
+  // released when the stage becomes hidden, not only in the effect cleanup.
+  useEffect(() => {
+    if (stage === "hidden") {
+      document.body.style.overflow = previousOverflowRef.current;
+    }
+  }, [stage]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,7 +50,7 @@ export function SplashScreen() {
     const saveData = (
       navigator as Navigator & { connection?: { saveData?: boolean } }
     ).connection?.saveData;
-    const previousOverflow = document.body.style.overflow;
+    previousOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     if (reduceMotion || saveData || params.has("skipIntro")) {
@@ -51,7 +60,7 @@ export function SplashScreen() {
       }, 160);
       return () => {
         window.clearTimeout(skipTimer);
-        document.body.style.overflow = previousOverflow;
+        document.body.style.overflow = previousOverflowRef.current;
       };
     }
 
@@ -397,7 +406,7 @@ export function SplashScreen() {
       window.clearTimeout(welcomeTimer);
       window.clearTimeout(leaveTimer);
       window.clearTimeout(hideTimer);
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousOverflowRef.current;
       cleanup();
     };
   }, []);

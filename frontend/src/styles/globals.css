@@ -619,11 +619,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .intro-progress-fill {
   transform-origin: left center;
-  animation: intro-progress 3.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: intro-progress 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .intro-leaving {
-  animation: intro-dissolve 760ms ease-in forwards;
+  animation: intro-dissolve 620ms ease-in forwards;
 }
 
 @keyframes intro-grid-drift {

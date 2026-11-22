@@ -21,13 +21,13 @@ export const LANDING_THEME = {
   },
   motion: {
     /** Total intro lifetime before the landing page is interactive. */
-    introTotal: 3400,
+    introTotal: 2200,
     /** Globe flies in from far away over this duration. */
-    introFlyIn: 1700,
-    /** Welcome brand lockup fades in at this point. */
-    introWelcomeAt: 900,
+    introFlyIn: 850,
+    /** Welcome brand lockup fades in while the globe is still arriving. */
+    introWelcomeAt: 180,
     /** Overlay starts dissolving here. */
-    introFadeAt: 2600,
+    introFadeAt: 1500,
     /** Shared render ceiling for the heavier WebGL layers. */
     webglFps: 30,
   },
