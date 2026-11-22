@@ -176,14 +176,15 @@ h1, h2, h3, h4, h5, h6 {
 .landing-navy [data-depth],
 .landing-navy .landing-card {
   transform-origin: center 40%;
-  transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
-    rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
+  transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
+    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
+    scale(var(--section-scale, 1));
 }
 
 /* Why Attend mirrors the globe's scroll zoom without double-scaling its cards. */
 .landing-navy .why-attend-zoom[data-enter] {
-  transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
-    rotateY(var(--section-rotate-y, 0deg))
+  transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
+    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
     scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
 }
 
@@ -251,28 +252,31 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes soft-enter {
   from {
     opacity: 0;
-    transform: perspective(1400px) translate3d(0, 24px, 0)
+    transform: perspective(1400px)
+      translate3d(0, calc(var(--section-parallax, 0px) + 24px), 0)
       rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
       scale(var(--section-scale, 1));
   }
   to {
     opacity: 1;
-    transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
-      rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
+    transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
+      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
+      scale(var(--section-scale, 1));
   }
 }
 
 @keyframes why-attend-enter {
   from {
     opacity: 0;
-    transform: perspective(1400px) translate3d(0, 24px, 0)
+    transform: perspective(1400px)
+      translate3d(0, calc(var(--section-parallax, 0px) + 24px), 0)
       rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
       scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
   }
   to {
     opacity: 1;
-    transform: perspective(1400px) rotateX(var(--section-rotate-x, 0deg))
-      rotateY(var(--section-rotate-y, 0deg))
+    transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
+      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
       scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
   }
 }

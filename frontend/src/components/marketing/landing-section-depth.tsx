@@ -28,6 +28,7 @@ export function LandingSectionDepth() {
 
     let raf = 0;
     let targets: HTMLElement[] = [];
+    const shifts = new WeakMap<HTMLElement, number>();
 
     const projectedScale = (z: number) => {
       topPoint.set(0, 0.5, z).project(camera);
@@ -40,19 +41,35 @@ export function LandingSectionDepth() {
     const apply = () => {
       raf = 0;
       const vh = Math.max(1, window.innerHeight);
+      const compact = window.innerWidth < 768;
 
       targets.forEach((el) => {
         const rect = el.getBoundingClientRect();
+        const previousShift = shifts.get(el) ?? 0;
+        const visualTop = rect.top - previousShift;
+        const visualBottom = rect.bottom - previousShift;
         let distance = 0;
 
-        if (rect.top >= vh) distance = (rect.top - vh) / vh;
-        else if (rect.bottom <= 0) distance = -rect.bottom / vh;
+        if (visualTop >= vh) distance = (visualTop - vh) / vh;
+        else if (visualBottom <= 0) distance = -visualBottom / vh;
 
         // A virtual three.js depth: farther away as the element leaves.
         const z = -distance * 5;
         const rawScale = projectedScale(z);
         const strength = el.classList.contains("landing-card") ? 0.45 : 1;
         const scale = Math.max(0.02, 1 + (rawScale - 1) * strength);
+
+        // Section-level parallax: below the viewport centre drifts down, above
+        // it drifts up. Measuring the unshifted centre avoids feedback.
+        const centre = visualTop + rect.height / 2;
+        const position = THREE.MathUtils.clamp((centre - vh / 2) / vh, -1.5, 1.5);
+        const amplitude = el.classList.contains("landing-card")
+          ? compact ? 10 : 18
+          : el.hasAttribute("data-depth")
+            ? compact ? 28 : 48
+            : compact ? 16 : 30;
+        const shift = position * amplitude;
+        shifts.set(el, shift);
 
         // Same pointer parallax language as the globe, kept very subtle.
         const tiltX = THREE.MathUtils.clamp(-pointer.y * 3 * strength, -4, 4);
@@ -61,6 +78,7 @@ export function LandingSectionDepth() {
         el.style.setProperty("--section-scale", scale.toFixed(3));
         el.style.setProperty("--section-rotate-x", `${tiltX.toFixed(2)}deg`);
         el.style.setProperty("--section-rotate-y", `${tiltY.toFixed(2)}deg`);
+        el.style.setProperty("--section-parallax", `${shift.toFixed(2)}px`);
       });
     };
 
@@ -105,6 +123,7 @@ export function LandingSectionDepth() {
         el.style.removeProperty("--section-scale");
         el.style.removeProperty("--section-rotate-x");
         el.style.removeProperty("--section-rotate-y");
+        el.style.removeProperty("--section-parallax");
       });
     };
   }, []);
