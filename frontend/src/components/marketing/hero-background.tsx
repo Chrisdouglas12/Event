@@ -16,8 +16,6 @@ import {
  * - Flags connect seamlessly into one continuous belt
  * - Both rings rotate as ONE rigid body
  * - Background features moving constellations and starfields
- * - A 3D campground photo sits far behind everything as a depth backdrop:
- *   navy-graded, vignetted, slowly drifting and parallaxing with the pointer
  *
  * DESKTOP LAYOUT: the globe always stays on the camera axis and is moved on
  * screen with a camera "lens shift" (setViewOffset) instead of moving it in 3D.
@@ -28,6 +26,9 @@ import {
  * `desktopLift` nudges the globe upward in pixels on desktop only. With
  * `shrinkOnScroll`, the globe keeps shrinking over the full page like a drone
  * rising, instead of only reacting to the first viewport.
+ *
+ * The background is intentionally a single flat navy field (#0E1020): the
+ * WebGL canvas is transparent and no photo/gradient layers sit behind it.
  */
 
 // Visual radius of the globe + rings, in world units (outer ring 2.44 + flag depth)
@@ -190,67 +191,6 @@ export function HeroBackground({
         height: number;
       }[] = [];
 
-      // ---------- Campground backdrop (3D plane far behind the globe) ----------
-      const BACKDROP_Z = -14;
-      let imgAspect = 1.5;
-      let backdropTex: InstanceType<typeof THREE.Texture> | null = null;
-      // Where the backdrop must sit so it stays centred on screen even though
-      // the camera lens is shifted (set in layout()).
-      const backdropBase = { x: 0, y: 0 };
-
-      const backdropMat = new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        uniforms: {
-          uMap: { value: null as InstanceType<typeof THREE.Texture> | null },
-          uScale: { value: new THREE.Vector2(1, 1) },
-          uOffset: { value: new THREE.Vector2(0, 0) },
-          uTime: { value: 0 },
-          uOpacity: { value: 0 },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          varying vec2 vNdc;
-          void main(){
-            vUv = uv;
-            vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            vNdc = p.xy / p.w;
-            gl_Position = p;
-          }`,
-        fragmentShader: `
-          uniform sampler2D uMap;
-          uniform vec2 uScale;
-          uniform vec2 uOffset;
-          uniform float uTime;
-          uniform float uOpacity;
-          varying vec2 vUv;
-          varying vec2 vNdc;
-          void main(){
-            // slow cinematic drift
-            vec2 drift = vec2(sin(uTime * 0.05), cos(uTime * 0.04)) * 0.012;
-            vec2 uv = vUv * uScale + uOffset + drift;
-            vec3 c = texture2D(uMap, uv).rgb;
-
-            // navy colour grade: blend the photo with a blue-tinted mono version
-            float l = dot(c, vec3(0.299, 0.587, 0.114));
-            vec3 tinted = vec3(l) * vec3(0.42, 0.62, 1.0) * 1.05;
-            vec3 col = mix(c * 0.75, tinted, 0.55) * 0.8;
-
-            // screen-space fades so it melts into the dark blue background
-            float vig = 1.0 - smoothstep(0.55, 1.35, length(vNdc * vec2(0.85, 1.0)));
-            float bottom = smoothstep(-1.0, -0.2, vNdc.y);
-            float top = smoothstep(1.05, 0.7, vNdc.y);
-
-            float a = uOpacity * 0.6 * vig * bottom * top;
-            gl_FragColor = vec4(col, a);
-          }`,
-      });
-      const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), backdropMat);
-      backdrop.position.z = BACKDROP_Z;
-      backdrop.renderOrder = -10; // draw first, everything else sits in front
-      backdrop.visible = false; // shown once the image has loaded
-      scene.add(backdrop);
-
       // ---------- Constellations & Stars ----------
       // Background Starfield
       const starCount = 800;
@@ -300,80 +240,80 @@ export function HeroBackground({
 
       // ---------- Galaxy dust & nebula atmosphere (registration only) ----------
       if (richAtmosphere) {
-      const galaxyCount = 560;
-      const galaxyPos = new Float32Array(galaxyCount * 3);
-      const galaxyColors = new Float32Array(galaxyCount * 3);
-      const galaxyPalette = [
-        new THREE.Color(0x8ee3d6),
-        new THREE.Color(0xa8ceff),
-        new THREE.Color(0xffffff),
-        new THREE.Color(0xd7b7ff),
-      ];
-      for (let i = 0; i < galaxyCount; i++) {
-        const r = 3.1 + Math.random() * 3.4;
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(2 * Math.random() - 1);
-        galaxyPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        galaxyPos[i * 3 + 1] = r * Math.cos(phi) * 0.7;
-        galaxyPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-        const c = galaxyPalette[i % galaxyPalette.length];
-        galaxyColors[i * 3] = c.r;
-        galaxyColors[i * 3 + 1] = c.g;
-        galaxyColors[i * 3 + 2] = c.b;
-      }
-      const galaxyGeo = new THREE.BufferGeometry();
-      galaxyGeo.setAttribute("position", new THREE.BufferAttribute(galaxyPos, 3));
-      galaxyGeo.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
-      galaxy = new THREE.Points(
-        galaxyGeo,
-        new THREE.PointsMaterial({
-          size: 0.07,
-          vertexColors: true,
-          transparent: true,
-          opacity: 0.28,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          sizeAttenuation: true,
-        })
-      );
-      worldScroll.add(galaxy);
+        const galaxyCount = 560;
+        const galaxyPos = new Float32Array(galaxyCount * 3);
+        const galaxyColors = new Float32Array(galaxyCount * 3);
+        const galaxyPalette = [
+          new THREE.Color(0x8ee3d6),
+          new THREE.Color(0xa8ceff),
+          new THREE.Color(0xffffff),
+          new THREE.Color(0xd7b7ff),
+        ];
+        for (let i = 0; i < galaxyCount; i++) {
+          const r = 3.1 + Math.random() * 3.4;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          galaxyPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          galaxyPos[i * 3 + 1] = r * Math.cos(phi) * 0.7;
+          galaxyPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+          const c = galaxyPalette[i % galaxyPalette.length];
+          galaxyColors[i * 3] = c.r;
+          galaxyColors[i * 3 + 1] = c.g;
+          galaxyColors[i * 3 + 2] = c.b;
+        }
+        const galaxyGeo = new THREE.BufferGeometry();
+        galaxyGeo.setAttribute("position", new THREE.BufferAttribute(galaxyPos, 3));
+        galaxyGeo.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
+        galaxy = new THREE.Points(
+          galaxyGeo,
+          new THREE.PointsMaterial({
+            size: 0.07,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.28,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true,
+          })
+        );
+        worldScroll.add(galaxy);
 
-      // Soft nebula puffs give the sphere a deeper, cloudy atmosphere.
-      const glowCanvas = document.createElement("canvas");
-      glowCanvas.width = glowCanvas.height = 128;
-      const glowCtx = glowCanvas.getContext("2d");
-      if (glowCtx) {
-        const grad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        grad.addColorStop(0, "rgba(255,255,255,0.75)");
-        grad.addColorStop(0.35, "rgba(255,255,255,0.22)");
-        grad.addColorStop(1, "rgba(255,255,255,0)");
-        glowCtx.fillStyle = grad;
-        glowCtx.fillRect(0, 0, 128, 128);
-        const glowTex = new THREE.CanvasTexture(glowCanvas);
-        textures.push(glowTex);
+        // Soft nebula puffs give the sphere a deeper, cloudy atmosphere.
+        const glowCanvas = document.createElement("canvas");
+        glowCanvas.width = glowCanvas.height = 128;
+        const glowCtx = glowCanvas.getContext("2d");
+        if (glowCtx) {
+          const grad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+          grad.addColorStop(0, "rgba(255,255,255,0.75)");
+          grad.addColorStop(0.35, "rgba(255,255,255,0.22)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          glowCtx.fillStyle = grad;
+          glowCtx.fillRect(0, 0, 128, 128);
+          const glowTex = new THREE.CanvasTexture(glowCanvas);
+          textures.push(glowTex);
 
-        nebulaGroup = new THREE.Group();
-        worldScroll.add(nebulaGroup);
-        [
-          { color: 0x63e6c9, x: -2.6, y: 1.4, z: -2.2, scale: 3.2 },
-          { color: 0x6aa9ff, x: 2.8, y: -1.2, z: -2.8, scale: 3.8 },
-          { color: 0xb48cff, x: 0.6, y: 2.6, z: -3.4, scale: 2.9 },
-        ].forEach((puff) => {
-          const sprite = new THREE.Sprite(
-            new THREE.SpriteMaterial({
-              map: glowTex,
-              color: puff.color,
-              transparent: true,
-              opacity: 0.05,
-              blending: THREE.AdditiveBlending,
-              depthWrite: false,
-            })
-          );
-          sprite.position.set(puff.x, puff.y, puff.z);
-          sprite.scale.set(puff.scale, puff.scale, 1);
-          nebulaGroup?.add(sprite);
-        });
-      }
+          nebulaGroup = new THREE.Group();
+          worldScroll.add(nebulaGroup);
+          [
+            { color: 0x63e6c9, x: -2.6, y: 1.4, z: -2.2, scale: 3.2 },
+            { color: 0x6aa9ff, x: 2.8, y: -1.2, z: -2.8, scale: 3.8 },
+            { color: 0xb48cff, x: 0.6, y: 2.6, z: -3.4, scale: 2.9 },
+          ].forEach((puff) => {
+            const sprite = new THREE.Sprite(
+              new THREE.SpriteMaterial({
+                map: glowTex,
+                color: puff.color,
+                transparent: true,
+                opacity: 0.05,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+              })
+            );
+            sprite.position.set(puff.x, puff.y, puff.z);
+            sprite.scale.set(puff.scale, puff.scale, 1);
+            nebulaGroup?.add(sprite);
+          });
+        }
       }
 
       rings.forEach((ring, ri) => {
@@ -526,49 +466,10 @@ export function HeroBackground({
             poster.style.height = "";
           }
         }
-
-        // Backdrop: 30% larger than the view at its depth (room for parallax),
-        // with "cover" UVs so the photo is never stretched.
-        const dFar = camera.position.z - BACKDROP_Z;
-        const vhF = 2 * Math.tan((camera.fov * Math.PI) / 360) * dFar;
-        const vwF = vhF * camera.aspect;
-        backdrop.scale.set(vwF * 1.3, vhF * 1.3, 1);
-        // Cancel the lens shift so the photo stays centred on screen
-        backdropBase.x = -ndcX * (vwF / 2);
-        backdropBase.y = -ndcY * (vhF / 2);
-
-        let sx = 1;
-        let sy = 1;
-        if (imgAspect > camera.aspect) sx = camera.aspect / imgAspect;
-        else sy = imgAspect / camera.aspect;
-        sx *= 0.94;
-        sy *= 0.94;
-        backdropMat.uniforms.uScale.value.set(sx, sy);
-        backdropMat.uniforms.uOffset.value.set((1 - sx) / 2, (1 - sy) / 2);
       };
       layout();
       const ro = new ResizeObserver(layout);
       ro.observe(host);
-
-      // Load the campground photo used behind the hero globe.
-      // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
-      new THREE.TextureLoader().load(
-        "/images/campground_2.jpg",
-        (tex) => {
-          if (disposed) {
-            tex.dispose();
-            return;
-          }
-          tex.anisotropy = 4;
-          backdropTex = tex;
-          backdropMat.uniforms.uMap.value = tex;
-          imgAspect = tex.image.width / tex.image.height;
-          backdrop.visible = true;
-          layout();
-        },
-        undefined,
-        (err) => console.warn("[HeroBackground] campground image failed to load:", err)
-      );
 
       // ---------- Realistic hero aircraft ----------
       (async () => {
@@ -669,15 +570,6 @@ export function HeroBackground({
         worldScroll.rotation.z = scrollT * (shrinkOnScroll ? 0.28 : 0.18);
         stars.position.y = -scrollT * (shrinkOnScroll ? 2.6 : 1.5);
 
-        // Backdrop: fade in, drift, and shift opposite to the globe for depth
-        const u = backdropMat.uniforms;
-        u.uTime.value = t * motion;
-        if (backdropTex) u.uOpacity.value = Math.min(1, u.uOpacity.value + dt * 0.7);
-        backdrop.position.x += (backdropBase.x - pointer.x * 0.7 - backdrop.position.x) * 0.03;
-        backdrop.position.y += (backdropBase.y + pointer.y * 0.4 - scrollT * 2 - backdrop.position.y) * 0.03;
-        backdrop.rotation.y += (pointer.x * 0.05 - backdrop.rotation.y) * 0.03;
-        backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
-
         renderer.render(scene, camera);
         if (!posterHidden && posterRef.current) {
           posterHidden = true;
@@ -724,7 +616,6 @@ export function HeroBackground({
           else mat?.dispose?.();
         });
         textures.forEach((t) => t.dispose());
-        backdropTex?.dispose();
         earthMat.map?.dispose();
         renderer.dispose();
         renderer.domElement.remove();
@@ -753,8 +644,6 @@ export function HeroBackground({
         />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
-      <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
-      <div className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#0E1020]/90 via-[#0E1020]/35 to-transparent" />
     </div>
   );
 }
