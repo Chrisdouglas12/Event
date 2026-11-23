@@ -6,7 +6,6 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { CalendarDays, MapPin, Sparkles } from "lucide-react";
 import type { InlineStyle } from "@/components/marketing/inline-style";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
@@ -54,20 +53,6 @@ const WA_CSS = `
 .wa-js .wa-reveal{opacity:0;transform:translate3d(0,24px,0);
   transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .wa-js .wa-reveal.wa-in{opacity:1;transform:none}
-
-/* ---------- flyer background panel ---------- */
-.wa-photo{position:relative;overflow:hidden;background:#0E1020}
-.wa-photo img{object-fit:cover;object-position:center 18%}
-.wa-photo::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,16,30,.06),rgba(7,16,30,.62))}
-.wa-photo-caption{position:absolute;left:20px;bottom:20px;z-index:2;
-  max-width:calc(100% - 40px);padding:10px 14px;border:1px solid rgba(142,227,214,.4);
-  border-radius:4px;background:rgba(7,16,30,.72);color:#fff;backdrop-blur-sm}
-.wa-photo-caption strong{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8EE3D6}
-.wa-photo-caption span{display:block;margin-top:3px;font-size:12px;line-height:1.4;color:rgba(255,255,255,.85)}
-@media (min-width:1024px){
-  .wa-photo{min-height:320px;clip-path:polygon(0 0,100% 0,100% 100%,56px 100%)}
-}
 
 /* ---------- CTA ---------- */
 .wa-cta{position:relative;overflow:hidden;
@@ -321,8 +306,8 @@ export function WhyAttend() {
 
       {/* ---------- Layer 2: copy + flyer background ---------- */}
       <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-10 px-5 pb-8 sm:px-8 lg:min-h-[380px] lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pb-6 xl:gap-16">
-        {/* Left: copy */}
-        <div className="flex flex-col items-start lg:col-span-6">
+        {/* Copy */}
+        <div className="flex flex-col items-start lg:col-span-12">
           <div className="flex items-center gap-3">
             <span aria-hidden className="h-px w-8" style={{ background: "var(--wa-accent)" }} />
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--wa-accent)]">
@@ -369,27 +354,6 @@ export function WhyAttend() {
           </div>
         </div>
 
-        {/* Right: the flyer becomes the section's own background panel */}
-        <div className="lg:col-span-6 lg:self-stretch">
-          <div
-            data-wa-reveal
-            className="wa-reveal wa-photo relative h-[320px] w-full sm:h-[400px] lg:h-full"
-            style={{ "--d": "150ms" } as InlineStyle}
-          >
-            <Image
-              src="/images/conference_flyer.jpg"
-              alt="International Holiness General Conference 2026 flyer"
-              fill
-              className="object-cover"
-              quality={90}
-              sizes="(max-width: 1024px) 100vw, 46vw"
-            />
-            <div className="wa-photo-caption">
-              <strong>IHGC 2026</strong>
-              <span>{theme}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ---------- Layer 3: full-width dark points band ---------- */}

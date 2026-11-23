@@ -90,37 +90,40 @@ function LandingPage() {
                 </div>
 
                 <div className="relative z-10 px-6 sm:px-8 lg:px-8 xl:px-10">
-                  <div className="ms-intro mx-auto mb-6 max-w-2xl text-center sm:mb-8">
-                    <span aria-hidden className="mx-auto mb-4 block h-px w-12 bg-[#8EE3D6]" />
-                    <RevealText
-                      as="h2"
-                      text="Featured Ministers"
-                      className="text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[44px] xl:text-5xl"
-                      speed={14}
-                    />
-                    <RevealText
-                      as="p"
-                      text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-                      className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#B9C4D4] lg:text-base"
-                      speed={12}
-                    />
-                  </div>
-
-                  <div className="ms-group grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0">
-                    {SITE_CONFIG.ministersInitial.map((minister) => (
-                      <MinisterCard
-                        key={minister.id}
-                        name={minister.name}
-                        role={minister.role}
-                        bio={minister.bio}
-                        image={minister.image}
-                        socials={{
-                          youtube: SITE_CONFIG.socials.youtube,
-                          facebook: SITE_CONFIG.socials.facebook,
-                          x: SITE_CONFIG.socials.x,
-                        }}
+                  {/* Header and cards share one cut surface, like Why Attend. */}
+                  <div className="ms-joined mx-auto max-w-[1320px]">
+                    <div className="ms-intro px-6 py-6 text-center lg:py-7">
+                      <span aria-hidden className="mx-auto mb-4 block h-px w-12 bg-[#0E7A6E]" />
+                      <RevealText
+                        as="h2"
+                        text="Featured Ministers"
+                        className="text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
+                        speed={14}
                       />
-                    ))}
+                      <RevealText
+                        as="p"
+                        text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
+                        className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
+                        speed={12}
+                      />
+                    </div>
+
+                    <div className="ms-group grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0">
+                      {SITE_CONFIG.ministersInitial.map((minister) => (
+                        <MinisterCard
+                          key={minister.id}
+                          name={minister.name}
+                          role={minister.role}
+                          bio={minister.bio}
+                          image={minister.image}
+                          socials={{
+                            youtube: SITE_CONFIG.socials.youtube,
+                            facebook: SITE_CONFIG.socials.facebook,
+                            x: SITE_CONFIG.socials.x,
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>

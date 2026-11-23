@@ -16,8 +16,6 @@ import {
  * - Flags connect seamlessly into one continuous belt
  * - Both rings rotate as ONE rigid body
  * - Background features moving constellations and starfields
- * - A 3D campground photo sits far behind everything as a depth backdrop:
- *   navy-graded, vignetted, slowly drifting and parallaxing with the pointer
  *
  * DESKTOP LAYOUT: the globe always stays on the camera axis and is moved on
  * screen with a camera "lens shift" (setViewOffset) instead of moving it in 3D.
@@ -160,67 +158,6 @@ export function HeroBackground({
         height: number;
       }[] = [];
 
-      // ---------- Campground backdrop (3D plane far behind the globe) ----------
-      const BACKDROP_Z = -14;
-      let imgAspect = 1.5;
-      let backdropTex: InstanceType<typeof THREE.Texture> | null = null;
-      // Where the backdrop must sit so it stays centred on screen even though
-      // the camera lens is shifted (set in layout()).
-      const backdropBase = { x: 0, y: 0 };
-
-      const backdropMat = new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        uniforms: {
-          uMap: { value: null as InstanceType<typeof THREE.Texture> | null },
-          uScale: { value: new THREE.Vector2(1, 1) },
-          uOffset: { value: new THREE.Vector2(0, 0) },
-          uTime: { value: 0 },
-          uOpacity: { value: 0 },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          varying vec2 vNdc;
-          void main(){
-            vUv = uv;
-            vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            vNdc = p.xy / p.w;
-            gl_Position = p;
-          }`,
-        fragmentShader: `
-          uniform sampler2D uMap;
-          uniform vec2 uScale;
-          uniform vec2 uOffset;
-          uniform float uTime;
-          uniform float uOpacity;
-          varying vec2 vUv;
-          varying vec2 vNdc;
-          void main(){
-            // slow cinematic drift
-            vec2 drift = vec2(sin(uTime * 0.05), cos(uTime * 0.04)) * 0.012;
-            vec2 uv = vUv * uScale + uOffset + drift;
-            vec3 c = texture2D(uMap, uv).rgb;
-
-            // navy colour grade: blend the photo with a blue-tinted mono version
-            float l = dot(c, vec3(0.299, 0.587, 0.114));
-            vec3 tinted = vec3(l) * vec3(0.42, 0.62, 1.0) * 1.05;
-            vec3 col = mix(c * 0.75, tinted, 0.55) * 0.8;
-
-            // screen-space fades so it melts into the dark blue background
-            float vig = 1.0 - smoothstep(0.55, 1.35, length(vNdc * vec2(0.85, 1.0)));
-            float bottom = smoothstep(-1.0, -0.2, vNdc.y);
-            float top = smoothstep(1.05, 0.7, vNdc.y);
-
-            float a = uOpacity * 0.6 * vig * bottom * top;
-            gl_FragColor = vec4(col, a);
-          }`,
-      });
-      const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), backdropMat);
-      backdrop.position.z = BACKDROP_Z;
-      backdrop.renderOrder = -10; // draw first, everything else sits in front
-      backdrop.visible = false; // shown once the image has loaded
-      scene.add(backdrop);
-
       // ---------- Constellations & Stars ----------
       // Background Starfield
       const starCount = 800;
@@ -348,9 +285,6 @@ export function HeroBackground({
         const vw = vh * camera.aspect;
         const FIT = 6.2;
 
-        // NDC position of the globe centre on screen (0,0 = screen centre)
-        let ndcX = 0;
-        let ndcY = 0;
         const poster = posterRef.current;
 
         if (w >= 1024) {
@@ -392,9 +326,6 @@ export function HeroBackground({
           // the image window moves instead.
           camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
 
-          ndcX = (cx - w / 2) / (w / 2);
-          ndcY = (h / 2 - cy) / (h / 2);
-
           if (atmosphereMat.uniforms.uGlow) atmosphereMat.uniforms.uGlow.value = 0.7;
 
           // Keep the CSS poster (shown before WebGL is ready) on the same spot
@@ -420,48 +351,10 @@ export function HeroBackground({
           }
         }
 
-        // Backdrop: 30% larger than the view at its depth (room for parallax),
-        // with "cover" UVs so the photo is never stretched.
-        const dFar = camera.position.z - BACKDROP_Z;
-        const vhF = 2 * Math.tan((camera.fov * Math.PI) / 360) * dFar;
-        const vwF = vhF * camera.aspect;
-        backdrop.scale.set(vwF * 1.3, vhF * 1.3, 1);
-        // Cancel the lens shift so the photo stays centred on screen
-        backdropBase.x = -ndcX * (vwF / 2);
-        backdropBase.y = -ndcY * (vhF / 2);
-
-        let sx = 1;
-        let sy = 1;
-        if (imgAspect > camera.aspect) sx = camera.aspect / imgAspect;
-        else sy = imgAspect / camera.aspect;
-        sx *= 0.94;
-        sy *= 0.94;
-        backdropMat.uniforms.uScale.value.set(sx, sy);
-        backdropMat.uniforms.uOffset.value.set((1 - sx) / 2, (1 - sy) / 2);
       };
       layout();
       const ro = new ResizeObserver(layout);
       ro.observe(host);
-
-      // Load the campground photo (public/images/campground_2.jpg)
-      // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
-      new THREE.TextureLoader().load(
-        "/images/campground_2.jpg",
-        (tex) => {
-          if (disposed) {
-            tex.dispose();
-            return;
-          }
-          tex.anisotropy = 4;
-          backdropTex = tex;
-          backdropMat.uniforms.uMap.value = tex;
-          imgAspect = tex.image.width / tex.image.height;
-          backdrop.visible = true;
-          layout();
-        },
-        undefined,
-        (err) => console.warn("[HeroBackground] campground image failed to load:", err)
-      );
 
       // ---------- Realistic hero aircraft ----------
       (async () => {
@@ -553,15 +446,6 @@ export function HeroBackground({
         worldScroll.rotation.z = scrollT * 0.18;
         stars.position.y = -scrollT * 1.5;
 
-        // Backdrop: fade in, drift, and shift opposite to the globe for depth
-        const u = backdropMat.uniforms;
-        u.uTime.value = t * motion;
-        if (backdropTex) u.uOpacity.value = Math.min(1, u.uOpacity.value + dt * 0.7);
-        backdrop.position.x += (backdropBase.x - pointer.x * 0.7 - backdrop.position.x) * 0.03;
-        backdrop.position.y += (backdropBase.y + pointer.y * 0.4 - scrollT * 2 - backdrop.position.y) * 0.03;
-        backdrop.rotation.y += (pointer.x * 0.05 - backdrop.rotation.y) * 0.03;
-        backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
-
         renderer.render(scene, camera);
         if (!posterHidden && posterRef.current) {
           posterHidden = true;
@@ -608,7 +492,6 @@ export function HeroBackground({
           else mat?.dispose?.();
         });
         textures.forEach((t) => t.dispose());
-        backdropTex?.dispose();
         earthMat.map?.dispose();
         renderer.dispose();
         renderer.domElement.remove();

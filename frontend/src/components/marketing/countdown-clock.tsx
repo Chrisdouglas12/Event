@@ -63,40 +63,10 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
   };
 }
 
-// Panel outline: chamfered corners like the title plaque. The hairline edge is
-// OUTER minus INNER (evenodd), so the glass itself stays see-through.
-const PANEL_OUTER = [
-  "14px 0",
-  "100% 0",
-  "100% calc(100% - 14px)",
-  "calc(100% - 14px) 100%",
-  "0 100%",
-  "0 14px",
-];
-const PANEL_INNER = [
-  "14.6px 1.5px",
-  "calc(100% - 1.5px) 1.5px",
-  "calc(100% - 1.5px) calc(100% - 14.6px)",
-  "calc(100% - 14.6px) calc(100% - 1.5px)",
-  "1.5px calc(100% - 1.5px)",
-  "1.5px 14.6px",
-];
-const PANEL_SHAPE = `polygon(${PANEL_OUTER.join(", ")})`;
-const PANEL_RING = `polygon(evenodd, ${PANEL_OUTER.join(", ")}, ${PANEL_INNER.join(", ")})`;
-
 const FC_CSS = `
-/* ---------- glass panel (same language as the title plaque) ---------- */
-.cc-wrap{position:relative;width:100%;
-  filter:drop-shadow(0 18px 40px rgba(0,0,0,.35)) drop-shadow(0 0 28px rgba(142,227,214,.10))}
-.cc-glass{position:relative;overflow:hidden;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);
-  background:linear-gradient(120deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.04) 55%,rgba(142,227,214,.10) 100%)}
-.cc-border{position:absolute;inset:0;z-index:3;pointer-events:none;
-  background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(142,227,214,.4) 45%,rgba(255,255,255,.08))}
-.cc-bar{position:absolute;left:0;top:0;bottom:0;width:3px;z-index:2;background:linear-gradient(180deg,#8EE3D6,rgba(142,227,214,0))}
-.cc-sweep{position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.16) 50%,transparent 62%);
-  background-size:250% 100%;background-position:160% 0;animation:cc-sweep 8s ease-in-out infinite;animation-delay:1.8s}
-@keyframes cc-sweep{0%,55%{background-position:160% 0}100%{background-position:-60% 0}}
+/* ---------- transparent stack: timer above the clock on phones ---------- */
+.cc-wrap{position:relative;width:100%}
+.cc-body{position:relative;display:flex;flex-direction:column;align-items:center}
 .cc-clock-glow{position:absolute;inset:6%;border-radius:9999px;pointer-events:none;
   background:radial-gradient(closest-side,rgba(142,227,214,.30),transparent 72%);filter:blur(14px);animation:cc-breathe 5s ease-in-out infinite}
 @keyframes cc-breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.06);opacity:1}}
@@ -135,7 +105,7 @@ const FC_CSS = `
 .fc-tile[data-unit="seconds"] .fc-label{color:#8EE3D6}
 
 @media (prefers-reduced-motion:reduce){
-  .fc-flap-front.fc-run,.fc-flap-back.fc-run,.cc-sweep,.cc-clock-glow{animation:none}
+  .fc-flap-front.fc-run,.fc-flap-back.fc-run,.cc-clock-glow{animation:none}
   .fc-flap-front{transform:rotateX(-90deg)}
   .fc-flap-back{transform:none}
 }
@@ -203,14 +173,7 @@ export function CountdownClock({
   /** Conference name printed on the clock dial */
   title?: string;
 }) {
-  const { phase, target, days, hours, minutes, seconds } = useConferenceCountdown(startsAt, endsAt);
-
-  const caption =
-    phase === "before"
-      ? "Conference opens in"
-      : phase === "live"
-        ? "Conference is live \u00b7 ends in"
-        : "Conference concluded";
+  const { target, days, hours, minutes, seconds } = useConferenceCountdown(startsAt, endsAt);
 
   const dialTitle =
     title ?? (SITE_CONFIG as { eventTitle?: string }).eventTitle ?? "International Holiness General Conference 2026";
@@ -219,15 +182,9 @@ export function CountdownClock({
     <div className="cc-wrap">
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
-      <div
-        className="cc-glass flex flex-col items-center gap-4 p-4 sm:flex-row sm:gap-6 sm:p-5"
-        style={{ clipPath: PANEL_SHAPE }}
-      >
-        <span aria-hidden className="cc-bar" />
-        <span aria-hidden className="cc-sweep" />
-
+      <div className="cc-body gap-4 sm:flex-row sm:gap-6">
         {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
-        <div className="relative z-[2] shrink-0">
+        <div className="relative z-[2] order-2 shrink-0 sm:order-1">
           <span aria-hidden className="cc-clock-glow" />
           <ConferenceClock3D
             target={target}
@@ -238,13 +195,8 @@ export function CountdownClock({
           />
         </div>
 
-        {/* Flip countdown */}
-        <div className="relative z-[2] w-full min-w-0 flex-1">
-          <p className="mb-3 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#8EE3D6] sm:justify-start">
-            <span aria-hidden className="h-px w-5 bg-[#8EE3D6]/70" />
-            {caption}
-          </p>
-
+        {/* Flip countdown: above the clock on phones, beside it on desktop */}
+        <div className="relative z-[2] order-1 w-full min-w-0 flex-1 sm:order-2">
           <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
             <FlipUnit value={days} label="Days" unit="days" />
             <FlipUnit value={hours} label="Hours" unit="hours" />
@@ -257,8 +209,6 @@ export function CountdownClock({
           </span>
         </div>
       </div>
-
-      <div aria-hidden className="cc-border" style={{ clipPath: PANEL_RING }} />
     </div>
   );
 }

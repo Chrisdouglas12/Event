@@ -1334,19 +1334,25 @@ html.perf-static .journey-handle {
   );
 }
 
-/* Layered elevation without component zoom or tilt. The orbital background and
-   the shared WebGL layer provide the depth; these cards stay flat and readable. */
-.ms-root .ms-intro,
-.ms-root .mc-card {
+/* Header + cards are one joined surface with a cut on the lower-right side. */
+.ms-joined {
   position: relative;
   z-index: 2;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8fafc 0%, #edf5f3 58%, #e4efec 100%);
+  border: 1px solid rgba(14, 16, 32, 0.08);
+  border-radius: 4px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 44px), calc(100% - 44px) 100%, 0 100%);
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.46),
     0 0 0 1px rgba(142, 227, 214, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.ms-root .mc-card:hover {
+/* Layered elevation without component zoom or tilt. The orbital background and
+   the shared WebGL layer provide the depth; these cards stay flat and readable. */
+.ms-root .ms-joined:hover {
   box-shadow:
     0 38px 96px rgba(0, 0, 0, 0.56),
     0 0 0 1px rgba(142, 227, 214, 0.32),

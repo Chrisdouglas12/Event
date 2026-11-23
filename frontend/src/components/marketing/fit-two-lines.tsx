@@ -34,12 +34,14 @@ export function FitTwoLines({ text, className = "", minFont = 10, lines = 2 }: F
       el.style.fontSize = ""; // back to the class-based (maximum) size
       let size = parseFloat(getComputedStyle(el).fontSize) || 16;
 
-      const tooTall = () => {
+      const tooBig = () => {
         const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || size * 1.3;
-        return el.scrollHeight > lineHeight * lines + 1;
+        const tooTall = el.scrollHeight > lineHeight * lines + 1;
+        const tooWide = lines === 1 && el.scrollWidth > el.clientWidth + 1;
+        return tooTall || tooWide;
       };
 
-      while (size > minFont && tooTall()) {
+      while (size > minFont && tooBig()) {
         size -= 0.5;
         el.style.fontSize = `${size}px`;
       }

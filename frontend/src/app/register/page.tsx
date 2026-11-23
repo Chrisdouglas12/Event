@@ -1408,7 +1408,7 @@ export default function RegisterPage() {
           overflow-x-clip (not overflow-hidden) so the sticky form header can stick. */}
       <section className="relative w-full overflow-x-clip px-[10px] pb-[10px] pt-[170px] sm:pt-[200px] lg:min-h-[calc(100vh-60px)] lg:pt-[10px]">
         <div className="fixed inset-0 z-0 opacity-60">
-          <HeroBackground align="left" desktopLift={-10} mobileLift={-50} richAtmosphere />
+          <HeroBackground align="left" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#0E1020]/20 to-[#0E1020]/50" />
         </div>
 

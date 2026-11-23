@@ -5,12 +5,10 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 import type { InlineStyle } from "@/components/marketing/inline-style";
 import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
 import { RevealText } from "@/components/ui/reveal-text";
-import { Parallax } from "@/components/ui/parallax";
 import { getLandingPerformance } from "@/lib/landing-performance";
 
 export interface MinisterProps {
@@ -32,8 +30,8 @@ export interface MinisterProps {
  *  - Slanted card surface (clip-path) on the light mint background.
  *  - Living background inside the card: mint blobs, dot grid + spotlight
  *    that track the pointer; on touch they drift with the scroll.
- *  - Portrait sits above the copy at every width (mobile layout), parallaxed,
- *    with a floating "Role" chip (mirrors the venue chip).
+ *  - Portrait uses the same offset double frame as About The Movement, with a
+ *    floating "Role" chip mirroring the venue chip.
  *  - Inside `.ms-group`, the two cards become one joined surface on desktop:
  *    one row, one slant, one shadow, with a hairline divider between them.
  *  - Reveal-on-scroll via IntersectionObserver (same pattern), type-in
@@ -53,17 +51,15 @@ const MC_CSS = `
 /* On desktop the two cards share one surface instead of reading as two cards. */
 .ms-group{position:relative}
 @media (min-width:1024px){
-  .ms-group{isolation:isolate;overflow:hidden;
-    clip-path:polygon(0 24px,100% 0,100% 100%,0 100%);
-    background:rgba(255,255,255,.94);
-    border:1px solid rgba(14,16,32,.08);
-    border-radius:4px;
-    box-shadow:0 24px 70px rgba(2,8,18,.25),inset 0 1px 0 rgba(255,255,255,.9)}
+  .ms-group{isolation:isolate;overflow:hidden}
   .ms-group .mc-card{clip-path:none;padding-top:0;background:transparent;
     border:0;border-radius:0;box-shadow:none}
   .ms-group .mc-card:hover{border-color:transparent;box-shadow:none}
   .ms-group .mc-card + .mc-card{border-left:1px solid rgba(14,122,110,.14)}
-  .ms-group .mc-photo{aspect-ratio:auto;height:230px;min-height:0}
+  .ms-group .mc-card{display:flex}
+  .ms-group .mc-card > .relative{width:100%;display:flex;flex-direction:column}
+  .ms-group .mc-photo{aspect-ratio:auto;height:360px;min-height:0}
+  .ms-group .mc-content{flex:1}
 }
 
 /* ---------- living background inside the card ---------- */
@@ -101,18 +97,20 @@ const MC_CSS = `
   background:linear-gradient(90deg,#0E7A6E,#8EE3D6);transition:width .9s cubic-bezier(.2,.8,.2,1) .5s}
 .mc-in .mc-underline,.mc-card:not(.mc-js) .mc-underline{width:64px}
 
-/* ---------- portrait (bleeds to left card edge, slanted cut) ---------- */
-.mc-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:4/5;
-  clip-path:polygon(0 0,100% 0,100% calc(100% - 28px),0 100%)}
-.mc-par{position:absolute;inset:0;
-  transform:scale(1.08) translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
+/* ---------- portrait (same framed stage as About The Movement) ---------- */
+.mc-photo{position:relative;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;padding:28px 22px 36px;background:rgba(248,250,252,.7)}
+.mc-frame{position:relative;width:max-content;max-width:100%;margin-inline:auto}
+@media (min-width:1024px){.mc-frame{max-width:100%}}
+.mc-par{position:relative;
+  transform:translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
   transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.mc-photo-img{display:block;width:auto;height:auto;max-width:100%}
 
 /* floating chip — same treatment as DetailsCard's venue chip */
-.mc-chip{position:absolute;left:16px;bottom:34px;z-index:5;
+.mc-chip{position:absolute;left:14px;bottom:14px;z-index:5;
   transition:transform .45s cubic-bezier(.2,.8,.2,1);
   transform:translate3d(calc(var(--px) * 12px),calc(var(--py) * 10px),0)}
-@media (min-width:768px){.mc-chip{left:22px;bottom:26px}}
 .mc-chip-body{animation:mc-float 6s ease-in-out infinite}
 @keyframes mc-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
 .mc-pin{position:relative}
@@ -333,75 +331,90 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
       </div>
 
       <div className="relative z-10 grid grid-cols-1">
-        {/* Portrait stays above the copy at every width, as on mobile */}
+        {/* Portrait uses the same framed stage as About The Movement */}
         <div className="mc-photo">
-          <div className="mc-par">
-            <Parallax speed={0.12} className="absolute inset-0">
-              {image ? (
-                <Image
-                  src={image}
-                  alt={name}
-                  fill
-                  className="object-cover object-top"
-                  sizes="(max-width: 1023px) 100vw, 50vw"
-                />
-              ) : null}
-            </Parallax>
-          </div>
-
-          {/* Graphite placeholder if no image — same framing philosophy as before */}
-          {!image && (
+          <div className="mc-frame">
+            {/* Mint accent frame, top-right */}
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
+              aria-hidden
+              className="absolute inset-0 rounded-[4px] border"
               style={{
-                background: "linear-gradient(145deg, #3a3e46 0%, #23262c 45%, #16181c 100%)",
-                boxShadow:
-                  "inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 2px 0 rgba(255,255,255,0.06), inset 0 -40px 70px rgba(0,0,0,0.35)",
+                borderColor: "rgba(142,227,214,0.35)",
+                transform: "translate(14px, -14px)",
               }}
+            />
+            {/* Graphite frame, bottom-left */}
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-[4px] border-2 border-[#3A404B]"
+              style={{ transform: "translate(-14px, 14px)" }}
+            />
+
+            <div
+              className={`image-frame relative z-10 mx-auto max-w-full overflow-hidden bg-[#0E1020] ${image ? "" : "min-h-[360px]"}`}
             >
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px)",
-                }}
-              />
-              <div className="pointer-events-none absolute inset-3 border border-[#5a606b]/70" />
-              <div className="pointer-events-none absolute inset-[18px] border border-black/45" />
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[#5a606b]/70 bg-[#1b1d22] shadow-[inset_0_2px_6px_rgba(0,0,0,0.5)]">
-                <ImageIcon className="h-5 w-5 text-[#9aa2ae]" strokeWidth={1.5} />
+              <div className="mc-par">
+                {image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={image} alt={name} className="mc-photo-img" />
+                ) : null}
               </div>
-              <p className="relative text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c3c9d2]">
-                Photo needed
-              </p>
-              <p className="relative max-w-[12rem] text-[11px] leading-relaxed text-[#8a919c]">
-                {name}, unique portrait for this page
-              </p>
-            </div>
-          )}
 
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
+              {/* Graphite placeholder if no image */}
+              {!image && (
+                <div
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
+                  style={{
+                    background: "linear-gradient(145deg, #3a3e46 0%, #23262c 45%, #16181c 100%)",
+                    boxShadow:
+                      "inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 2px 0 rgba(255,255,255,0.06), inset 0 -40px 70px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px)",
+                    }}
+                  />
+                  <div className="pointer-events-none absolute inset-3 border border-[#5a606b]/70" />
+                  <div className="pointer-events-none absolute inset-[18px] border border-black/45" />
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[#5a606b]/70 bg-[#1b1d22] shadow-[inset_0_2px_6px_rgba(0,0,0,0.5)]">
+                    <ImageIcon className="h-5 w-5 text-[#9aa2ae]" strokeWidth={1.5} />
+                  </div>
+                  <p className="relative text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c3c9d2]">
+                    Photo needed
+                  </p>
+                  <p className="relative max-w-[12rem] text-[11px] leading-relaxed text-[#8a919c]">
+                    {name}, unique portrait for this page
+                  </p>
+                </div>
+              )}
 
-          {/* Floating "Role" chip — mirrors the DetailsCard venue chip */}
-          <div className="mc-chip">
-            <div className="mc-chip-body flex max-w-[220px] items-center gap-3 rounded-2xl border border-white/70 bg-white/85 px-3.5 py-2.5 shadow-[0_12px_40px_rgba(14,16,32,0.25)] backdrop-blur-md">
-              <span className="mc-pin flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
-                <PinIcon className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
-                  Role
-                </span>
-                <span className="block truncate text-[13px] font-semibold leading-tight text-[#0E1020]">
-                  {role}
-                </span>
-              </span>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
+
+              {/* Floating "Role" chip — mirrors the About/Details venue chip */}
+              <div className="mc-chip">
+                <div className="mc-chip-body flex max-w-[200px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
+                  <span className="mc-pin flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
+                    <PinIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
+                      Role
+                    </span>
+                    <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
+                      {role}
+                    </span>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-6">
+        <div className="mc-content flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-6">
           <div className="space-y-4">
             <div
               data-mc-reveal
