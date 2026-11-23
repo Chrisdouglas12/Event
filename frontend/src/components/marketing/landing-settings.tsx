@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { SITE_CONFIG } from "@/config/site";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 export type LandingSettings = {
   eventName: string;
@@ -86,6 +87,20 @@ function mapPublicEvent(event?: PublicEvent | null): LandingSettings {
 
 export function LandingSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<LandingSettings>(DEFAULTS);
+
+  // Publish the capability tier as an html class so decorative CSS can opt out
+  // without waiting for each component's own effect.
+  useEffect(() => {
+    const root = document.documentElement;
+    const { tier } = getLandingPerformance();
+    root.dataset.landingPerf = tier;
+    root.classList.toggle("perf-lite", tier === "lite");
+    root.classList.toggle("perf-static", tier === "static");
+    return () => {
+      root.classList.remove("perf-lite", "perf-static");
+      delete root.dataset.landingPerf;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

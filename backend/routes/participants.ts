@@ -5,7 +5,13 @@ import crypto from 'crypto';
 import mongoose from 'mongoose';
 
 import { Order, Payment } from '../schema/orders.ts';
-import { ATTENDANCE_MODES, CURRENCIES, GENDERS } from '../constants/enums.ts';
+import {
+  ATTENDANCE_MODES,
+  CURRENCIES,
+  GENDERS,
+  type Currency,
+  type PaymentProvider,
+} from '../constants/enums.ts';
 import { TicketType, Participant, Group, GroupSeat } from '../schema/participants.ts';
 import { toE164 } from '../lib/phone.ts';
 import { markViolation } from '../lib/security.ts';
@@ -20,7 +26,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PAID_STATUS = 'paid';
 
-type PaymentProvider = 'paystack' | 'flutterwave';
 type Gender = 'male' | 'female';
 type AttendanceMode = 'physically' | 'online' | 'not_sure';
 
@@ -30,7 +35,7 @@ interface CheckoutData {
   v: 1;
   reference: string;
   idempotencyKey: string;
-  currency: string;
+  currency: Currency;
   totalMinor: number;
   provider: PaymentProvider;
   providerRef: string;

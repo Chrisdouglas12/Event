@@ -111,6 +111,9 @@ export function Footer() {
                 <Link href="/camp-info" className="hover:text-white transition-colors">
                   Campground & Accommodation
                 </Link>
+                <Link href="/find-my-tickets" className="hover:text-white transition-colors">
+                  Find My Tickets
+                </Link>
               </div>
             </div>
           </div>

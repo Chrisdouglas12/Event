@@ -1,11 +1,52 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   createFallbackModel,
   createModelInstance,
   loadTravelModel,
 } from "@/lib/travel-models";
+import { getLandingPerformance } from "@/lib/landing-performance";
+import {
+  FLAGS,
+  makeFallbackEarth,
+  makeFlagGeometry,
+  makeFlagTexture,
+} from "./flag-textures";
+
+type FlagDef = (typeof FLAGS)[number];
+
+const CSS_FLAG_RINGS = [
+  { className: "globe-flags globe-flags--meridian", count: 14, offset: 0 },
+  { className: "globe-flags globe-flags--equator", count: 18, offset: 11 },
+] as const;
+
+/** Small CSS version of the canvas flag artwork for the no-WebGL fallback. */
+function flagBackground(flag: FlagDef): string {
+  if (flag.custom === "us") {
+    return "linear-gradient(90deg, #3c3b6e 0 40%, transparent 40%), repeating-linear-gradient(to bottom, #b22234 0 7.69%, #ffffff 7.69% 15.38%)";
+  }
+  if (flag.custom === "gb") {
+    return [
+      "linear-gradient(45deg, transparent 43%, #ffffff 43% 57%, transparent 57%)",
+      "linear-gradient(-45deg, transparent 43%, #ffffff 43% 57%, transparent 57%)",
+      "linear-gradient(90deg, transparent 44%, #c8102e 44% 56%, transparent 56%)",
+      "linear-gradient(0deg, transparent 44%, #c8102e 44% 56%, transparent 56%)",
+      "#012169",
+    ].join(", ");
+  }
+  if (!flag.stripes.length) return "#0e7a6e";
+
+  const direction = flag.dir === "v" ? "to right" : "to bottom";
+  const layers = [`linear-gradient(${direction}, ${flag.stripes.join(", ")})`];
+  if (flag.emblem) {
+    const size = Math.round((flag.emblem.r ?? 0.3) * 55);
+    layers.unshift(
+      `radial-gradient(circle at 50% 50%, ${flag.emblem.color} 0 ${size}%, transparent ${size + 2}%)`
+    );
+  }
+  return layers.join(", ");
+}
 
 /**
  * Earth with two orbits of flags, as in the sketch:
@@ -52,29 +93,36 @@ export function HeroBackground({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
+  // null until the capability check runs: the CSS belts only mount when the
+  // WebGL globe has been ruled out, so capable devices never see them flash.
+  const [heroWebgl, setHeroWebgl] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setHeroWebgl(getLandingPerformance().heroWebgl);
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
+    const perf = getLandingPerformance();
+    if (!perf.heroWebgl) return;
+
     let disposed = false;
     let cleanup = () => {};
 
     (async () => {
-      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
-        import("three"),
-        import("./flag-textures"),
-      ]);
+      const THREE = await import("three");
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       const renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: false,
         alpha: true,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
@@ -107,7 +155,7 @@ export function HeroBackground({
         roughness: 0.85,
         metalness: 0,
       });
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 96), earthMat);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 64, 64), earthMat);
       earthTilt.add(earth);
 
       const sources = [
@@ -164,7 +212,7 @@ export function HeroBackground({
             gl_FragColor = vec4(uColor, 1.0) * (rim + haze) * uGlow;
           }`,
       });
-      const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 64, 64), atmosphereMat);
+      const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 48, 48), atmosphereMat);
       worldScroll.add(atmosphere);
 
       let outerAtmosphere: InstanceType<typeof THREE.Mesh> | null = null;
@@ -193,7 +241,7 @@ export function HeroBackground({
 
       // ---------- Constellations & Stars ----------
       // Background Starfield
-      const starCount = 800;
+      const starCount = Math.round(480 * perf.density);
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
         const r = 18 + Math.random() * 22;
@@ -216,7 +264,7 @@ export function HeroBackground({
       const starShape = new THREE.SphereGeometry(0.04, 4, 4);
       const starMat = new THREE.MeshBasicMaterial({ color: 0x8EE3D6 }); // Mint color
 
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 8; i++) {
         const mesh = new THREE.Mesh(starShape, starMat);
         scene.add(mesh);
         shootingStars.push({
@@ -231,8 +279,8 @@ export function HeroBackground({
       // Counts keep each flag about the same size as before, so the belts stay
       // continuous with no gaps.
       const rings = [
-        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
-        { r: 2.44, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
+        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.14, count: 17 },
+        { r: 2.44, rot: [0, 0, 0.3], speed: 0.11, count: 20 },
       ];
 
       const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
@@ -356,13 +404,17 @@ export function HeroBackground({
             map: tex,
             roughness: 0.48,
             metalness: 0.04,
-            emissive: new THREE.Color(0x0d1f38),
-            emissiveIntensity: 0.12,
+            // A touch of self-light keeps the small flags readable against the
+            // dark globe even when the hero is lit from the side.
+            emissive: new THREE.Color(0x1b4f6b),
+            emissiveIntensity: 0.35,
           });
           const flagEdge = new THREE.MeshStandardMaterial({
-            color: 0x102f4d,
+            color: 0x2b6f77,
             roughness: 0.38,
             metalness: 0.12,
+            emissive: new THREE.Color(0x0e3a3a),
+            emissiveIntensity: 0.3,
           });
           // BoxGeometry material order: +x, -x, +y, -y, +z, -z.
           // The large +z/-z faces carry the artwork; the rest are the edge.
@@ -505,7 +557,9 @@ export function HeroBackground({
         pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
         pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
       };
-      window.addEventListener("pointermove", onPointer, { passive: true });
+      if (perf.pointerEffects) {
+        window.addEventListener("pointermove", onPointer, { passive: true });
+      }
 
       // ---------- Loop ----------
       const timer = new THREE.Timer();
@@ -514,11 +568,18 @@ export function HeroBackground({
       let inView = true;
       let tabVisible = !document.hidden;
       let posterHidden = false;
+      let lastRender = 0;
+      const frameInterval = 1000 / perf.fps;
       const motion = reduceMotion ? 0.2 : 1;
 
       const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
+        if (timestamp && timestamp - lastRender < frameInterval) {
+          schedule();
+          return;
+        }
+        lastRender = timestamp || performance.now();
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05) * motion;
         const t = timer.getElapsed();
@@ -632,16 +693,41 @@ export function HeroBackground({
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      {/* Preload the poster texture and hero airliner before JS asks for them. */}
+      {/* The poster texture is always needed; the model is only preloaded when
+          this device will actually build the 3D scene. */}
       <link rel="preload" as="image" href="/textures/earth.jpg" />
-      <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
+      {heroWebgl === true && (
+        <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
+      )}
 
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
         <div
-          ref={posterRef}
-          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
+          className="absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[calc(52%_-_20px)] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
           style={{ translate: mobileLift ? `0 ${-mobileLift}px` : undefined } as CSSProperties}
-        />
+        >
+          <div ref={posterRef} className="globe-poster absolute inset-0" />
+
+          {heroWebgl === false &&
+            CSS_FLAG_RINGS.map((ring) => (
+              <div key={ring.className} className={ring.className}>
+                {Array.from({ length: ring.count }, (_, i) => {
+                  const flag = FLAGS[(i + ring.offset) % FLAGS.length];
+                  return (
+                    <span
+                      key={`${flag.code}-${i}`}
+                      className="globe-flag"
+                      style={
+                        {
+                          "--a": `${(i / ring.count) * 360}deg`,
+                          background: flagBackground(flag),
+                        } as CSSProperties
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ))}
+        </div>
         <div ref={hostRef} className="absolute inset-0" />
       </div>
     </div>

@@ -145,7 +145,7 @@ function TicketResult({ entry }: { entry: LookupTicket }) {
   );
 }
 
-/** Landing-page recovery widget: list every paid QR tied to a phone number. */
+/** Ticket-desk widget: list every paid QR tied to a phone number. */
 export function TicketLookup() {
   const [phone, setPhone] = useState("+234 ");
   const [loading, setLoading] = useState(false);

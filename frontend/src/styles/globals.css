@@ -154,23 +154,150 @@ h1, h2, h3, h4, h5, h6 {
   contain-intrinsic-size: auto 900px;
 }
 
-/* Landing cards/sections receive a three.js-driven perspective tilt and scale.
-   The values live in variables so the view-timeline enter animation below can
-   keep animating transform without losing the depth effect. */
+/* CSS poster shown when WebGL is disabled or unavailable. It occupies the
+   exact globe slot, so the hero keeps its shape on low-power devices. */
+.globe-poster {
+  border-radius: 9999px;
+  background-image: url("/textures/earth.jpg");
+  background-position: center;
+  background-size: cover;
+  box-shadow:
+    0 0 0 1px rgba(142, 227, 214, 0.25),
+    0 0 70px rgba(115, 204, 255, 0.2);
+}
+
+/* CSS flag belts for the static tier. They sit in the same globe slot as the
+   poster and animate only transforms, so low-end devices still see the flags
+   travel around the Earth without a second WebGL scene. */
+.globe-flags {
+  --ring-radius: calc(min(70vw, 290px) * 0.58);
+  --ring-tilt: 68deg;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform: rotateX(var(--ring-tilt)) rotateZ(0deg);
+  animation: globe-flags-spin 18s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.globe-flags--equator {
+  --ring-radius: calc(min(70vw, 290px) * 0.62);
+  --ring-tilt: -18deg;
+  animation-duration: 24s;
+  animation-direction: reverse;
+}
+
+.globe-flag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 11px;
+  margin: -5.5px 0 0 -9px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(7, 16, 30, 0.55);
+  transform: rotate(var(--a)) translateX(var(--ring-radius));
+  backface-visibility: visible;
+}
+
+@keyframes globe-flags-spin {
+  from { transform: rotateX(var(--ring-tilt)) rotateZ(0deg); }
+  to { transform: rotateX(var(--ring-tilt)) rotateZ(360deg); }
+}
+
+@media (min-width: 1024px) {
+  .globe-flags { --ring-radius: calc(min(22vw, 320px) * 0.58); }
+  .globe-flags--equator { --ring-radius: calc(min(22vw, 320px) * 0.62); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-flags {
+    animation: none;
+  }
+}
+
+/* Static clock face used when the 3D clock is skipped. */
+.cc-static-clock {
+  border: 1px solid rgba(142, 227, 214, 0.35);
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 0 0 5px rgba(7, 16, 30, 0.7),
+    inset 0 0 30px rgba(142, 227, 214, 0.12),
+    0 0 34px rgba(142, 227, 214, 0.18);
+  background-color: #0b0f1a;
+}
+
+/* ---------- Low-end / reduced-motion landing tier ----------
+   Keeps every section and the flat journey trace, but removes full-screen
+   compositing work: backdrop blur, large blur filters, idle animations and
+   fixed-layer will-change hints. */
+html.perf-lite *,
+html.perf-static * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.perf-lite .landing-navy::before,
+html.perf-static .landing-navy::before {
+  animation: none !important;
+  will-change: auto;
+  opacity: 0.28;
+}
+
+html.perf-lite [class*="-blob"],
+html.perf-static [class*="-blob"] {
+  filter: none !important;
+  opacity: 0.16;
+  transition: none !important;
+}
+
+html.perf-lite .hb-sweep,
+html.perf-lite .hb-medal-ring,
+html.perf-lite .hb-medal-orbit,
+html.perf-lite .hb-medal-glow,
+html.perf-lite .ap-chip-body,
+html.perf-lite .dc-chip-body,
+html.perf-lite .dc-pin::after,
+html.perf-lite .mc-chip-body,
+html.perf-lite .mc-pin::after,
+html.perf-lite .mc-orbit,
+html.perf-lite .wa-point .wa-icon,
+html.perf-static .hb-sweep,
+html.perf-static .hb-medal-ring,
+html.perf-static .hb-medal-orbit,
+html.perf-static .hb-medal-glow,
+html.perf-static .ap-chip-body,
+html.perf-static .dc-chip-body,
+html.perf-static .dc-pin::after,
+html.perf-static .mc-chip-body,
+html.perf-static .mc-pin::after,
+html.perf-static .mc-orbit,
+html.perf-static .wa-point .wa-icon {
+  animation: none !important;
+  transition: none !important;
+}
+
+html.perf-lite .ap-cta,
+html.perf-lite .dc-cta,
+html.perf-static .ap-cta,
+html.perf-static .dc-cta {
+  transform: none !important;
+}
+
+html.perf-lite .journey-handle,
+html.perf-static .journey-handle {
+  display: none !important;
+}
+
+/* Landing content stays flat: no component zoom/scale and no perspective tilt.
+   Depth comes from the fixed WebGL layer behind the content, not from warping
+   the cards as they enter the viewport. */
 .landing-navy [data-enter],
 .landing-navy [data-depth],
 .landing-navy .landing-card {
-  transform-origin: center 40%;
-  transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
-    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-    scale(var(--section-scale, 1));
-}
-
-/* Why Attend mirrors the globe's scroll zoom without double-scaling its cards. */
-.landing-navy .why-attend-zoom[data-enter] {
-  transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
-    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-    scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
+  transform: none;
 }
 
 /* Typing reveal: the ghost reserves the final layout while the visible layer
@@ -223,10 +350,6 @@ h1, h2, h3, h4, h5, h6 {
     animation-range: cover 0% cover 20%;
   }
 
-  .landing-navy .why-attend-zoom[data-enter] {
-    animation-name: why-attend-enter;
-  }
-
   .parallax-soft {
     animation: parallax-drift linear both;
     animation-timeline: view();
@@ -237,32 +360,11 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes soft-enter {
   from {
     opacity: 0;
-    transform: perspective(1400px)
-      translate3d(0, calc(var(--section-parallax, 0px) + 24px), 0)
-      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-      scale(var(--section-scale, 1));
+    transform: translate3d(0, 24px, 0);
   }
   to {
     opacity: 1;
-    transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
-      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-      scale(var(--section-scale, 1));
-  }
-}
-
-@keyframes why-attend-enter {
-  from {
-    opacity: 0;
-    transform: perspective(1400px)
-      translate3d(0, calc(var(--section-parallax, 0px) + 24px), 0)
-      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-      scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
-  }
-  to {
-    opacity: 1;
-    transform: perspective(1400px) translate3d(0, var(--section-parallax, 0px), 0)
-      rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-      scale(var(--section-scale, 1)) scale(var(--why-zoom, 1));
+    transform: none;
   }
 }
 
@@ -595,11 +697,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .intro-progress-fill {
   transform-origin: left center;
-  animation: intro-progress var(--intro-duration, 3.9s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: intro-progress var(--intro-duration, 2.2s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .intro-leaving {
-  animation: intro-dissolve var(--intro-dissolve, 700ms) ease-in forwards;
+  animation: intro-dissolve var(--intro-dissolve, 620ms) ease-in forwards;
 }
 
 @keyframes intro-grid-drift {
@@ -660,15 +762,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .trace-connector {
-  opacity: 0.8;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, rgba(142, 227, 214, 0.5), rgba(142, 227, 214, 0.08));
+  pointer-events: none;
 }
 
 .trace-connector::after {
   content: "";
   position: absolute;
-  right: 0;
+  right: -3px;
   top: 0;
-  width: 46px;
+  width: 20px;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(142, 227, 214, 0.9));
   box-shadow: 0 0 12px rgba(142, 227, 214, 0.7);
@@ -676,11 +785,49 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .trace-node-dot {
-  transition: box-shadow 260ms ease, transform 260ms ease;
+  position: relative;
+  transition: box-shadow 260ms ease, transform 260ms ease, background 260ms ease;
+}
+
+.trace-node.is-active .trace-node-dot {
+  background: #8ee3d6;
+  transform: scale(1.35);
+  box-shadow: 0 0 20px rgba(142, 227, 214, 0.95);
+}
+
+.trace-node-label {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  padding: 3px 7px;
+  border: 1px solid rgba(142, 227, 214, 0.22);
+  border-radius: 3px;
+  background: rgba(7, 16, 30, 0.9);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-4px, -50%);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.trace-node.is-active .trace-node-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+  color: #ffffff;
+  border-color: rgba(142, 227, 214, 0.55);
 }
 
 .trace-car {
   transition: top 120ms linear;
+  filter: drop-shadow(0 0 10px rgba(142, 227, 214, 0.45));
+}
+
+.trace-car-mobile {
+  transition: left 120ms linear;
   filter: drop-shadow(0 0 10px rgba(142, 227, 214, 0.45));
 }
 
@@ -689,13 +836,38 @@ h1, h2, h3, h4, h5, h6 {
   animation: trace-pulse 2.2s ease-in-out infinite;
 }
 
+.trace-mobile-node {
+  position: absolute;
+  top: -3px;
+  height: 7px;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(142, 227, 214, 0.45);
+  transition: height 220ms ease, top 220ms ease, background 220ms ease;
+}
+
+.trace-mobile-node.is-active {
+  top: -5px;
+  height: 11px;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(142, 227, 214, 0.9);
+}
+
+.trace-mobile-label {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 @keyframes trace-pulse {
   0%, 100% { opacity: 0.45; transform: scale(0.85); }
   50% { opacity: 1; transform: scale(1.15); }
 }
 
 @keyframes trace-connector-flow {
-  0%, 100% { opacity: 0.25; transform: translateX(-10px); }
+  0%, 100% { opacity: 0.25; transform: translateX(-6px); }
   50% { opacity: 1; transform: translateX(0); }
 }
 
@@ -705,7 +877,177 @@ h1, h2, h3, h4, h5, h6 {
     animation: none;
   }
   .trace-trail,
-  .trace-car {
+  .trace-car,
+  .trace-car-mobile,
+  .trace-node-dot,
+  .trace-node-label,
+  .trace-mobile-node {
+    transition: none;
+  }
+}
+
+/* ============ JOURNEY FILAMENT CONTROL ============ */
+/* The grip is deliberately small and edge-mounted: it gives the visitor direct
+   control over the WebGL filament without covering any landing content. */
+.journey-handle {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  z-index: 45;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.journey-handle__grip {
+  pointer-events: auto;
+  display: inline-flex;
+  height: 38px;
+  width: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(142, 227, 214, 0.42);
+  border-radius: 999px;
+  background: rgba(7, 16, 30, 0.74);
+  color: #8ee3d6;
+  box-shadow:
+    0 0 0 1px rgba(7, 16, 30, 0.6),
+    0 10px 26px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(142, 227, 214, 0.18);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition:
+    transform 200ms ease,
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.journey-handle__grip:hover,
+.journey-handle__grip:focus-visible {
+  background: rgba(14, 122, 110, 0.3);
+  border-color: rgba(142, 227, 214, 0.8);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.journey-handle__grip:focus-visible {
+  box-shadow: 0 0 0 3px rgba(142, 227, 214, 0.28);
+}
+
+.journey-handle[data-dragging="true"] .journey-handle__grip {
+  cursor: grabbing;
+  transform: scale(1.06);
+  background: rgba(14, 122, 110, 0.38);
+  border-color: #8ee3d6;
+}
+
+.journey-handle__hint {
+  color: rgba(142, 227, 214, 0.52);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  pointer-events: none;
+}
+
+.journey-handle__panel {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  width: 146px;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 227, 214, 0.22);
+  border-radius: 4px;
+  background: rgba(7, 16, 30, 0.88);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(8px, -50%);
+  transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+  pointer-events: none;
+}
+
+.journey-handle:hover .journey-handle__panel,
+.journey-handle:focus-within .journey-handle__panel,
+.journey-handle[data-dragging="true"] .journey-handle__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, -50%);
+}
+
+.journey-handle__eyebrow,
+.journey-handle__scene,
+.journey-handle__readout {
+  display: block;
+  color: rgba(142, 227, 214, 0.6);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.journey-handle__label {
+  display: block;
+  margin-top: 3px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.journey-handle__scene {
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.38);
+  letter-spacing: 0.14em;
+}
+
+.journey-handle__meter {
+  display: block;
+  height: 2px;
+  margin: 9px 0 7px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.journey-handle__meter > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #8ee3d6;
+  box-shadow: 0 0 10px rgba(142, 227, 214, 0.7);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.journey-handle__readout {
+  color: rgba(255, 255, 255, 0.52);
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 767px) {
+  .journey-handle {
+    right: 6px;
+    top: 46%;
+  }
+
+  .journey-handle__grip {
+    height: 34px;
+    width: 34px;
+  }
+
+  .journey-handle__hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-handle__grip,
+  .journey-handle__panel {
     transition: none;
   }
 }
@@ -722,32 +1064,6 @@ h1, h2, h3, h4, h5, h6 {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(circle at 14% 28%, rgba(142, 227, 214, 0.1), transparent 46%);
-}
-
-.countdown-orbit {
-  cursor: grab;
-}
-
-.countdown-orbit:active {
-  cursor: grabbing;
-}
-
-.countdown-orbit canvas {
-  touch-action: pan-y;
-}
-
-.countdown-orbit-hint {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  z-index: 2;
-  transform: translateX(-50%);
-  color: rgba(142, 227, 214, 0.68);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  pointer-events: none;
 }
 
 .countdown-orbit-ring {
@@ -829,59 +1145,6 @@ h1, h2, h3, h4, h5, h6 {
 .hero-fade {
   opacity: 0;
   animation: hero-fade-up 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-/* ============ INTERACTIVE 3D HEADLINE STAGE ============ */
-.hero-title-stage {
-  min-height: 178px;
-}
-
-@media (min-width: 640px) {
-  .hero-title-stage {
-    min-height: 214px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .hero-title-stage {
-    min-height: 248px;
-  }
-}
-
-.hero-title-fallback {
-  pointer-events: auto;
-  transition: opacity 520ms ease;
-}
-
-.hero-title-canvas {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 520ms ease;
-}
-
-.hero-title-stage[data-webgl="ready"] .hero-title-fallback {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.hero-title-stage[data-webgl="ready"] .hero-title-canvas {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.hero-title-canvas canvas {
-  cursor: grab;
-}
-
-.hero-title-canvas canvas:active {
-  cursor: grabbing;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-title-fallback,
-  .hero-title-canvas {
-    transition: none;
-  }
 }
 
 /* light sweep across the highlighted word */
@@ -1071,38 +1334,16 @@ h1, h2, h3, h4, h5, h6 {
   );
 }
 
-/* Layered elevation + a small tilt at every breakpoint. The three.js pass
-   already writes --section-* on .landing-card, so these transforms extend that
-   depth instead of fighting it. */
+/* Layered elevation without component zoom or tilt. The orbital background and
+   the shared WebGL layer provide the depth; these cards stay flat and readable. */
 .ms-root .ms-intro,
 .ms-root .mc-card {
   position: relative;
   z-index: 2;
-  transform-style: preserve-3d;
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.46),
     0 0 0 1px rgba(142, 227, 214, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.ms-root .ms-intro {
-  transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
-    rotateX(var(--section-rotate-x, 0deg)) rotateY(var(--section-rotate-y, 0deg))
-    scale(var(--section-scale, 1));
-}
-
-.ms-root .mc-card {
-  transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
-    rotateX(calc(var(--section-rotate-x, 0deg) + 1.2deg))
-    rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
-}
-
-@media (min-width: 768px) {
-  .ms-root .mc-card {
-    transform: perspective(1200px) translate3d(0, var(--section-parallax, 0px), 0)
-      rotateX(calc(var(--section-rotate-x, 0deg) + 2deg))
-      rotateY(var(--section-rotate-y, 0deg)) scale(var(--section-scale, 1));
-  }
 }
 
 .ms-root .mc-card:hover {

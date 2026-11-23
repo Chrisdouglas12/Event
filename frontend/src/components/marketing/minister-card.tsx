@@ -11,6 +11,7 @@ import { ImageIcon } from "lucide-react";
 import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
 import { RevealText } from "@/components/ui/reveal-text";
 import { Parallax } from "@/components/ui/parallax";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 export interface MinisterProps {
   name: string;
@@ -31,8 +32,10 @@ export interface MinisterProps {
  *  - Slanted card surface (clip-path) on the light mint background.
  *  - Living background inside the card: mint blobs, dot grid + spotlight
  *    that track the pointer; on touch they drift with the scroll.
- *  - Portrait bleeds to the card's left edge with the same slanted cut,
- *    parallaxed, with a floating "Role" chip (mirrors the venue chip).
+ *  - Portrait sits above the copy at every width (mobile layout), parallaxed,
+ *    with a floating "Role" chip (mirrors the venue chip).
+ *  - Inside `.ms-group`, the two cards become one joined surface on desktop:
+ *    one row, one slant, one shadow, with a hairline divider between them.
  *  - Reveal-on-scroll via IntersectionObserver (same pattern), type-in
  *    header via RevealText.
  *  - Socials upgraded to the magnetic + shine pill from the CTAs.
@@ -46,6 +49,21 @@ const MC_CSS = `
   clip-path:polygon(0 var(--mc-slant),100% 0,100% 100%,0 100%);
   padding-top:calc(var(--mc-slant) + 4px)}
 @media (min-width:768px){.mc-card{--mc-slant:24px;padding-top:calc(var(--mc-slant) + 4px)}}
+
+/* On desktop the two cards share one surface instead of reading as two cards. */
+.ms-group{position:relative}
+@media (min-width:1024px){
+  .ms-group{isolation:isolate;overflow:hidden;
+    clip-path:polygon(0 24px,100% 0,100% 100%,0 100%);
+    background:rgba(255,255,255,.94);
+    border:1px solid rgba(14,16,32,.08);
+    border-radius:4px;
+    box-shadow:0 24px 70px rgba(2,8,18,.25),inset 0 1px 0 rgba(255,255,255,.9)}
+  .ms-group .mc-card{clip-path:none;padding-top:0;background:transparent;
+    border:0;border-radius:0;box-shadow:none}
+  .ms-group .mc-card:hover{border-color:transparent;box-shadow:none}
+  .ms-group .mc-card + .mc-card{border-left:1px solid rgba(14,122,110,.14)}
+}
 
 /* ---------- living background inside the card ---------- */
 .mc-bg{position:absolute;inset:0;z-index:0;overflow:hidden;
@@ -64,6 +82,16 @@ const MC_CSS = `
 .mc-blob-b{width:240px;height:240px;right:-90px;bottom:4%;background:rgba(14,122,110,.22);
   transform:translate3d(calc(var(--px) * -26px),calc(var(--p) * 70px + var(--py) * 14px),0)}
 
+/* Orbital motif shared with the navy section behind the card. */
+.mc-orbit{position:absolute;left:74%;top:36%;transform:translate(-50%,-50%);aspect-ratio:1;
+  border:1px solid rgba(14,122,110,.16);border-radius:50%;pointer-events:none}
+.mc-orbit::after{content:"";position:absolute;left:50%;top:-2.5px;height:5px;width:5px;margin-left:-2.5px;
+  border-radius:9999px;background:rgba(14,122,110,.55)}
+.mc-orbit-a{width:520px;animation:mc-orbit-spin 80s linear infinite}
+.mc-orbit-b{width:350px;border-style:dashed;border-color:rgba(14,122,110,.12);
+  animation:mc-orbit-spin 60s linear infinite reverse}
+@keyframes mc-orbit-spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+
 /* ---------- reveal ---------- */
 .mc-js .mc-reveal{opacity:0;transform:translate3d(0,26px,0) scale(.98);
   transition:opacity .8s ease,transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
@@ -75,10 +103,6 @@ const MC_CSS = `
 /* ---------- portrait (bleeds to left card edge, slanted cut) ---------- */
 .mc-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:4/5;
   clip-path:polygon(0 0,100% 0,100% calc(100% - 28px),0 100%)}
-@media (min-width:768px){
-  .mc-photo{aspect-ratio:auto;min-height:420px;height:100%;
-    clip-path:polygon(0 0,100% 0,calc(100% - 44px) 100%,0 100%)}
-}
 .mc-par{position:absolute;inset:0;
   transform:scale(1.08) translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
   transition:transform .5s cubic-bezier(.2,.8,.2,1)}
@@ -110,7 +134,7 @@ const MC_CSS = `
 
 @media (prefers-reduced-motion:reduce){
   .mc-js .mc-reveal{opacity:1;transform:none;transition:none}
-  .mc-chip-body,.mc-pin::after{animation:none}
+  .mc-chip-body,.mc-pin::after,.mc-orbit{animation:none}
   .mc-par{transform:none}
 }
 `;
@@ -178,12 +202,12 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
     const root = cardRef.current;
     if (!root) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getLandingPerformance();
     const reveals = Array.from(root.querySelectorAll<HTMLElement>("[data-mc-reveal]"));
 
     root.classList.add("mc-js");
 
-    if (reduce) {
+    if (!perf.ambientMotion) {
       reveals.forEach((el) => el.classList.add("mc-in"));
       return () => root.classList.remove("mc-js");
     }
@@ -299,15 +323,17 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
 
       {/* Living background inside the card (same system as the sections) */}
       <div aria-hidden className="mc-bg">
+        <span className="mc-orbit mc-orbit-a" />
+        <span className="mc-orbit mc-orbit-b" />
         <div className="mc-blob mc-blob-a" />
         <div className="mc-blob mc-blob-b" />
         <div className="mc-dots" />
         <div className="mc-spot" />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-12">
-        {/* Portrait: bleeds to the card's left edge, slanted cut on the right */}
-        <div className="mc-photo md:col-span-5">
+      <div className="relative z-10 grid grid-cols-1">
+        {/* Portrait stays above the copy at every width, as on mobile */}
+        <div className="mc-photo">
           <div className="mc-par">
             <Parallax speed={0.12} className="absolute inset-0">
               {image ? (
@@ -316,7 +342,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
                   alt={name}
                   fill
                   className="object-cover object-top"
-                  sizes="(max-width: 768px) 100vw, 42vw"
+                  sizes="(max-width: 1023px) 100vw, 50vw"
                 />
               ) : null}
             </Parallax>
@@ -374,7 +400,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
         </div>
 
         {/* Content */}
-        <div className="flex flex-col px-5 py-6 sm:px-7 md:col-span-7 md:py-8 md:pl-8 md:pr-7 lg:py-9 lg:pl-10 lg:pr-9">
+        <div className="flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-8">
           <div className="space-y-4">
             <div
               data-mc-reveal

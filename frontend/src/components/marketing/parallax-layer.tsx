@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 type ParallaxLayerProps = {
   /** How far the layer lags behind the scroll. 0 = normal, 0.4 = slow/far away. */
@@ -25,9 +26,10 @@ export function ParallaxLayer({
     const el = ref.current;
     if (!el) return;
 
-    const desktop = window.matchMedia("(min-width: 1024px)");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const perf = getLandingPerformance();
+    if (!perf.parallax) return;
 
+    const desktop = window.matchMedia("(min-width: 1024px)");
     let raf = 0;
 
     const clear = () => {
@@ -37,7 +39,7 @@ export function ParallaxLayer({
 
     const update = () => {
       raf = 0;
-      if (desktop.matches || reduce.matches) {
+      if (desktop.matches) {
         clear();
         return;
       }
@@ -59,12 +61,10 @@ export function ParallaxLayer({
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     desktop.addEventListener("change", onModeChange);
-    reduce.addEventListener("change", onModeChange);
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       desktop.removeEventListener("change", onModeChange);
-      reduce.removeEventListener("change", onModeChange);
       if (raf) cancelAnimationFrame(raf);
       clear();
     };

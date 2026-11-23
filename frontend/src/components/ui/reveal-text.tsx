@@ -7,6 +7,7 @@ import {
   useState,
   type ElementType,
 } from "react";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 type RevealTextProps = {
   text: string;
@@ -48,19 +49,6 @@ const subscribe = (subscriber: Tick) => {
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-const isLowPower = () => {
-  const nav = navigator as Navigator & {
-    deviceMemory?: number;
-    connection?: { saveData?: boolean };
-  };
-  return (
-    (nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 4) ||
-    (nav.deviceMemory ?? 8) <= 4 ||
-    nav.connection?.saveData === true ||
-    window.matchMedia("(pointer: coarse)").matches
-  );
-};
-
 const isHeading = (as: RevealTextProps["as"]) =>
   as === "h1" || as === "h2" || as === "h3" || as === "h4";
 
@@ -68,8 +56,8 @@ const isHeading = (as: RevealTextProps["as"]) =>
  * Typewriter reveal. The hidden ghost keeps the final layout stable while the
  * visible copy is typed once the section scrolls into view.
  *
- * Full effect on capable devices. On reduced-motion or low-power devices only
- * headings type (and much faster); all other copy renders as static text.
+ * Full effect on capable devices. On low-power devices only headings type (and
+ * much faster); static-tier copy renders immediately with no rAF loop.
  */
 export function RevealText({
   text,
@@ -90,10 +78,11 @@ export function RevealText({
     const el = ref.current;
     if (!el) return;
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const low = reduced || isLowPower();
+    const perf = getLandingPerformance();
 
-    if (reduced || (low && !heading)) {
+    // Static tier (reduced motion / save-data / software WebGL) shows all copy
+    // immediately. Lite tier only types headings, and does so much faster.
+    if (!perf.ambientMotion || (perf.tier === "lite" && !heading)) {
       setTypedCount(text.length);
       setDone(true);
       return;
@@ -102,7 +91,7 @@ export function RevealText({
     // Set up the ghost structure before paint so the text never flashes full.
     setTypedCount(0);
     setDone(false);
-    const charTime = low ? Math.max(4, speed * 0.35) : speed;
+    const charTime = perf.tier === "lite" ? Math.max(4, speed * 0.35) : speed;
     let startTimer = 0;
     let unsubscribe = () => {};
 

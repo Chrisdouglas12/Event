@@ -12,6 +12,7 @@ import Image from "next/image";
 import { Parallax } from "@/components/ui/parallax";
 import { RevealText } from "@/components/ui/reveal-text";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 type IconProps = { className?: string };
 
@@ -91,9 +92,9 @@ function ShareIcon({ className }: IconProps) {
 
 const DC_CSS = `
 .dc-root{--p:0;--px:0;--py:0;--mx:72%;--my:26%;--rp:0;--cp:0;--cdir:0;
-  --dc-slant:28px;padding-top:calc(var(--dc-slant) + 3rem);padding-bottom:3.5rem;
+  --dc-slant:28px;padding-top:calc(var(--dc-slant) + 2rem);padding-bottom:2.5rem;
   clip-path:polygon(0 var(--dc-slant),100% 0,100% 100%,0 100%)}
-@media (min-width:1024px){.dc-root{--dc-slant:56px;padding-top:calc(var(--dc-slant) + 4rem);padding-bottom:5rem}}
+@media (min-width:1024px){.dc-root{--dc-slant:56px;padding-top:calc(var(--dc-slant) + 3rem);padding-bottom:3.5rem}}
 
 /* ---------- background ---------- */
 .dc-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
@@ -107,17 +108,49 @@ const DC_CSS = `
 .dc-blob-b{width:360px;height:360px;right:-140px;bottom:6%;background:rgba(14,122,110,.2);
   transform:translate3d(calc(var(--px) * -34px),calc(var(--p) * 110px + var(--py) * 20px),0)}
 
+/* ---------- heading plate ---------- */
+.dc-heading{margin-bottom:.5rem}
+.dc-heading-inner{position:relative;overflow:hidden;
+  border:1px solid rgba(142,227,214,.35);border-radius:18px;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(142,227,214,.24),transparent 42%),
+    radial-gradient(circle at 85% 82%,rgba(14,122,110,.42),transparent 46%),
+    linear-gradient(135deg,rgba(7,16,30,.96),rgba(13,35,45,.94) 55%,rgba(7,16,30,.96));
+  box-shadow:0 22px 60px rgba(7,16,30,.28),inset 0 1px 0 rgba(255,255,255,.08)}
+.dc-heading-inner::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(rgba(142,227,214,.5) .8px,transparent 1.2px);background-size:16px 16px;
+  -webkit-mask-image:linear-gradient(100deg,#000,transparent 42%,transparent 60%,#000);
+  mask-image:linear-gradient(100deg,#000,transparent 42%,transparent 60%,#000)}
+.dc-heading-inner::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(142,227,214,.8),transparent)}
+.dc-heading-glow{position:absolute;inset:-18px -6px;z-index:-1;border-radius:32px;
+  background:radial-gradient(ellipse at center,rgba(142,227,214,.22),transparent 65%);filter:blur(18px)}
+.dc-heading-title{text-shadow:0 2px 24px rgba(7,16,30,.65)}
+
+/* ---------- compact feature card ---------- */
+.dc-feature{position:relative;isolation:isolate;overflow:hidden;
+  border:1px solid rgba(142,227,214,.5);border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.72));
+  box-shadow:0 28px 70px rgba(7,16,30,.16),0 2px 0 rgba(255,255,255,.8) inset}
+.dc-feature::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;
+  box-shadow:0 0 0 1px rgba(14,122,110,.08) inset}
+.dc-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(14,122,110,.25);
+  border-radius:999px;background:rgba(142,227,214,.16);padding:5px 11px;
+  color:#0E7A6E;font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.dc-kicker::before{content:"";width:6px;height:6px;border-radius:999px;background:#0E7A6E;
+  box-shadow:0 0 0 3px rgba(14,122,110,.12)}
+.dc-fee{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  background:#0E1020;padding:6px 12px;color:#8EE3D6;font-size:11px;font-weight:700}
+
 /* ---------- reveal ---------- */
-.dc-js .dc-reveal{opacity:0;transform:translate3d(0,32px,0) scale(.98);
-  transition:opacity .8s ease,transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
+.dc-js .dc-reveal{opacity:0;transform:translate3d(0,24px,0);
+  transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .dc-js .dc-reveal.dc-in{opacity:1;transform:none}
 
 /* ---------- photo ---------- */
-.dc-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:4/3;
-  clip-path:polygon(0 0,100% 0,100% calc(100% - 28px),0 100%)}
+.dc-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:5/4}
 @media (min-width:1024px){
-  .dc-photo{aspect-ratio:auto;min-height:420px;height:100%;
-    clip-path:polygon(0 0,100% 0,calc(100% - 56px) 100%,0 100%)}
+  .dc-photo{aspect-ratio:auto;min-height:300px;height:100%}
 }
 .dc-par{position:absolute;inset:0;
   transform:scale(1.08) translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
@@ -145,7 +178,7 @@ const DC_CSS = `
   transform:translate3d(0,calc(var(--cp) * 1px),0);will-change:transform}
 .dc-car-body{width:100%;height:100%;transform:rotate(calc(180deg + var(--cdir) * 1deg));transition:transform .5s ease}
 .dc-stop{position:relative}
-.dc-dot{position:absolute;z-index:7;left:-30px;top:28px;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:9999px;
+.dc-dot{position:absolute;z-index:7;left:-30px;top:22px;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:9999px;
   border:2px solid rgba(14,16,32,.25);background:#fff;transition:all .35s ease}
 .dc-stop[data-lit="true"] .dc-dot{border-color:#0E7A6E;background:#8EE3D6;box-shadow:0 0 0 6px rgba(142,227,214,.35)}
 .dc-stem{display:none}
@@ -207,7 +240,7 @@ export function DetailsCard() {
     const root = sectionRef.current;
     if (!root) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getLandingPerformance();
     const mq = window.matchMedia("(min-width: 768px)");
     const reveals = Array.from(root.querySelectorAll<HTMLElement>("[data-dc-reveal]"));
     const route = root.querySelector<HTMLElement>("[data-dc-route]");
@@ -215,7 +248,7 @@ export function DetailsCard() {
 
     root.classList.add("dc-js");
 
-    if (reduce) {
+    if (!perf.ambientMotion) {
       reveals.forEach((el) => el.classList.add("dc-in"));
       if (route) {
         const L = mq.matches ? route.clientWidth : route.clientHeight;
@@ -273,7 +306,7 @@ export function DetailsCard() {
 
       // A stop lights up when the car reaches it
       stopEls.forEach((s) => {
-        const c = isRow ? s.offsetLeft + s.offsetWidth / 2 : s.offsetTop + 28;
+        const c = isRow ? s.offsetLeft + s.offsetWidth / 2 : s.offsetTop + 22;
         const lit = cur >= c - 6 ? "true" : "false";
         if (s.dataset.lit !== lit) s.dataset.lit = lit;
       });
@@ -424,128 +457,126 @@ export function DetailsCard() {
       </div>
 
       {/* ---------- Header ---------- */}
-      <div className="relative mx-auto max-w-2xl px-5 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
+      <div className="dc-heading relative mx-auto max-w-2xl px-5 text-center">
+        <span aria-hidden className="dc-heading-glow" />
+        <div className="dc-heading-inner relative px-6 py-6 sm:px-10 sm:py-8">
+          <div className="flex items-center justify-center gap-3">
+            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
+            <RevealText
+              as="span"
+              text="Plan Your Journey"
+              className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
+              speed={18}
+            />
+            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
+          </div>
           <RevealText
-            as="span"
-            text="Plan Your Journey"
-            className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
-            speed={18}
+            as="h2"
+            text="Conference Details"
+            className="dc-heading-title mt-4 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[40px] xl:text-[44px]"
+            speed={14}
           />
-          <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
+          <RevealText
+            as="p"
+            text="Essential dates, venue location, and session times"
+            className="mx-auto mt-3 max-w-xl text-sm text-white/70 lg:text-base"
+            speed={9}
+          />
         </div>
-        <RevealText
-          as="h2"
-          text="Conference Details"
-          className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
-          speed={14}
-        />
-        <RevealText
-          as="p"
-          text="Essential dates, venue location, and session times"
-          className="mx-auto mt-5 max-w-xl text-sm text-[#4B5563] lg:text-base"
-          speed={9}
-        />
       </div>
 
-      {/* ---------- Photo (bleeds to the left screen edge) + copy ---------- */}
-      <div className="relative mt-12 grid grid-cols-1 lg:mt-16 lg:grid-cols-12">
-        <div className="dc-photo lg:col-span-5">
-          <div className="dc-par">
-            <Parallax speed={0.14} className="absolute inset-0">
-              <Image
-                src="/images/campground.jpg"
-                alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 42vw"
-              />
-            </Parallax>
-          </div>
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
+      {/* ---------- Compact photo + details feature card ---------- */}
+      <div className="relative mx-auto mt-8 max-w-[1320px] px-5 sm:px-8 lg:mt-10 lg:px-12">
+        <div className="dc-feature grid grid-cols-1 lg:grid-cols-12">
+          <div className="dc-photo lg:col-span-5">
+            <div className="dc-par">
+              <Parallax speed={0.14} className="absolute inset-0">
+                <Image
+                  src="/images/campground.jpg"
+                  alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 42vw"
+                />
+              </Parallax>
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
 
-          {/* Floating venue chip */}
-          <div className="dc-chip">
-            <div className="dc-chip-body flex max-w-[240px] items-center gap-3 rounded-2xl border border-white/70 bg-white/85 px-3.5 py-2.5 shadow-[0_12px_40px_rgba(14,16,32,0.25)] backdrop-blur-md">
-              <span className="dc-pin flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
-                <MapPinIcon className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
-                  Venue
+            {/* Floating venue chip */}
+            <div className="dc-chip">
+              <div className="dc-chip-body flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
+                <span className="dc-pin flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
+                  <MapPinIcon className="h-3.5 w-3.5" />
                 </span>
-                <span className="block truncate text-[13px] font-semibold leading-tight text-[#0E1020]">
-                  {venueName}
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
+                    Venue
+                  </span>
+                  <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
+                    {venueName}
+                  </span>
                 </span>
-              </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col px-5 py-8 sm:px-8 lg:col-span-7 lg:py-12 lg:pl-14 lg:pr-12 xl:pr-[max(3rem,calc((100vw-1320px)/2))]">
-          <div>
-            <RevealText
-              as="h3"
-              text={eventName}
-              className="max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl lg:text-[34px]"
-              speed={14}
-            />
-            <RevealText
-              as="p"
-              text={`Theme: \u201C${theme}\u201D`}
-              className="mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
-              speed={9}
-            />
-            <RevealText
-              as="p"
-              text={`Registration: ${registrationFeeLabel} per participant`}
-              className="mt-3 text-sm text-[#6B7280]"
-              speed={9}
-            />
-          </div>
+          <div className="flex flex-col p-6 sm:p-8 lg:col-span-7 lg:p-9">
+            <span className="dc-kicker w-fit">Event at a glance</span>
+            <h3 className="mt-4 max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl lg:text-[32px]">
+              {eventName}
+            </h3>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base">
+              Theme: <span className="font-semibold text-[#0E7A6E]">&ldquo;{theme}&rdquo;</span>
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="dc-fee">{registrationFeeLabel} per participant</span>
+              <span className="rounded-full border border-[#0E7A6E]/25 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-[#0E7A6E]">
+                {heroDatesLabel}
+              </span>
+            </div>
 
-          <div
-            data-dc-reveal
-            className="dc-reveal mt-8 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-6 lg:mt-auto lg:pt-8"
-            style={{ "--d": "200ms" } as CSSProperties}
-          >
-            <button
-              type="button"
-              onClick={handleShare}
-              aria-label="Share Conference Details"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:rotate-[-6deg] hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
+            <div
+              data-dc-reveal
+              className="dc-reveal mt-6 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 lg:mt-auto lg:pt-6"
+              style={{ "--d": "200ms" } as CSSProperties}
             >
-              <ShareIcon className="h-4 w-4" />
-            </button>
-
-            <div className="-m-4 inline-block p-4" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
-              <Link
-                href="/register"
-                className="dc-cta group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#8EE3D6] px-8 py-3.5 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Share Conference Details"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
               >
-                Register Now
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
+                <ShareIcon className="h-4 w-4" />
+              </button>
+
+              <div className="-m-3 inline-block p-3" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
+                <Link
+                  href="/register"
+                  className="dc-cta group inline-flex items-center justify-center gap-2 rounded-full bg-[#8EE3D6] px-6 py-3 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
                 >
-                  <path d="M5 12h14" />
-                  <path d="M13 6l6 6-6 6" />
-                </svg>
-              </Link>
+                  Register Now
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M5 12h14" />
+                    <path d="M13 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* ---------- The route: three stops, a car drives between them ---------- */}
-      <div className="relative mx-auto mt-10 max-w-[1320px] px-5 sm:px-8 lg:mt-14 lg:px-12">
+      <div className="relative mx-auto mt-7 max-w-[1320px] px-5 sm:px-8 lg:mt-9 lg:px-12">
         <div data-dc-route className="dc-route">
           <div aria-hidden className="dc-road">
             <div className="dc-line" />
@@ -583,7 +614,7 @@ export function DetailsCard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4">
             {info.map(({ icon: Icon, title, note }, i) => (
               <div
                 key={note}
@@ -597,14 +628,14 @@ export function DetailsCard() {
                 <span aria-hidden className="dc-stem" />
                 <div
                   onPointerMove={onCardMove}
-                  className="dc-card flex h-full min-w-0 flex-col gap-3 rounded-[4px] border border-[#D5E3E0] bg-white/80 p-4 backdrop-blur-sm lg:p-5"
+                  className="dc-card flex h-full min-w-0 items-center gap-3 rounded-lg border border-[#D5E3E0] bg-white/85 p-3 backdrop-blur-sm lg:p-3.5"
                 >
-                  <span className="dc-ico relative flex h-9 w-9 items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
-                    <Icon className="h-4 w-4" />
+                  <span className="dc-ico relative flex h-8 w-8 flex-none items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
+                    <Icon className="h-3.5 w-3.5" />
                   </span>
                   <div className="relative min-w-0">
-                    <div className="text-sm font-bold leading-snug text-[#0E1020]">{title}</div>
-                    <div className="mt-1 text-xs leading-snug text-[#6B7280]">{note}</div>
+                    <div className="truncate text-[13px] font-bold leading-snug text-[#0E1020]">{title}</div>
+                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[#6B7280]">{note}</div>
                   </div>
                 </div>
               </div>

@@ -160,8 +160,13 @@ export function LandingProgressProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Returns the shared landing progress API when a provider is present. */
+export function useOptionalLandingProgress(): LandingProgressApi | null {
+  return useContext(LandingProgressContext);
+}
+
 export function useLandingProgress(): LandingProgressApi {
-  const api = useContext(LandingProgressContext);
+  const api = useOptionalLandingProgress();
   if (!api) {
     throw new Error(
       "useLandingProgress must be used inside <LandingProgressProvider>"

@@ -1,16 +1,14 @@
 import { Header } from "@/components/marketing/header";
 import { Hero } from "@/components/marketing/hero";
-import { LandingBackdrop } from "@/components/marketing/landing-backdrop";
+import { JourneyHandle } from "@/components/marketing/journey-handle";
 import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingProgressProvider } from "@/components/marketing/landing-progress";
-import { LandingSectionDepth } from "@/components/marketing/landing-section-depth";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { ScrollTrace } from "@/components/marketing/scroll-trace";
 import { SplashScreen } from "@/components/marketing/splash-screen";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
-import { TicketLookup } from "@/components/marketing/ticket-lookup";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { Gallery3D } from "@/components/marketing/gallery-3d";
@@ -55,13 +53,15 @@ export default function HomePage() {
             }}
           />
 
-          {/* Fixed camp photo plus one scroll-synced WebGL layer for the page. */}
-          <LandingBackdrop />
+          {/* One scroll-synced WebGL layer for the page. No photo backdrop:
+              navy, starfield and orbital geometry carry the whole journey. */}
           <LandingDepth />
-          <LandingSectionDepth />
 
           {/* Single scroll-driven car trace connecting every section. */}
           <ScrollTrace />
+
+          {/* Edge grip that orbits the 3D journey filament in LandingDepth. */}
+          <JourneyHandle />
 
           <div className="relative z-10 flex flex-1 flex-col">
             <Header />
@@ -70,23 +70,32 @@ export default function HomePage() {
             <Hero />
 
             {/* One joined surface: Why Attend through the Flyer. */}
-            <div className="joined-flow w-full bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+            <div className="joined-flow lg:mx-10 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
               <TimelineDivider label="Why Attend" scene="air" />
               <WhyAttend />
               <TimelineDivider label="Ministers" scene="road" />
 
-              {/* Featured Ministers */}
+              {/* Featured Ministers — navy + orbital depth, tucked tightly
+                  under the Why Attend band so the flow reads as one surface. */}
               <section
                 data-scene="road"
                 data-trace-node
                 data-trace-label="Ministers"
-                className="cv-auto relative overflow-hidden py-12 lg:py-16"
+                className="ms-root cv-auto relative isolate overflow-hidden pb-10 pt-6 sm:pt-7 lg:pb-12 lg:pt-8"
               >
-                <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
-                  <div className="landing-card mx-auto mb-10 max-w-2xl px-6 py-7 text-center lg:mb-12">
+                <div aria-hidden className="ms-bg">
+                  <span className="ms-stars" />
+                  <span className="ms-orbit ms-orbit-a" />
+                  <span className="ms-orbit ms-orbit-b" />
+                  <span className="ms-orbit ms-orbit-c" />
+                  <span className="ms-glow" />
+                </div>
+
+                <div className="relative z-10 px-[3px] sm:px-8 lg:px-8 xl:px-10">
+                  <div className="ms-intro landing-card mx-auto mb-6 max-w-2xl px-6 py-6 text-center sm:mb-8 lg:py-7">
                     <span
                       aria-hidden
-                      className="mx-auto mb-5 block h-px w-12 bg-[#0E7A6E]"
+                      className="mx-auto mb-4 block h-px w-12 bg-[#0E7A6E]"
                     />
 
                     <RevealText
@@ -99,12 +108,12 @@ export default function HomePage() {
                     <RevealText
                       as="p"
                       text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-                      className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
+                      className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
                       speed={12}
                     />
                   </div>
 
-                  <div className="space-y-8 lg:space-y-10">
+                  <div className="ms-group grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0">
                     {SITE_CONFIG.ministersInitial.map((minister) => (
                       <MinisterCard
                         key={minister.id}
@@ -125,8 +134,6 @@ export default function HomePage() {
 
               <TimelineDivider label="Register" scene="road" />
               <CtaBanner />
-              <TimelineDivider label="Tickets" scene="sea" />
-              <TicketLookup />
               <TimelineDivider label="Details" scene="road" />
               <DetailsCard />
               <TimelineDivider label="About" scene="road" />

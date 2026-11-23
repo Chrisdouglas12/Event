@@ -9,27 +9,22 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { CalendarDays, MapPin, Sparkles } from "lucide-react";
-import { Parallax } from "@/components/ui/parallax";
-import { RevealText } from "@/components/ui/reveal-text";
-import { TiltCard } from "@/components/ui/tilt-card";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 /**
- * Edge-to-edge "Why Attend" section.
+ * Edge-to-edge "Why Attend" section, sized to sit in a single viewport on
+ * desktop.
  *
  * Layers, back to front:
- *  1. Light surface with a slanted top edge (echoes the hero's diagonal boxes),
- *     drifting colour blobs, and a dot grid that is only revealed around the
- *     pointer (or drifts with your scroll on touch screens).
- *  2. Copy + a floating, tilting, glare-lit flyer with an orbit ring and three
- *     floating fact chips that shift with the pointer.
- *  3. A big outlined ticker that slides sideways as you scroll.
- *  4. A full-width dark band with three "point" columns. A progress rail fills
- *     as you scroll, and each column lights up when it reaches the middle of
- *     the screen or when you hover / touch it.
+ *  1. Light surface with a slanted top edge and a soft dot/spot backdrop.
+ *  2. Copy on the left; the conference flyer becomes a full-height background
+ *     panel on the right instead of a floating, tilting card.
+ *  3. A compact dark band with three "point" columns. A progress rail fills as
+ *     you scroll, and each column lights up when it reaches the middle of the
+ *     screen or when you hover / touch it.
  *
- * All motion is written straight to CSS variables (no React re-renders).
- * Reduced-motion users get the static layout.
+ * The old sideways ticker and all typing/tilt motion have been removed.
  */
 
 const WA_CSS = `
@@ -41,7 +36,7 @@ const WA_CSS = `
   clip-path:polygon(0 var(--wa-slant),100% 0,100% 100%,0 100%);
 }
 @media (min-width:640px){.wa-root{margin-top:-3.25rem}}
-@media (min-width:1024px){.wa-root{--wa-slant:56px;margin-top:-4rem;padding-top:calc(var(--wa-slant) + 4rem)}}
+@media (min-width:1024px){.wa-root{--wa-slant:56px;margin-top:0;padding-top:calc(var(--wa-slant) + 3rem)}}
 
 /* ---------- background ---------- */
 .wa-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
@@ -56,26 +51,23 @@ const WA_CSS = `
   transform:translate3d(calc(var(--px) * 34px),calc(var(--p) * 120px + var(--py) * 20px),0)}
 
 /* ---------- reveal on scroll ---------- */
-.wa-js .wa-reveal{opacity:0;transform:translate3d(0,32px,0) scale(.98);
-  transition:opacity .8s ease,transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
+.wa-js .wa-reveal{opacity:0;transform:translate3d(0,24px,0);
+  transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .wa-js .wa-reveal.wa-in{opacity:1;transform:none}
 
-/* ---------- flyer stage ---------- */
-.wa-float{animation:wa-float 7s ease-in-out infinite}
-@keyframes wa-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-10px,0)}}
-.wa-orbit-wrap{transform:rotate(calc(var(--p) * 140deg))}
-.wa-orbit{animation:wa-spin 60s linear infinite}
-@keyframes wa-spin{to{transform:rotate(360deg)}}
-.wa-flyer-glow{background:radial-gradient(closest-side,rgba(142,227,214,.75),transparent 72%);filter:blur(22px);animation:wa-breathe 5s ease-in-out infinite}
-@keyframes wa-breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.07);opacity:1}}
-.wa-glare{opacity:0;transition:opacity .3s ease;
-  background:radial-gradient(circle at var(--gx,calc(var(--p) * 100%)) var(--gy,22%),rgba(255,255,255,.42),transparent 46%)}
-.wa-stage:hover .wa-glare{opacity:1}
-@media (hover:none){.wa-glare{opacity:.55}}
-.wa-chip{position:absolute;z-index:20;
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);
-  transform:translate3d(calc(var(--px) * var(--k,14) * 1px),calc(var(--py) * var(--k,14) * 1px),0)}
-.wa-chip-body{animation:wa-float var(--fs,6s) ease-in-out infinite;animation-delay:var(--fd,0s)}
+/* ---------- flyer background panel ---------- */
+.wa-photo{position:relative;overflow:hidden;background:#0E1020}
+.wa-photo img{object-fit:cover;object-position:center 18%}
+.wa-photo::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,16,30,.06),rgba(7,16,30,.62))}
+.wa-photo-caption{position:absolute;left:20px;bottom:20px;z-index:2;
+  max-width:calc(100% - 40px);padding:10px 14px;border:1px solid rgba(142,227,214,.4);
+  border-radius:4px;background:rgba(7,16,30,.72);color:#fff;backdrop-blur-sm}
+.wa-photo-caption strong{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8EE3D6}
+.wa-photo-caption span{display:block;margin-top:3px;font-size:12px;line-height:1.4;color:rgba(255,255,255,.85)}
+@media (min-width:1024px){
+  .wa-photo{min-height:420px;clip-path:polygon(0 0,100% 0,100% 100%,56px 100%)}
+}
 
 /* ---------- CTA ---------- */
 .wa-cta{position:relative;overflow:hidden;
@@ -84,13 +76,6 @@ const WA_CSS = `
 .wa-cta::after{content:"";position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transition:transform .7s ease}
 .wa-cta:hover::after{transform:translateX(120%) skewX(-20deg)}
-
-/* ---------- ticker ---------- */
-.wa-ticker-track{transform:translate3d(calc(-6% + var(--p) * -26%),0,0);will-change:transform}
-.wa-ticker-item{font-weight:900;text-transform:uppercase;letter-spacing:-.02em;line-height:1;
-  font-size:clamp(40px,8vw,92px);color:transparent;-webkit-text-stroke:1.2px rgba(14,16,32,.22)}
-.wa-ticker-item.wa-fill{color:rgba(14,122,110,.12);-webkit-text-stroke-color:rgba(14,122,110,.35)}
-.wa-ticker-star{color:#0E7A6E;font-size:.4em;opacity:.6}
 
 /* ---------- dark points band ---------- */
 .wa-rail-fill{transform:scaleX(var(--rail,0));transition:transform .15s linear}
@@ -115,7 +100,7 @@ const WA_CSS = `
 .wa-point:hover .wa-underline,.wa-point[data-on="true"] .wa-underline{width:84px}
 
 @media (prefers-reduced-motion:reduce){
-  .wa-float,.wa-chip-body,.wa-orbit,.wa-flyer-glow,.wa-point .wa-icon{animation:none!important}
+  .wa-point .wa-icon{animation:none!important}
   .wa-js .wa-reveal{opacity:1;transform:none;transition:none}
 }
 `;
@@ -132,13 +117,13 @@ export function WhyAttend() {
     const root = sectionRef.current;
     if (!root) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getLandingPerformance();
     const reveals = Array.from(root.querySelectorAll<HTMLElement>("[data-wa-reveal]"));
 
     root.classList.add("wa-js");
 
-    // Reduced motion: show everything, skip all the effects
-    if (reduce) {
+    // Static tier: show everything, skip all the effects and listeners.
+    if (!perf.ambientMotion) {
       reveals.forEach((el) => el.classList.add("wa-in"));
       root.querySelectorAll<HTMLElement>("[data-wa-point]").forEach((el) => {
         el.dataset.on = "true";
@@ -261,17 +246,6 @@ export function WhyAttend() {
   }, []);
 
   // ---------- Small pointer helpers ----------
-  const onStageMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === "touch") return;
-    const r = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty("--gx", `${(((e.clientX - r.left) / r.width) * 100).toFixed(1)}%`);
-    e.currentTarget.style.setProperty("--gy", `${(((e.clientY - r.top) / r.height) * 100).toFixed(1)}%`);
-  };
-  const onStageLeave = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.currentTarget.style.removeProperty("--gx");
-    e.currentTarget.style.removeProperty("--gy");
-  };
-
   // Magnetic CTA: the button leans toward the pointer
   const onCtaMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "touch") return;
@@ -315,38 +289,6 @@ export function WhyAttend() {
     },
   ];
 
-  const chips = [
-    {
-      label: "Dates",
-      value: datesText,
-      Icon: CalendarDays,
-      pos: "left-[-6px] top-[9%] sm:-left-10",
-      k: 18,
-      fd: "0s",
-      fs: "6s",
-    },
-    {
-      label: "Opening",
-      value: openingTimeLabel,
-      Icon: Sparkles,
-      pos: "right-[-6px] top-[44%] sm:-right-10",
-      k: -14,
-      fd: "-2s",
-      fs: "7s",
-    },
-    {
-      label: "Venue",
-      value: venueName,
-      Icon: MapPin,
-      pos: "left-[3%] bottom-[-14px] sm:-left-6",
-      k: 10,
-      fd: "-4s",
-      fs: "5.5s",
-    },
-  ];
-
-  const tickerItems = ["International Holiness General Conference 2026", theme].filter(Boolean);
-
   return (
     <section
       ref={sectionRef}
@@ -377,35 +319,26 @@ export function WhyAttend() {
         <div className="wa-spot" />
       </div>
 
-      {/* ---------- Layer 2: copy + flyer ---------- */}
-      <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-16 px-5 pb-10 sm:px-8 lg:grid-cols-12 lg:gap-16 lg:px-12 lg:pb-14 xl:gap-24">
+      {/* ---------- Layer 2: copy + flyer background ---------- */}
+      <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-10 px-5 pb-8 sm:px-8 lg:min-h-[calc(100vh-320px)] lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pb-8 xl:gap-16">
         {/* Left: copy */}
         <div className="flex flex-col items-start lg:col-span-6">
           <div className="flex items-center gap-3">
             <span aria-hidden className="h-px w-8" style={{ background: "var(--wa-accent)" }} />
-            <RevealText
-              as="span"
-              text="Why Attend"
-              className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--wa-accent)]"
-              speed={18}
-            />
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--wa-accent)]">
+              Why Attend
+            </span>
           </div>
 
-          <RevealText
-            as="h2"
-            text="Why Attend This Conference?"
-            className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[var(--wa-text)] sm:text-4xl lg:text-[44px] xl:text-5xl"
-            speed={14}
-          />
+          <h2 className="mt-4 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[var(--wa-text)] sm:text-4xl lg:text-[44px] xl:text-5xl">
+            Why Attend This Conference?
+          </h2>
 
-          <RevealText
-            as="p"
-            text={whyAttendIntro}
-            className="mt-6 max-w-xl text-base leading-relaxed text-[var(--wa-muted)] lg:text-[17px]"
-            speed={10}
-          />
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--wa-muted)] lg:text-[17px]">
+            {whyAttendIntro}
+          </p>
 
-          <div className="mt-9">
+          <div className="mt-7">
             <div
               data-wa-reveal
               className="wa-reveal -m-4 inline-block p-4"
@@ -436,94 +369,30 @@ export function WhyAttend() {
           </div>
         </div>
 
-        {/* Right: the flyer stage */}
-        <div className="lg:col-span-6">
+        {/* Right: the flyer becomes the section's own background panel */}
+        <div className="lg:col-span-6 lg:self-stretch">
           <div
-            className="wa-stage relative mx-auto w-full max-w-[360px] sm:max-w-[380px]"
-            onPointerMove={onStageMove}
-            onPointerLeave={onStageLeave}
+            data-wa-reveal
+            className="wa-reveal wa-photo relative h-[320px] w-full sm:h-[400px] lg:h-full"
+            style={{ "--d": "150ms" } as CSSProperties}
           >
-            {/* Orbit ring (turns with scroll, spins slowly on its own) */}
-            <div aria-hidden className="wa-orbit-wrap pointer-events-none absolute -inset-[14%]">
-              <svg viewBox="0 0 200 200" className="wa-orbit h-full w-full">
-                <circle cx="100" cy="100" r="96" fill="none" stroke="rgba(14,122,110,0.4)" strokeWidth="0.6" strokeDasharray="2 5" />
-                <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(14,16,32,0.10)" strokeWidth="0.5" />
-                <circle cx="196" cy="100" r="7" fill="rgba(142,227,214,0.5)" />
-                <circle cx="196" cy="100" r="3.2" fill="#0E7A6E" />
-                <circle cx="18" cy="100" r="2.2" fill="#0E7A6E" opacity="0.6" />
-              </svg>
+            <Image
+              src="/images/conference_flyer.jpg"
+              alt="International Holiness General Conference 2026 flyer"
+              fill
+              className="object-cover"
+              quality={90}
+              sizes="(max-width: 1024px) 100vw, 46vw"
+            />
+            <div className="wa-photo-caption">
+              <strong>IHGC 2026</strong>
+              <span>{theme}</span>
             </div>
-
-            {/* Breathing glow behind the flyer */}
-            <div aria-hidden className="wa-flyer-glow pointer-events-none absolute inset-[6%] rounded-full" />
-
-            <div data-wa-reveal className="wa-reveal relative z-10" style={{ "--d": "150ms" } as CSSProperties}>
-              <div className="wa-float">
-                <TiltCard
-                  intensity={9}
-                  className="image-frame relative aspect-[4/5] w-full overflow-hidden bg-[var(--wa-ink)]"
-                >
-                  <Parallax speed={0.18} className="absolute inset-0">
-                    <Image
-                      src="/images/conference_flyer.png"
-                      alt="Official flyer for the International Holiness General Conference 2026"
-                      fill
-                      className="object-contain"
-                      quality={95}
-                      sizes="(max-width: 1024px) 70vw, 380px"
-                    />
-                  </Parallax>
-                  {/* Light that follows the pointer / your scroll */}
-                  <div aria-hidden className="wa-glare pointer-events-none absolute inset-0" />
-                </TiltCard>
-              </div>
-            </div>
-
-            {/* Floating fact chips: drift with the pointer, bob on their own */}
-            {chips.map(({ label, value, Icon, pos, k, fd, fs }, i) => (
-              <div
-                key={label}
-                data-wa-reveal
-                className={`wa-reveal wa-chip ${pos}`}
-                style={{ "--k": k, "--d": `${450 + i * 150}ms` } as CSSProperties}
-              >
-                <div
-                  className="wa-chip-body flex max-w-[190px] items-center gap-2.5 rounded-2xl border border-white/70 bg-white/80 px-3 py-2.5 shadow-[0_12px_40px_rgba(14,16,32,0.14)] backdrop-blur-md"
-                  style={{ "--fd": fd, "--fs": fs } as CSSProperties}
-                >
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/30 text-[var(--wa-accent)]">
-                    <Icon className="h-4 w-4" strokeWidth={1.8} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--wa-accent)]">
-                      {label}
-                    </span>
-                    <span className="block text-[13px] font-semibold leading-tight text-[var(--wa-text)]">
-                      {value}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* ---------- Layer 3: scroll-driven ticker ---------- */}
-      <div aria-hidden className="relative select-none overflow-hidden pb-8 pt-4 lg:pb-12">
-        <div className="wa-ticker-track flex w-max items-center gap-10 whitespace-nowrap">
-          {[0, 1, 2].flatMap((rep) =>
-            tickerItems.map((text, i) => (
-              <span key={`${rep}-${i}`} className="inline-flex items-center gap-10">
-                <span className={`wa-ticker-item ${i % 2 ? "wa-fill" : ""}`}>{text}</span>
-                <span className="wa-ticker-star">✦</span>
-              </span>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ---------- Layer 4: full-width dark points band ---------- */}
+      {/* ---------- Layer 3: full-width dark points band ---------- */}
       <div data-wa-band className="relative bg-[#0E1020] text-white">
         {/* Progress rail: fills as you scroll through the band */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 hidden h-px bg-white/10 md:block">
@@ -538,7 +407,7 @@ export function WhyAttend() {
               data-on="false"
               data-wa-reveal
               onPointerMove={onPointMove}
-              className="wa-point wa-reveal border-t border-white/10 px-5 py-9 first:border-t-0 sm:px-8 md:border-l md:border-t-0 md:py-14 md:first:border-l-0 lg:px-12"
+              className="wa-point wa-reveal border-t border-white/10 px-5 py-8 first:border-t-0 sm:px-8 md:border-l md:border-t-0 md:py-8 md:first:border-l-0 lg:px-12"
               style={{ "--d": `${idx * 140}ms` } as CSSProperties}
             >
               <span aria-hidden className="wa-ghost">
@@ -550,18 +419,8 @@ export function WhyAttend() {
                   <Icon className="h-5 w-5" strokeWidth={1.7} />
                 </span>
                 <div className="min-w-0">
-                  <RevealText
-                    as="h3"
-                    text={title}
-                    className="text-lg font-semibold text-white lg:text-xl"
-                    speed={14}
-                  />
-                  <RevealText
-                    as="p"
-                    text={description}
-                    className="mt-2 text-sm leading-relaxed text-[#B9C4D4]"
-                    speed={9}
-                  />
+                  <h3 className="text-lg font-semibold text-white lg:text-xl">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#B9C4D4]">{description}</p>
                   <span aria-hidden className="wa-underline" />
                 </div>
               </div>

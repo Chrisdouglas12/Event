@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { RevealText } from "@/components/ui/reveal-text";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 const GALLERY_IMAGES = [
   { src: "/gallery/pastor-paul-rika-on-pulpit.jpg", alt: "Pastor Paul Rika preaching at the pulpit" },
@@ -137,12 +138,12 @@ export function Gallery3D() {
     const root = sectionRef.current;
     if (!root) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getLandingPerformance();
     const reveals = Array.from(root.querySelectorAll<HTMLElement>("[data-g3d-reveal]"));
 
     root.classList.add("g3d-js");
 
-    if (reduce) {
+    if (!perf.ambientMotion) {
       reveals.forEach((el) => el.classList.add("g3d-in"));
       return () => root.classList.remove("g3d-js");
     }
@@ -290,7 +291,7 @@ export function Gallery3D() {
           </div>
           <RevealText
             as="h2"
-            text="Moments From the Conference"
+            text="Moments From Previous Conferences"
             className="mt-5 text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
             speed={14}
           />

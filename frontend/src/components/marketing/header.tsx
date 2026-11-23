@@ -21,6 +21,7 @@ export function Header() {
     { label: "Programme", href: "/programme" },
     { label: "Ministers", href: "/ministers" },
     { label: "Camp Info", href: "/camp-info" },
+    { label: "Find My Tickets", href: "/find-my-tickets" },
     { label: "FAQ", href: "/faq" },
     { label: "Contact", href: "/contact" },
   ];

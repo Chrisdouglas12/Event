@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   FLAGS,
@@ -10,27 +10,18 @@ import {
 } from "@/components/marketing/flag-textures";
 import { LANDING_THEME } from "@/config/landing-theme";
 import { SITE_CONFIG } from "@/config/site";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 type Stage = "entering" | "welcome" | "leaving" | "hidden";
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 
-/** Slow in, slow out: the globe reads as a deliberate fly-past, not a snap. */
-function easeInOutCubic(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-/** Small overshoot on the final dolly so the arrival still feels alive. */
-function easeOutSine(t: number) {
-  return Math.sin((t * Math.PI) / 2);
-}
-
-/** Mark the intro complete exactly once, including skip and reduced-motion paths. */
-function completeIntro() {
-  if (document.documentElement.dataset.intro === "done") return;
-  document.documentElement.dataset.intro = "done";
-  window.dispatchEvent(new Event("ihgc:intro-complete"));
+/** Slight overshoot so the globe feels thrown into view. */
+function easeOutBack(t: number) {
+  const c1 = 1.35;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 /**
@@ -44,39 +35,27 @@ function completeIntro() {
 export function SplashScreen() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const previousOverflowRef = useRef("");
-  const stageRef = useRef<Stage>("entering");
-  const cleanupRef = useRef<() => void>(() => {});
-  const timersRef = useRef<number[]>([]);
   const [stage, setStage] = useState<Stage>("entering");
 
-  stageRef.current = stage;
-  const isHidden = () => stageRef.current === "hidden";
-
-  // Returning null does not unmount this component. Release the scroll lock and
-  // the WebGL context as soon as the overlay is hidden so the landing page does
-  // not keep rendering an invisible splash forever.
+  // Returning null does not unmount this component, so the scroll lock must be
+  // released when the stage becomes hidden, not only in the effect cleanup.
   useEffect(() => {
     if (stage === "hidden") {
-      timersRef.current.forEach((timer) => window.clearTimeout(timer));
-      timersRef.current = [];
-      cleanupRef.current();
-      cleanupRef.current = () => {};
       document.body.style.overflow = previousOverflowRef.current;
     }
   }, [stage]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const saveData = (
-      navigator as Navigator & { connection?: { saveData?: boolean } }
-    ).connection?.saveData;
+    const perf = getLandingPerformance();
     previousOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    if (reduceMotion || saveData || params.has("skipIntro")) {
+    // Low-power devices skip straight to the hero instead of baking a second
+    // WebGL scene just for the intro.
+    if (!perf.splashWebgl || params.has("skipIntro")) {
       const skipTimer = window.setTimeout(() => {
-        completeIntro();
+        document.documentElement.dataset.intro = "done";
         setStage("hidden");
       }, 160);
       return () => {
@@ -88,34 +67,33 @@ export function SplashScreen() {
     let disposed = false;
     let cleanup = () => {};
 
-    const welcomeTimer = window.setTimeout(() => {
-      if (isHidden()) return;
-      setStage("welcome");
-    }, LANDING_THEME.motion.introWelcomeAt);
-    const leaveTimer = window.setTimeout(() => {
-      if (isHidden()) return;
-      setStage("leaving");
-    }, LANDING_THEME.motion.introFadeAt);
+    const welcomeTimer = window.setTimeout(
+      () => setStage("welcome"),
+      LANDING_THEME.motion.introWelcomeAt
+    );
+    const leaveTimer = window.setTimeout(
+      () => setStage("leaving"),
+      LANDING_THEME.motion.introFadeAt
+    );
     const hideTimer = window.setTimeout(() => {
-      if (isHidden()) return;
-      completeIntro();
+      document.documentElement.dataset.intro = "done";
       setStage("hidden");
+      window.dispatchEvent(new Event("ihgc:intro-complete"));
     }, LANDING_THEME.motion.introTotal);
-    timersRef.current = [welcomeTimer, leaveTimer, hideTimer];
 
     void (async () => {
       const host = canvasHostRef.current;
-      if (!host || isHidden()) return;
+      if (!host) return;
 
       const THREE = await import("three");
-      if (disposed || isHidden()) return;
+      if (disposed) return;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
-        antialias: true,
+        antialias: false,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
       renderer.setSize(host.clientWidth || 1, host.clientHeight || 1, false);
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
@@ -141,7 +119,6 @@ export function SplashScreen() {
       scene.add(world);
 
       const textures: InstanceType<typeof THREE.Texture>[] = [];
-      let sceneStopped = false;
 
       // ---------- Earth ----------
       const earthMat = new THREE.MeshStandardMaterial({
@@ -150,13 +127,13 @@ export function SplashScreen() {
         metalness: 0.02,
       });
       textures.push(earthMat.map!);
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 80, 80), earthMat);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 64, 64), earthMat);
       world.add(earth);
 
       new THREE.TextureLoader().load(
         "/textures/earth.jpg",
         (tex) => {
-          if (disposed || sceneStopped) {
+          if (disposed) {
             tex.dispose();
             return;
           }
@@ -172,7 +149,7 @@ export function SplashScreen() {
 
       // Mint atmosphere rim, matching the hero globe.
       const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(2.16, 64, 64),
+        new THREE.SphereGeometry(2.16, 48, 48),
         new THREE.ShaderMaterial({
           transparent: true,
           side: THREE.BackSide,
@@ -327,7 +304,7 @@ export function SplashScreen() {
       new THREE.TextureLoader().load(
         SITE_CONFIG.logo.src,
         (logoTexture) => {
-          if (disposed || sceneStopped) {
+          if (disposed) {
             logoTexture.dispose();
             return;
           }
@@ -372,15 +349,40 @@ export function SplashScreen() {
       const started = performance.now();
       let lastRender = 0;
       let raf = 0;
-      let cleaned = false;
       const frameInterval = 1000 / LANDING_THEME.motion.webglFps;
-      const flyInSeconds = LANDING_THEME.motion.introFlyIn / 1000;
-      const settleSeconds = LANDING_THEME.motion.introSettle / 1000;
 
-      const stopScene = () => {
-        if (cleaned) return;
-        cleaned = true;
-        sceneStopped = true;
+      const animate = () => {
+        if (disposed) return;
+        raf = requestAnimationFrame(animate);
+
+        const now = performance.now();
+        if (now - lastRender < frameInterval) return;
+        lastRender = now;
+
+        const elapsed = (now - started) / 1000;
+        const fly = clamp01(elapsed / (LANDING_THEME.motion.introFlyIn / 1000));
+        const thrown = easeOutBack(fly);
+
+        camera.position.z = lerp(14.5, 5.0, thrown);
+        camera.position.x = Math.sin(elapsed * 0.7) * 0.1 * (1 - fly);
+        camera.position.y = Math.cos(elapsed * 0.55) * 0.08 * (1 - fly);
+        camera.lookAt(0, 0, 0);
+
+        world.rotation.y = elapsed * 0.2;
+        world.rotation.x = Math.sin(elapsed * 0.32) * 0.07;
+        earth.rotation.y += 0.0026;
+
+        spinners.forEach((spinner) => {
+          spinner.group.rotation.y += spinner.speed / LANDING_THEME.motion.webglFps;
+        });
+        logoOrbit.rotation.z = -0.22 + elapsed * 0.38;
+        stars.rotation.y = elapsed * 0.018;
+
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      cleanup = () => {
         cancelAnimationFrame(raf);
         resizeObserver.disconnect();
         scene.traverse((object) => {
@@ -394,57 +396,9 @@ export function SplashScreen() {
           else material?.dispose?.();
         });
         textures.forEach((texture) => texture.dispose());
-        renderer.forceContextLoss();
         renderer.dispose();
         renderer.domElement.remove();
       };
-      cleanup = stopScene;
-
-      // The stage can flip to hidden while `three` is still loading.
-      if (disposed || isHidden()) {
-        stopScene();
-        cleanup = () => {};
-        return;
-      }
-      cleanupRef.current = stopScene;
-
-      const animate = () => {
-        if (disposed || isHidden()) {
-          stopScene();
-          cleanupRef.current = () => {};
-          return;
-        }
-        raf = requestAnimationFrame(animate);
-
-        const now = performance.now();
-        if (now - lastRender < frameInterval) return;
-        lastRender = now;
-
-        const elapsed = (now - started) / 1000;
-        const approach = easeInOutCubic(clamp01(elapsed / flyInSeconds));
-        const settle = easeOutSine(
-          clamp01((elapsed - flyInSeconds) / settleSeconds)
-        );
-
-        // Long approach from deep space, then a slow final dolly past camera.
-        camera.position.z = lerp(16.5, 5.4, approach) - settle * 0.7;
-        camera.position.x = Math.sin(elapsed * 0.36) * 0.12 * (1 - approach);
-        camera.position.y = Math.cos(elapsed * 0.3) * 0.09 * (1 - approach);
-        camera.lookAt(0, 0, 0);
-
-        world.rotation.y = elapsed * 0.16;
-        world.rotation.x = Math.sin(elapsed * 0.24) * 0.055;
-        earth.rotation.y += 0.0018;
-
-        spinners.forEach((spinner) => {
-          spinner.group.rotation.y += spinner.speed / LANDING_THEME.motion.webglFps;
-        });
-        logoOrbit.rotation.z = -0.22 + elapsed * 0.26;
-        stars.rotation.y = elapsed * 0.012;
-
-        renderer.render(scene, camera);
-      };
-      animate();
     })();
 
     return () => {
@@ -453,8 +407,6 @@ export function SplashScreen() {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(hideTimer);
       document.body.style.overflow = previousOverflowRef.current;
-      cleanupRef.current();
-      cleanupRef.current = () => {};
       cleanup();
     };
   }, []);
@@ -462,9 +414,7 @@ export function SplashScreen() {
   if (stage === "hidden") return null;
 
   const finish = () => {
-    timersRef.current.forEach((timer) => window.clearTimeout(timer));
-    timersRef.current = [];
-    completeIntro();
+    document.documentElement.dataset.intro = "done";
     setStage("hidden");
   };
 
@@ -473,12 +423,6 @@ export function SplashScreen() {
       className={`intro-root fixed inset-0 z-[9999] overflow-hidden bg-[#050B16] ${
         stage === "leaving" ? "intro-leaving" : ""
       }`}
-      style={
-        {
-          "--intro-duration": `${LANDING_THEME.motion.introTotal}ms`,
-          "--intro-dissolve": `${LANDING_THEME.motion.introDissolve}ms`,
-        } as CSSProperties
-      }
     >
       <div ref={canvasHostRef} className="absolute inset-0" />
 

@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Parallax } from "@/components/ui/parallax";
 import { RevealText } from "@/components/ui/reveal-text";
+import { getLandingPerformance } from "@/lib/landing-performance";
 
 /**
  * AboutPreview — "About The Movement"
@@ -26,9 +27,9 @@ import { RevealText } from "@/components/ui/reveal-text";
 
 const AP_CSS = `
 .ap-root{--p:0;--px:0;--py:0;--mx:72%;--my:26%;
-  --ap-slant:28px;padding-top:calc(var(--ap-slant) + 3rem);padding-bottom:3.5rem;
+  --ap-slant:28px;padding-top:calc(var(--ap-slant) + 2rem);padding-bottom:2.5rem;
   clip-path:polygon(0 var(--ap-slant),100% 0,100% 100%,0 100%)}
-@media (min-width:1024px){.ap-root{--ap-slant:56px;padding-top:calc(var(--ap-slant) + 4rem);padding-bottom:5rem}}
+@media (min-width:1024px){.ap-root{--ap-slant:56px;padding-top:calc(var(--ap-slant) + 3rem);padding-bottom:3.5rem}}
 
 /* ---------- background ---------- */
 .ap-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;
@@ -48,17 +49,28 @@ const AP_CSS = `
   transform:translate3d(calc(var(--px) * -34px),calc(var(--p) * 110px + var(--py) * 20px),0)}
 
 /* ---------- reveal ---------- */
-.ap-js .ap-reveal{opacity:0;transform:translate3d(0,32px,0) scale(.98);
-  transition:opacity .8s ease,transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
+.ap-js .ap-reveal{opacity:0;transform:translate3d(0,24px,0);
+  transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .ap-js .ap-reveal.ap-in{opacity:1;transform:none}
 
 /* ---------- photo (bleeds left, slanted cut) ---------- */
-.ap-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:4/3;
-  clip-path:polygon(0 0,100% 0,100% calc(100% - 28px),0 100%)}
+.ap-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:5/4}
 @media (min-width:1024px){
-  .ap-photo{aspect-ratio:auto;min-height:420px;height:100%;
-    clip-path:polygon(0 0,100% 0,calc(100% - 56px) 100%,0 100%)}
+  .ap-photo{aspect-ratio:auto;min-height:300px;height:100%}
 }
+.ap-feature{position:relative;isolation:isolate;overflow:hidden;
+  border:1px solid rgba(142,227,214,.5);border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.72));
+  box-shadow:0 28px 70px rgba(7,16,30,.16),0 2px 0 rgba(255,255,255,.8) inset}
+.ap-feature::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;
+  box-shadow:0 0 0 1px rgba(14,122,110,.08) inset}
+.ap-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(14,122,110,.25);
+  border-radius:999px;background:rgba(142,227,214,.16);padding:5px 11px;
+  color:#0E7A6E;font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.ap-kicker::before{content:"";width:6px;height:6px;border-radius:999px;background:#0E7A6E;
+  box-shadow:0 0 0 3px rgba(14,122,110,.12)}
+.ap-stat{border:1px solid rgba(14,122,110,.25);border-radius:999px;background:rgba(255,255,255,.7);
+  padding:6px 12px;font-size:11px;font-weight:700;color:#0E7A6E}
 .ap-par{position:absolute;inset:0;
   transform:scale(1.08) translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
   transition:transform .5s cubic-bezier(.2,.8,.2,1)}
@@ -95,12 +107,12 @@ export function AboutPreview() {
     const root = sectionRef.current;
     if (!root) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getLandingPerformance();
     const reveals = Array.from(root.querySelectorAll<HTMLElement>("[data-ap-reveal]"));
 
     root.classList.add("ap-js");
 
-    if (reduce) {
+    if (!perf.ambientMotion) {
       reveals.forEach((el) => el.classList.add("ap-in"));
       return () => root.classList.remove("ap-js");
     }
@@ -234,12 +246,9 @@ export function AboutPreview() {
       <div className="relative mx-auto max-w-2xl px-5 text-center">
         <div className="flex items-center justify-center gap-3">
           <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
-          <RevealText
-            as="span"
-            text="About The Movement"
-            className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
-            speed={18}
-          />
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]">
+            About The Movement
+          </span>
           <span aria-hidden className="h-px w-8 bg-[#0E7A6E]" />
         </div>
         <RevealText
@@ -256,88 +265,83 @@ export function AboutPreview() {
         />
       </div>
 
-      {/* ---------- Photo (bleeds left) + copy ---------- */}
-      <div className="relative mt-12 grid grid-cols-1 lg:mt-16 lg:grid-cols-12">
-        <div className="ap-photo lg:col-span-5">
-          <div className="ap-par">
-            <Parallax speed={0.14} className="absolute inset-0">
-              <Image
-                src="/images/about_us_1.jpg"
-                alt="Horemow ministry and fellowship"
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 42vw"
-              />
-            </Parallax>
-          </div>
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
+      {/* ---------- Compact photo + story feature card ---------- */}
+      <div className="relative mx-auto mt-8 max-w-[1320px] px-5 sm:px-8 lg:mt-10 lg:px-12">
+        <div className="ap-feature grid grid-cols-1 lg:grid-cols-12">
+          <div className="ap-photo lg:col-span-5">
+            <div className="ap-par">
+              <Parallax speed={0.14} className="absolute inset-0">
+                <Image
+                  src="/images/about_us_1.jpg"
+                  alt="Horemow ministry and fellowship"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 42vw"
+                />
+              </Parallax>
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
 
-          {/* Floating chip — same treatment as DetailsCard's venue chip */}
-          <div className="ap-chip">
-            <div className="ap-chip-body flex max-w-[240px] items-center gap-3 rounded-2xl border border-white/70 bg-white/85 px-3.5 py-2.5 shadow-[0_12px_40px_rgba(14,16,32,0.25)] backdrop-blur-md">
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
-                  <circle cx="12" cy="9.5" r="2.5" />
-                </svg>
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
-                  Founded
+            <div className="ap-chip">
+              <div className="ap-chip-body flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
+                <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+                    <circle cx="12" cy="9.5" r="2.5" />
+                  </svg>
                 </span>
-                <span className="block truncate text-[13px] font-semibold leading-tight text-[#0E1020]">
-                  2009 · Kwali, Abuja
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
+                    Founded
+                  </span>
+                  <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
+                    2009 · Kwali, Abuja
+                  </span>
                 </span>
-              </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col px-5 py-8 sm:px-8 lg:col-span-7 lg:py-12 lg:pl-14 lg:pr-12 xl:pr-[max(3rem,calc((100vw-1320px)/2))]">
-          <div className="space-y-6">
-            <RevealText
-              as="p"
-              text="Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement operating across Christian denominations to revive biblical righteousness, inward and outward holiness, sanctification, and rapture readiness."
-              className="max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
-              speed={9}
-            />
-            <RevealText
-              as="p"
-              text="With chapters spanning Nigeria, East and West Africa, North America, and across the globe, the movement treats the 66 books of the Holy Bible as its absolute and final working manual."
-              className="max-w-xl text-sm leading-relaxed text-[#6B7280]"
-              speed={9}
-            />
-          </div>
+          <div className="flex flex-col p-6 sm:p-8 lg:col-span-7 lg:p-9">
+            <span className="ap-kicker w-fit">Who we are</span>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base">
+              Founded in 2009 by Pastor Paul Rika and formally inaugurated in Kwali, Abuja in 2010, HOREMOW is an end-time movement reviving biblical righteousness, holiness, and rapture readiness across denominations.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="ap-stat">66 books · one manual</span>
+              <span className="ap-stat">Global chapters</span>
+            </div>
 
-          <div
-            data-ap-reveal
-            className="ap-reveal mt-8 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-6 lg:mt-auto lg:pt-8"
-            style={{ "--d": "200ms" } as CSSProperties}
-          >
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0E7A6E]">
-              Learn more
-            </span>
+            <div
+              data-ap-reveal
+              className="ap-reveal mt-6 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 lg:mt-auto lg:pt-6"
+              style={{ "--d": "200ms" } as CSSProperties}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0E7A6E]">
+                Learn more
+              </span>
 
-            <div className="-m-4 inline-block p-4" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
-              <Link
-                href="/about"
-                className="ap-cta group inline-flex items-center justify-center gap-2.5 rounded-full bg-[#8EE3D6] px-8 py-3.5 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
-              >
-                Discover Our Story
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
+              <div className="-m-3 inline-block p-3" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
+                <Link
+                  href="/about"
+                  className="ap-cta group inline-flex items-center justify-center gap-2 rounded-full bg-[#8EE3D6] px-6 py-3 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
                 >
-                  <path d="M5 12h14" />
-                  <path d="M13 6l6 6-6 6" />
-                </svg>
-              </Link>
+                  Discover Our Story
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M5 12h14" />
+                    <path d="M13 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type * as Three from "three";
+import { journeyControls } from "@/components/marketing/journey-controls";
+import { getLandingPerformance } from "@/lib/landing-performance";
 import {
   createFallbackModel,
   createModelInstance,
@@ -48,6 +50,14 @@ type Vehicle = {
 type Guide = {
   scene: SceneName;
   materials: Three.LineDashedMaterial[];
+};
+
+type JourneyWaypoint = {
+  group: Three.Group;
+  ring: Three.Mesh;
+  core: Three.Mesh;
+  tick: Three.Mesh;
+  progress: number;
 };
 
 const SCENES: SceneName[] = ["hero", "air", "road", "sea", "arrival"];
@@ -98,6 +108,20 @@ const SCENE_CAMERA: Record<SceneName, { x: number; y: number; z: number }> = {
 // every 3D element shrinks and slips behind. Scrolling up restores the altitude.
 const DRONE_ASCENT = { z: 8.5, y: 2.4, lookY: 0.6 };
 
+// The journey filament is a finite 3D ribbon. Its local Y runs from +2 down to
+// -9; shifting it by `progress * span - top` keeps the current section centred
+// no matter how long the document becomes.
+const JOURNEY_SPAN = 11;
+const JOURNEY_TOP = 2;
+
+const SCENE_WAYPOINT_COLOR: Record<SceneName, number> = {
+  hero: 0x8ee3d6,
+  air: 0xb8f4e9,
+  road: 0x8ee3d6,
+  sea: 0x7fb6d9,
+  arrival: 0xe6fff8,
+};
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const smooth = (v: number) => {
   const t = clamp01(v);
@@ -125,6 +149,11 @@ export function LandingDepth() {
     const host = hostRef.current;
     if (!host) return;
 
+    const perf = getLandingPerformance();
+    // Low-power devices keep the flat ScrollTrace; this persistent WebGL layer
+    // is the most expensive thing on the page, so it is the first to go.
+    if (!perf.journeyWebgl) return;
+
     let disposed = false;
     let cleanup = () => {};
 
@@ -133,18 +162,13 @@ export function LandingDepth() {
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
-      // Only genuinely unavailable/save-data/reduced-motion environments skip
-      // the layer. The scene is capped at 30fps below, so ordinary desktops and
-      // phones still get the travel animation.
-      if (reduceMotion || saveData) return;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
         antialias: false,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth >= 1440 ? 1.25 : 1));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.15;
@@ -188,7 +212,8 @@ export function LandingDepth() {
         speed: number;
       }[] = [];
       STAR_LAYERS.forEach((cfg) => {
-        const positions = shellPoints(cfg.count, cfg.rMin, cfg.rMax);
+        const count = Math.max(1, Math.round(cfg.count * perf.density));
+        const positions = shellPoints(count, cfg.rMin, cfg.rMax);
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         const mat = track(
@@ -202,16 +227,16 @@ export function LandingDepth() {
         // the same shell, so the lines travel with their own star layer.
         const vertices: number[] = [];
         const used = new Set<number>();
-        const maxSegments = Math.floor(cfg.count * 0.18);
+        const maxSegments = Math.floor(count * 0.18);
         const maxDistance = Math.max(2.5, (cfg.rMax - cfg.rMin) * 0.55);
         let segments = 0;
 
-        for (let i = 0; i < cfg.count && segments < maxSegments; i++) {
+        for (let i = 0; i < count && segments < maxSegments; i++) {
           if (used.has(i)) continue;
           let nearest = -1;
           let bestDistanceSq = maxDistance * maxDistance;
 
-          for (let j = 0; j < cfg.count; j++) {
+          for (let j = 0; j < count; j++) {
             if (j === i || used.has(j)) continue;
             const dx = positions[i * 3] - positions[j * 3];
             const dy = positions[i * 3 + 1] - positions[j * 3 + 1];
@@ -285,7 +310,10 @@ export function LandingDepth() {
       }
 
       const particleGeo = new THREE.BufferGeometry();
-      particleGeo.setAttribute("position", new THREE.BufferAttribute(shellPoints(360, 5, 13), 3));
+      particleGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(shellPoints(Math.round(360 * perf.density), 5, 13), 3)
+      );
       const particleMat = track(
         new THREE.PointsMaterial({ color: 0x8ee3d6, size: 0.09, sizeAttenuation: true, opacity: 0.42 }),
         0.42
@@ -341,6 +369,105 @@ export function LandingDepth() {
         makeRoute("arrival", 1.2, 0.5, 0x8ee3d6, 0.22, 0.25),
       ];
 
+      // ---------- 3D journey filament ----------
+      // A single ribbon threads every section waypoint. Scrolling moves the
+      // ribbon through the virtual camera; dragging the edge grip orbits it.
+      const journey = new THREE.Group();
+      root.add(journey);
+
+      const journeyPoints: Three.Vector3[] = [];
+      for (let i = 0; i <= 120; i++) {
+        const t = i / 120;
+        journeyPoints.push(
+          new THREE.Vector3(
+            Math.sin(t * Math.PI * 3.1) * 1.35 + Math.sin(t * Math.PI * 7.3) * 0.22,
+            JOURNEY_TOP - t * JOURNEY_SPAN,
+            -0.35 + Math.cos(t * Math.PI * 2.6) * 0.85
+          )
+        );
+      }
+      const journeyCurve = new THREE.CatmullRomCurve3(journeyPoints);
+
+      const filamentGlowMat = track(
+        new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: 0.08 }),
+        0.08
+      );
+      const filamentCoreMat = track(
+        new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: 0.46 }),
+        0.46
+      );
+      journey.add(
+        new THREE.Mesh(new THREE.TubeGeometry(journeyCurve, 200, 0.055, 6, false), filamentGlowMat)
+      );
+      journey.add(
+        new THREE.Mesh(new THREE.TubeGeometry(journeyCurve, 200, 0.014, 6, false), filamentCoreMat)
+      );
+
+      const railPoints = journeyPoints.map(
+        (point) => new THREE.Vector3(point.x + 0.58, point.y, point.z - 0.42)
+      );
+      const filamentRailMat = track(
+        new THREE.LineBasicMaterial({ color: 0x7fb6d9, opacity: 0.14 }),
+        0.14
+      );
+      journey.add(
+        new THREE.Line(new THREE.BufferGeometry().setFromPoints(railPoints), filamentRailMat)
+      );
+
+      const pulseMat = track(
+        new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.85 }),
+        0.85
+      );
+      const pulseHaloMat = track(
+        new THREE.MeshBasicMaterial({ color: 0x8ee3d6, opacity: 0.16 }),
+        0.16
+      );
+      const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), pulseMat);
+      const pulseHalo = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), pulseHaloMat);
+      journey.add(pulse, pulseHalo);
+
+      const waypointRingGeo = new THREE.TorusGeometry(0.16, 0.012, 6, 28);
+      const waypointCoreGeo = new THREE.SphereGeometry(0.05, 10, 10);
+      const waypointTickGeo = new THREE.BoxGeometry(0.42, 0.008, 0.008);
+      const journeyWaypoints: JourneyWaypoint[] = [];
+
+      for (let i = 0; i < 14; i++) {
+        const group = new THREE.Group();
+        group.visible = false;
+
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          opacity: 0.4,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const coreMat = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          opacity: 0.75,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const tickMat = new THREE.MeshBasicMaterial({
+          color: 0x8ee3d6,
+          opacity: 0.24,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+
+        const ring = new THREE.Mesh(waypointRingGeo, ringMat);
+        const core = new THREE.Mesh(waypointCoreGeo, coreMat);
+        const tick = new THREE.Mesh(waypointTickGeo, tickMat);
+        tick.position.x = 0.3;
+        group.add(ring, core, tick);
+        journey.add(group);
+        journeyWaypoints.push({ group, ring, core, tick, progress: 0 });
+      }
+
+      const waypointColor = new THREE.Color();
+
       // ---------- Scroll + section state ----------
       // Cache section offsets and document height instead of reading layout on
       // every scroll frame. getBoundingClientRect()/scrollHeight in a scroll
@@ -371,6 +498,32 @@ export function LandingDepth() {
           };
         });
         maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+
+        // Place the 3D waypoints on the same document positions as the flat
+        // scroll trace so both layers describe one continuous journey.
+        const traceNodes = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-trace-node]")
+        )
+          .map((element) => ({
+            top: element.getBoundingClientRect().top + pageY,
+            scene: element.dataset.scene as SceneName | undefined,
+          }))
+          .sort((a, b) => a.top - b.top);
+
+        journeyWaypoints.forEach((waypoint, index) => {
+          const node = traceNodes[index];
+          waypoint.group.visible = Boolean(node);
+          if (!node) return;
+
+          waypoint.progress = clamp01(node.top / maxScroll);
+          waypoint.group.position.copy(journeyCurve.getPoint(waypoint.progress));
+
+          const scene = node.scene && SCENES.includes(node.scene) ? node.scene : "road";
+          waypointColor.setHex(SCENE_WAYPOINT_COLOR[scene]);
+          (waypoint.ring.material as Three.MeshBasicMaterial).color.copy(waypointColor);
+          (waypoint.core.material as Three.MeshBasicMaterial).color.copy(waypointColor);
+          (waypoint.tick.material as Three.MeshBasicMaterial).color.copy(waypointColor);
+        });
       };
 
       const readScroll = () => {
@@ -426,7 +579,9 @@ export function LandingDepth() {
       };
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", onResize);
-      window.addEventListener("pointermove", onPointer, { passive: true });
+      if (perf.pointerEffects) {
+        window.addEventListener("pointermove", onPointer, { passive: true });
+      }
       window.addEventListener("load", onLoad);
       document.fonts?.ready.then(onLoad).catch(() => {});
       // Re-measure when deferred sections get their real size after render.
@@ -503,7 +658,7 @@ export function LandingDepth() {
       let tabVisible = !document.hidden;
 
       let lastRender = 0;
-      const renderInterval = 1000 / 30;
+      const renderInterval = 1000 / perf.fps;
 
       const update = (time: number, step: number, damp: (k: number) => number) => {
         progress = mix(progress, targetProgress, damp(6));
@@ -526,6 +681,9 @@ export function LandingDepth() {
         const spin = mix(a.spin, b.spin, blend);
 
         const altitude = smooth(progress);
+        // Stay visible across the landing sections and fade only near the footer.
+        const envelope = 1 - smooth((progress - 0.94) / 0.06);
+        const controls = journeyControls.get();
 
         starLayers.forEach((layer) => {
           layer.points.rotation.y += step * layer.speed;
@@ -558,6 +716,25 @@ export function LandingDepth() {
         particles.rotation.y -= step * 0.06;
         particles.rotation.x += step * 0.02;
         particles.scale.setScalar(mix(particles.scale.x, targetSpread, damp(2.5)));
+
+        // The filament is the 3D counterpart of the flat scroll trace: the
+        // current section stays centred while the ribbon slides through view.
+        journey.position.y = mix(
+          journey.position.y,
+          progress * JOURNEY_SPAN - JOURNEY_TOP,
+          damp(5)
+        );
+        journey.rotation.y = mix(journey.rotation.y, controls.yaw * 0.42, damp(4));
+        journey.rotation.x = mix(journey.rotation.x, controls.pitch * 0.3, damp(4));
+        journey.rotation.z = Math.sin(time * 0.16) * 0.035 + controls.yaw * 0.05;
+        journey.scale.setScalar(mix(journey.scale.x, controls.dragging ? 1.08 : 1, damp(4)));
+
+        const pulsePoint = journeyCurve.getPoint(progress);
+        pulse.position.copy(pulsePoint);
+        pulseHalo.position.copy(pulsePoint);
+        pulseHalo.scale.setScalar(
+          1 + Math.sin(time * 3) * 0.18 + (controls.dragging ? 0.25 : 0)
+        );
 
         // Vehicles share one clock; scroll nudges them forward and selects the
         // lane, but never restarts an individual animation timeline.
@@ -593,10 +770,14 @@ export function LandingDepth() {
           },
           { x: 0, y: 0, z: 0 }
         );
-        camera.position.x = mix(camera.position.x, camTarget.x + pointer.x * 0.35, damp(2));
+        camera.position.x = mix(
+          camera.position.x,
+          camTarget.x + pointer.x * 0.35 + controls.yaw * 0.55,
+          damp(2)
+        );
         camera.position.y = mix(
           camera.position.y,
-          camTarget.y + pointer.y * 0.3 + altitude * DRONE_ASCENT.y,
+          camTarget.y + pointer.y * 0.3 + altitude * DRONE_ASCENT.y + controls.pitch * 0.4,
           damp(2)
         );
         camera.position.z = mix(
@@ -604,11 +785,11 @@ export function LandingDepth() {
           camTarget.z + altitude * DRONE_ASCENT.z,
           damp(2)
         );
-        camera.lookAt(0, altitude * DRONE_ASCENT.lookY, 0);
-
-        // Stay visible from the very top (including the Find My Tickets card)
-        // and only fade out as the footer arrives.
-        const envelope = 1 - smooth((progress - 0.94) / 0.06);
+        camera.lookAt(
+          controls.yaw * 0.28,
+          altitude * DRONE_ASCENT.lookY + controls.pitch * 0.22,
+          0
+        );
 
         currentColor.copy(darkColor);
         tracked.forEach(({ mat, base, scene }) => {
@@ -618,6 +799,25 @@ export function LandingDepth() {
             const colored = mat as Three.MeshBasicMaterial | Three.PointsMaterial;
             colored.color?.copy(currentColor);
           }
+        });
+
+        // Waypoint markers brighten as the reader reaches their section, making
+        // the connection between sections legible in 3D as well as on the rail.
+        journeyWaypoints.forEach((waypoint) => {
+          if (!waypoint.group.visible) return;
+          const near = 1 - smooth(Math.abs(waypoint.progress - progress) / 0.1);
+          const ringMat = waypoint.ring.material as Three.MeshBasicMaterial;
+          const coreMat = waypoint.core.material as Three.MeshBasicMaterial;
+          const tickMat = waypoint.tick.material as Three.MeshBasicMaterial;
+
+          ringMat.opacity = envelope * (0.16 + near * 0.6);
+          coreMat.opacity = envelope * (0.35 + near * 0.6);
+          tickMat.opacity = envelope * (0.12 + near * 0.45);
+          waypoint.ring.scale.setScalar(
+            1 + near * 0.35 + Math.sin(time * 2 + waypoint.progress * 10) * 0.04
+          );
+          waypoint.core.scale.setScalar(1 + near * 0.5);
+          waypoint.group.rotation.z += step * (0.25 + near * 0.5);
         });
 
         const wantAdditive = true;
