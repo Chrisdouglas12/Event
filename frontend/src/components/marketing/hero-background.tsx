@@ -7,33 +7,32 @@ import {
   loadTravelModel,
 } from "@/lib/travel-models";
 
-/**
- * Earth with two orbits of flags, as in the sketch:
- *  - eq1: a vertical orbit (over the poles)
- *  - eq2: a wide, slightly tilted horizontal orbit
- *
- * - Earth centred, equator is a straight horizontal line through the middle
- * - Flags connect seamlessly into one continuous belt
- * - Both rings rotate as ONE rigid body
- * - Background features moving constellations and starfields
- *
- * DESKTOP LAYOUT: the globe always stays on the camera axis and is moved on
- * screen with a camera "lens shift" (setViewOffset) instead of moving it in 3D.
- * Moving a sphere sideways under a perspective camera stretches it into an
- * oval; the lens shift keeps it a perfect circle. The globe is centred in the
- * free space between the screen edge and the hero text column
- * ([data-hero-content]), so the gap to the screen edge equals the gap to the boxes.
- */
-
-// Visual radius of the globe + rings, in world units (outer ring 2.44 + flag depth)
 const R_VIS = 2.55;
+
+// ---------- Coin Texture ----------
+function makeCoinTexture(word: string) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 512;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(200, 180, 20, 256, 256, 256);
+  grad.addColorStop(0, "#3A4A5A"); grad.addColorStop(0.5, "#1A2530");
+  grad.addColorStop(0.85, "#0F1822"); grad.addColorStop(1, "#080C12");
+  g.fillStyle = grad; g.beginPath(); g.arc(256, 256, 250, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "#8EE3D6"; g.lineWidth = 10; g.beginPath(); g.arc(256, 256, 242, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = "rgba(142,227,214,.6)"; g.lineWidth = 4; g.beginPath(); g.arc(256, 256, 218, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#FFFFFF"; g.font = "900 96px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.shadowColor = "rgba(142,227,214,0.8)"; g.shadowBlur = 15; g.fillText(word, 256, 256); g.shadowBlur = 0;
+  return c;
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 export function HeroBackground({
   align = "left",
   desktopLift = 1.5,
 }: {
   align?: "left" | "right";
-  /** Desktop only: how far above the vertical centre the globe sits, in % of the hero height. */
   desktopLift?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -73,8 +72,6 @@ export function HeroBackground({
       world.rotation.x = BASE_TILT;
       scene.add(world);
 
-      // Scroll motion lives on its own group so it never fights the responsive
-      // layout applied to `world` by layout().
       const worldScroll = new THREE.Group();
       world.add(worldScroll);
 
@@ -99,67 +96,35 @@ export function HeroBackground({
       const sources = [
         "/textures/earth.jpg",
         "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg",
-        "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r152/examples/textures/planets/earth_atmos_2048.jpg",
-        "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
       ];
       const loader = new THREE.TextureLoader();
       loader.setCrossOrigin("anonymous");
       const tryLoad = (i: number) => {
-        if (disposed) return;
-        if (i >= sources.length) return;
-        loader.load(
-          sources[i],
-          (tex) => {
-            if (disposed) return;
-            tex.colorSpace = THREE.SRGBColorSpace;
-            tex.anisotropy = 8;
-            earthMat.map = tex;
-            earthMat.needsUpdate = true;
-          },
-          undefined,
-          () => tryLoad(i + 1)
-        );
+        if (disposed || i >= sources.length) return;
+        loader.load(sources[i], (tex) => {
+          if (disposed) return;
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 8;
+          earthMat.map = tex;
+          earthMat.needsUpdate = true;
+        }, undefined, () => tryLoad(i + 1));
       };
       tryLoad(0);
 
-      // Atmosphere glow (uGlow is lowered on desktop so it stays a soft blue rim)
       const atmosphereMat = new THREE.ShaderMaterial({
-        transparent: true,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false,
         uniforms: { uGlow: { value: 1 } },
-        vertexShader: `
-          varying vec3 vN;
-          void main(){
-            vN = normalize(normalMatrix * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }`,
-        fragmentShader: `
-          uniform float uGlow;
-          varying vec3 vN;
-          void main(){
-            float i = pow(0.74 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.5);
-            gl_FragColor = vec4(0.45, 0.8, 1.0, 1.0) * i * uGlow;
-          }`,
+        vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `uniform float uGlow; varying vec3 vN; void main(){ float i = pow(0.74 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.5); gl_FragColor = vec4(0.45, 0.8, 1.0, 1.0) * i * uGlow; }`,
       });
       const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 48, 48), atmosphereMat);
       worldScroll.add(atmosphere);
 
-      // Airliners circle above the globe. They are loaded from a local GLB and
-      // share the scene lights, so they feel part of the same 3D world.
       const heroAircraftGroup = new THREE.Group();
       worldScroll.add(heroAircraftGroup);
-      const heroAircraft: {
-        group: InstanceType<typeof THREE.Group>;
-        angle: number;
-        radius: number;
-        speed: number;
-        height: number;
-      }[] = [];
+      const heroAircraft: any[] = [];
 
       // ---------- Constellations & Stars ----------
-      // Background Starfield
       const starCount = 800;
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
@@ -172,63 +137,33 @@ export function HeroBackground({
       }
       const starGeo = new THREE.BufferGeometry();
       starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-      const stars = new THREE.Points(
-        starGeo,
-        new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.65, depthWrite: false })
-      );
+      const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.65, depthWrite: false }));
       scene.add(stars);
 
-      // Heavenly bodies flying around (Constellations)
-      const shootingStars: { mesh: InstanceType<typeof THREE.Mesh>, speed: number, offset: number }[] = [];
-      const starShape = new THREE.SphereGeometry(0.04, 4, 4);
-      const starMat = new THREE.MeshBasicMaterial({ color: 0x8EE3D6 }); // Mint color
-
-      for (let i = 0; i < 12; i++) {
-        const mesh = new THREE.Mesh(starShape, starMat);
-        scene.add(mesh);
-        shootingStars.push({
-          mesh,
-          speed: 0.5 + Math.random() * 0.5,
-          offset: Math.random() * Math.PI * 2,
-        });
-      }
-
       // ---------- The two flag orbits ----------
-      // Tightened: both rings now hug the Earth (radius 2) more closely.
-      // Counts keep each flag about the same size as before, so the belts stay
-      // continuous with no gaps.
       const rings = [
         { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
         { r: 2.44, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
       ];
 
-      const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
-      const textures: InstanceType<typeof THREE.Texture>[] = [];
+      const spinners: { g: any; speed: number }[] = [];
+      const textures: any[] = [];
 
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
         tiltGroup.rotation.set(ring.rot[0], ring.rot[1], ring.rot[2]);
         worldScroll.add(tiltGroup);
-
         const spinner = new THREE.Group();
         tiltGroup.add(spinner);
         spinners.push({ g: spinner, speed: ring.speed });
 
-        // Orbit line
-        const pts: InstanceType<typeof THREE.Vector3>[] = [];
+        const pts: any[] = [];
         for (let i = 0; i <= 180; i++) {
           const a = (i / 180) * Math.PI * 2;
           pts.push(new THREE.Vector3(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r));
         }
-        tiltGroup.add(
-          new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints(pts),
-            new THREE.LineBasicMaterial({ color: 0x8ee3d6, transparent: true, opacity: 0.4 })
-          )
-        );
+        tiltGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x8ee3d6, transparent: true, opacity: 0.4 })));
 
-        // Continuous belt calculation
-        // By increasing the width factor to 1.0 (or slightly more to overlap), they touch seamlessly.
         const w = ((2 * Math.PI * ring.r) / ring.count) * 1.01;
         const h = w * 0.62;
 
@@ -236,34 +171,10 @@ export function HeroBackground({
           const def = FLAGS[(i + ri * 11) % FLAGS.length];
           const tex = makeFlagTexture(THREE, def);
           textures.push(tex);
-
-          // BoxGeometry gives every face proper 0..1 UVs, so the complete flag
-          // artwork is shown on the front and back (without mirroring the back).
           const geo = makeFlagGeometry(THREE, w, h);
-
-          const flagFace = new THREE.MeshStandardMaterial({
-            map: tex,
-            roughness: 0.48,
-            metalness: 0.04,
-            emissive: new THREE.Color(0x0d1f38),
-            emissiveIntensity: 0.12,
-          });
-          const flagEdge = new THREE.MeshStandardMaterial({
-            color: 0x102f4d,
-            roughness: 0.38,
-            metalness: 0.12,
-          });
-          // BoxGeometry material order: +x, -x, +y, -y, +z, -z.
-          // The large +z/-z faces carry the artwork; the rest are the edge.
-          const mesh = new THREE.Mesh(geo, [
-            flagEdge,
-            flagEdge,
-            flagEdge,
-            flagEdge,
-            flagFace,
-            flagFace,
-          ]);
-
+          const flagFace = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.48, metalness: 0.04, emissive: new THREE.Color(0x0d1f38), emissiveIntensity: 0.12 });
+          const flagEdge = new THREE.MeshStandardMaterial({ color: 0x102f4d, roughness: 0.38, metalness: 0.12 });
+          const mesh = new THREE.Mesh(geo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
@@ -272,6 +183,22 @@ export function HeroBackground({
           spinner.add(anchor);
         }
       });
+
+      // ---------- THE 3D COINS ----------
+      const makeCoin = (word: string) => {
+        const group = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.08, 64), new THREE.MeshStandardMaterial({ color: 0x1A2530, metalness: 0.95, roughness: 0.15 }));
+        body.rotation.x = Math.PI / 2; group.add(body);
+        const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 16, 64), new THREE.MeshBasicMaterial({ color: 0x8ee3d6 })); group.add(rimMesh);
+        const tex = new THREE.CanvasTexture(makeCoinTexture(word)); tex.colorSpace = THREE.SRGBColorSpace;
+        const faceMat = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.5, roughness: 0.3 });
+        const front = new THREE.Mesh(new THREE.CircleGeometry(0.39, 64), faceMat); front.position.z = 0.05; group.add(front);
+        const back = new THREE.Mesh(new THREE.CircleGeometry(0.39, 64), faceMat); back.position.z = -0.05; back.rotation.y = Math.PI; group.add(back);
+        world.add(group);
+        return group;
+      };
+
+      const coinMan = makeCoin("MAN"); const coinAnd = makeCoin("AND"); const coinSatan = makeCoin("SATAN");
 
       // ---------- Layout ----------
       const layout = () => {
@@ -285,56 +212,34 @@ export function HeroBackground({
         const vw = vh * camera.aspect;
         const FIT = 6.2;
 
-        const poster = posterRef.current;
-
         if (w >= 1024) {
-          // Free space between the screen edge and the hero text column
           const hostRect = host.getBoundingClientRect();
-          const content = host
-            .closest("section")
-            ?.querySelector<HTMLElement>("[data-hero-content]");
-
+          const content = host.closest("section")?.querySelector<HTMLElement>("[data-hero-content]");
           let freeLeft = align === "right" ? w * 0.5 : 0;
           let freeRight = align === "right" ? w : w * 0.5;
           if (content) {
             const r = content.getBoundingClientRect();
-            if (align === "right") {
-              freeLeft = r.right - hostRect.left;
-              freeRight = w;
-            } else {
-              freeLeft = 0;
-              freeRight = r.left - hostRect.left;
-            }
+            if (align === "right") { freeLeft = r.right - hostRect.left; freeRight = w; }
+            else { freeLeft = 0; freeRight = r.left - hostRect.left; }
           }
-
           const freeW = Math.max(240, freeRight - freeLeft);
-          // Equal gap on both sides of the globe (screen edge <-> globe <-> boxes)
           const gap = Math.min(80, Math.max(28, freeW * 0.07));
           const diameter = Math.max(200, Math.min(freeW - gap * 2, h * 0.86));
-
           const cx = (freeLeft + freeRight) / 2;
-          // Lift the globe, but keep it fully inside the hero (never cropped top or bottom)
           const half = diameter / 2 + 12;
           const cy = Math.min(h - half, Math.max(half, h * (0.5 - desktopLift / 100)));
-
           const pxPerUnit = h / vh;
           const s = diameter / (2 * R_VIS * pxPerUnit);
           world.scale.setScalar(s);
           world.position.set(0, 0, 0);
-
-          // Lens shift: the globe stays on the camera axis (perfect circle),
-          // the image window moves instead.
           camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
-
           if (atmosphereMat.uniforms.uGlow) atmosphereMat.uniforms.uGlow.value = 0.7;
-
-          // Keep the CSS poster (shown before WebGL is ready) on the same spot
-          if (poster) {
+          if (posterRef.current) {
             const earthPx = 4 * s * pxPerUnit;
-            poster.style.left = `${cx}px`;
-            poster.style.top = `${cy}px`;
-            poster.style.width = `${earthPx}px`;
-            poster.style.height = `${earthPx}px`;
+            posterRef.current.style.left = `${cx}px`;
+            posterRef.current.style.top = `${cy}px`;
+            posterRef.current.style.width = `${earthPx}px`;
+            posterRef.current.style.height = `${earthPx}px`;
           }
         } else {
           camera.clearViewOffset();
@@ -342,31 +247,21 @@ export function HeroBackground({
           world.scale.setScalar(s);
           world.position.set(0, 0, 0);
           if (atmosphereMat.uniforms.uGlow) atmosphereMat.uniforms.uGlow.value = 1;
-
-          if (poster) {
-            poster.style.left = "";
-            poster.style.top = "";
-            poster.style.width = "";
-            poster.style.height = "";
+          if (posterRef.current) {
+            posterRef.current.style.left = ""; posterRef.current.style.top = "";
+            posterRef.current.style.width = ""; posterRef.current.style.height = "";
           }
         }
-
       };
       layout();
       const ro = new ResizeObserver(layout);
       ro.observe(host);
 
-      // ---------- Realistic hero aircraft ----------
+      // ---------- Aircraft ----------
       (async () => {
-        let source: InstanceType<typeof THREE.Object3D>;
-        try {
-          source = await loadTravelModel(THREE, "aircraft");
-        } catch (error) {
-          console.warn("[HeroBackground] aircraft model unavailable, using fallback:", error);
-          source = createFallbackModel(THREE, "aircraft");
-        }
+        let source;
+        try { source = await loadTravelModel(THREE, "aircraft"); } catch { source = createFallbackModel(THREE, "aircraft"); }
         if (disposed) return;
-
         [
           { radius: 3.1, speed: 0.11, height: 1.2, heading: 0 },
           { radius: 3.7, speed: -0.085, height: 1.75, heading: Math.PI },
@@ -374,22 +269,12 @@ export function HeroBackground({
           const plane = createModelInstance(THREE, source, 1.25);
           plane.rotation.y += cfg.heading;
           heroAircraftGroup.add(plane);
-          heroAircraft.push({
-            group: plane,
-            angle: i * Math.PI * 0.85,
-            radius: cfg.radius,
-            speed: cfg.speed,
-            height: cfg.height,
-          });
+          heroAircraft.push({ group: plane, angle: i * Math.PI * 0.85, radius: cfg.radius, speed: cfg.speed, height: cfg.height });
         });
       })();
 
-      // ---------- Pointer parallax ----------
       const pointer = { x: 0, y: 0 };
-      const onPointer = (e: PointerEvent) => {
-        pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
-        pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
-      };
+      const onPointer = (e: PointerEvent) => { pointer.x = (e.clientX / window.innerWidth - 0.5) * 2; pointer.y = (e.clientY / window.innerHeight - 0.5) * 2; };
       window.addEventListener("pointermove", onPointer, { passive: true });
 
       // ---------- Loop ----------
@@ -400,6 +285,7 @@ export function HeroBackground({
       let tabVisible = !document.hidden;
       let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
+      let sp = 0;
 
       const frame = (timestamp?: number) => {
         raf = 0;
@@ -411,112 +297,104 @@ export function HeroBackground({
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
         stars.rotation.y += dt * 0.005;
-
-        // Animate heavenly bodies in an arc
-        shootingStars.forEach((star, i) => {
-          const angle = t * star.speed + star.offset;
-          const radius = 6 + (i % 3) * 2;
-          star.mesh.position.x = Math.cos(angle) * radius;
-          star.mesh.position.y = Math.sin(angle) * radius * 0.6;
-          star.mesh.position.z = Math.sin(angle) * 2 - 2; // slight depth
-        });
-
-        // Rotate rings together as one
         spinners.forEach((r) => (r.g.rotation.y += dt * r.speed));
 
-        // Airliners follow gentle orbits around the globe.
         heroAircraft.forEach((plane) => {
           plane.angle += dt * plane.speed;
-          plane.group.position.set(
-            Math.cos(plane.angle) * plane.radius,
-            plane.height + Math.sin(plane.angle * 1.6) * 0.35,
-            Math.sin(plane.angle) * plane.radius * 0.45
-          );
+          plane.group.position.set(Math.cos(plane.angle) * plane.radius, plane.height + Math.sin(plane.angle * 1.6) * 0.35, Math.sin(plane.angle) * plane.radius * 0.45);
           plane.group.rotation.z = Math.cos(plane.angle) * 0.1;
         });
 
         world.rotation.x += (BASE_TILT + pointer.y * 0.05 - world.rotation.x) * 0.04;
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;
 
-        // Scroll: the globe settles back into the page as the next section
-        // arrives, handing off to the page-wide depth layer.
         const scrollT = Math.min(1, Math.max(0, window.scrollY / Math.max(1, window.innerHeight)));
         worldScroll.scale.setScalar(1 - scrollT * 0.22);
         worldScroll.position.set(0, -scrollT * 1.4, -scrollT * 2.5);
         worldScroll.rotation.z = scrollT * 0.18;
         stars.position.y = -scrollT * 1.5;
 
-        renderer.render(scene, camera);
-        if (!posterHidden && posterRef.current) {
-          posterHidden = true;
-          posterRef.current.style.opacity = "0";
+        // --- COIN ANIMATION - LOCKED UP, BUT FULLY VISIBLE, NOT CUT ---
+        // Before: lockY 2.9 - coins cut for top edge, only half show (your screenshot)
+        // Now: lockY 2.0 mobile / 1.8 desktop - just below header, full coin shows
+        // Still up + locked, but with safe margin from top edge
+        const isMobile = window.innerWidth < 1024;
+        const lockZ = 2.0;
+        const lockSpread = isMobile ? 1.05 : 1.3;
+        // 👇 LOWERED: 2.9 -> 2.0 (mobile), 2.6 -> 1.8 (desktop)
+        // Coin radius 0.4, so 2.0 leaves full coin + margin inside view
+        const lockY = isMobile ? 2.0 : 1.8;
+        const lockX = 0;
+
+        const endPosMan = new THREE.Vector3(lockX - lockSpread, lockY, lockZ);
+        const endPosAnd = new THREE.Vector3(lockX, lockY + 0.15, lockZ);
+        const endPosSatan = new THREE.Vector3(lockX + lockSpread, lockY, lockZ);
+
+        const heroEl = document.querySelector('[data-track="hero"]');
+        let heroScroll = 0;
+        if (heroEl) {
+          const rect = heroEl.getBoundingClientRect();
+          heroScroll = clamp01((window.innerHeight * 0.6 - rect.top) / (window.innerHeight * 0.8));
         }
+
+        sp += (heroScroll - sp) * (1 - Math.exp(-dt * 8));
+        let ease = easeInOutCubic(sp);
+        if (ease > 0.95) ease = 1;
+
+        // Start: around globe, lower (so dem go UP to header)
+        const orbitR = 3.0;
+        const startPosMan = new THREE.Vector3(-orbitR, 0.4, 0);
+        const startPosAnd = new THREE.Vector3(0, 0.9, orbitR);
+        const startPosSatan = new THREE.Vector3(orbitR, 0.4, 0);
+
+        coinMan.position.lerpVectors(startPosMan, endPosMan, ease);
+        coinAnd.position.lerpVectors(startPosAnd, endPosAnd, ease);
+        coinSatan.position.lerpVectors(startPosSatan, endPosSatan, ease);
+
+        const spinSpeed = Math.PI * 3;
+        const spin = ease >= 1 ? 0 : ease * spinSpeed + t;
+        coinMan.rotation.set(0, spin, Math.sin(t) * 0.05);
+        coinSatan.rotation.set(0, spin, Math.cos(t) * 0.05);
+        coinAnd.rotation.set(0, spin, 0);
+
+        if (ease >= 1) {
+          const floatY = Math.sin(t * 1.2) * 0.05; // smaller float, no go cut again
+          coinMan.position.y += floatY;
+          coinAnd.position.y += floatY + 0.02;
+          coinSatan.position.y += floatY;
+        }
+
+        const s = 1 - ease * 0.1;
+        coinMan.scale.setScalar(s); coinAnd.scale.setScalar(s); coinSatan.scale.setScalar(s);
+
+        renderer.render(scene, camera);
+        if (!posterHidden && posterRef.current) { posterHidden = true; posterRef.current.style.opacity = "0"; }
         schedule();
       };
-      const schedule = () => {
-        if (!raf && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame);
-      };
 
-      const io = new IntersectionObserver(([entry]) => {
-        inView = entry.isIntersecting;
-        if (inView) {
-          timer.reset();
-          schedule();
-        }
-      });
+      const schedule = () => { if (!raf && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame); };
+      const io = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; if (inView) { timer.reset(); schedule(); } });
       io.observe(host);
-
-      const onVis = () => {
-        tabVisible = !document.hidden;
-        if (tabVisible) {
-          timer.reset();
-          schedule();
-        }
-      };
+      const onVis = () => { tabVisible = !document.hidden; if (tabVisible) { timer.reset(); schedule(); } };
       document.addEventListener("visibilitychange", onVis);
-
       schedule();
 
       cleanup = () => {
-        cancelAnimationFrame(raf);
-        timer.dispose();
-        ro.disconnect();
-        io.disconnect();
-        window.removeEventListener("pointermove", onPointer);
-        document.removeEventListener("visibilitychange", onVis);
-        scene.traverse((o) => {
-          const m = o as InstanceType<typeof THREE.Mesh>;
-          m.geometry?.dispose?.();
-          const mat = m.material as InstanceType<typeof THREE.Material> | InstanceType<typeof THREE.Material>[] | undefined;
-          if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
-          else mat?.dispose?.();
-        });
-        textures.forEach((t) => t.dispose());
-        earthMat.map?.dispose();
-        renderer.dispose();
-        renderer.domElement.remove();
+        cancelAnimationFrame(raf); timer.dispose(); ro.disconnect(); io.disconnect();
+        window.removeEventListener("pointermove", onPointer); document.removeEventListener("visibilitychange", onVis);
+        scene.traverse((o: any) => { o.geometry?.dispose?.(); const mat = o.material; if (Array.isArray(mat)) mat.forEach((x: any) => x.dispose()); else mat?.dispose?.(); });
+        textures.forEach((t) => t.dispose()); earthMat.map?.dispose();
+        renderer.dispose(); renderer.domElement.remove();
       };
-    })().catch((err) => {
-      console.warn("[HeroBackground] 3D scene disabled:", err);
-    });
+    })().catch((err) => console.warn("[HeroBackground] 3D scene disabled:", err));
 
-    return () => {
-      disposed = true;
-      cleanup();
-    };
+    return () => { disposed = true; cleanup(); };
   }, [align, desktopLift]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      {/* Preload the poster texture and hero airliner before JS asks for them. */}
-      <link rel="preload" as="image" href="/textures/earth.jpg" />
-      <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
-
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
-        <div
-          ref={posterRef}
-          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
-        />
+        <div ref={posterRef} className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]" />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
       <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />

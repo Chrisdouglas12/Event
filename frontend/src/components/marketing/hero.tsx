@@ -7,20 +7,11 @@ import { ParallaxLayer } from "@/components/marketing/parallax-layer";
 import { FitTwoLines } from "@/components/marketing/fit-two-lines";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
 
-/**
- * Title + theme plates.
- *
- * Two dark, solid boxes that keep the copy readable over the globe. Each has
- * one cut corner and a single light travelling around the hairline edge. Both
- * plates stay the same height (grid-rows-2).
- */
-
-// Plate outlines: full-width boxes with one cut corner each. The border is
-// OUTER minus INNER (evenodd), so only a hairline edge is drawn.
-const TOP_OUTER = ["14px 0", "100% 0", "100% 100%", "0 100%", "0 14px"];
+const TOP_OUTER = ["14px 0", "calc(100% - 14px) 0", "100% 14px", "100% 100%", "0 100%", "0 14px"];
 const TOP_INNER = [
   "14.6px 1.5px",
-  "calc(100% - 1.5px) 1.5px",
+  "calc(100% - 14.6px) 1.5px",
+  "calc(100% - 1.5px) 14.6px",
   "calc(100% - 1.5px) calc(100% - 1.5px)",
   "1.5px calc(100% - 1.5px)",
   "1.5px 14.6px",
@@ -38,36 +29,26 @@ const ring = (outer: string[], inner: string[]) =>
   `polygon(evenodd, ${outer.join(", ")}, ${inner.join(", ")})`;
 
 const HB_CSS = `
-/* Dark, solid plates keep the title readable over the globe. */
+/* NO WHITE ANYWHERE - solid dark plates, teal hairline only */
 .hb-wrap{position:relative}
-.hb-plate{position:relative;overflow:hidden;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.hb-top{background:rgba(8,13,26,.78)}
-.hb-bot{background:rgba(7,24,29,.82)}
-
-/* Hairline edge with one light travelling around it. */
-.hb-border{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;
-  background:linear-gradient(135deg,rgba(255,255,255,.45),rgba(142,227,214,.22) 45%,rgba(255,255,255,.1))}
-.hb-border::before{content:"";position:absolute;left:-50%;top:-50%;width:200%;height:200%;
-  background:conic-gradient(from 0deg,transparent 0 70%,rgba(142,227,214,.2) 78%,rgba(255,255,255,.95) 83%,rgba(142,227,214,.2) 88%,transparent 95%);
-  animation:hb-edge 6s linear infinite}
-.hb-border-bot::before{animation-delay:-3s}
-@keyframes hb-edge{to{transform:rotate(360deg)}}
-
-/* left accent bar */
-.hb-bar{position:absolute;left:0;top:0;bottom:0;width:3px;z-index:2;
-  background:linear-gradient(180deg,#8EE3D6,rgba(142,227,214,0))}
-
-/* thin seam separating the boxes from the countdown */
-.hb-seam{height:1px;width:100%;
-  background:linear-gradient(90deg,transparent,rgba(142,227,214,.5) 12%,rgba(255,255,255,.55) 50%,rgba(142,227,214,.5) 88%,transparent)}
-
-@media (prefers-reduced-motion:reduce){
-  .hb-border::before{animation:none}
-}
+.hb-plate{position:relative;overflow:hidden}
+.hb-top{background:#0E1020}
+.hb-bot{background:#07181D}
+.hb-border{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;background:rgba(142,227,214,.28)}
+.hb-border::before{display:none}
+.hb-border-bot::before{display:none}
+.hb-bar{position:absolute;left:0;top:0;bottom:0;width:3px;z-index:2;background:linear-gradient(180deg,#8EE3D6,rgba(142,227,214,0))}
+.hb-seam{height:1px;width:100%;background:linear-gradient(90deg,transparent,rgba(142,227,214,.5) 12%,rgba(142,227,214,.5) 88%,transparent)}
+.hb-top-cut{height:3px;width:100%;position:relative;background:linear-gradient(90deg,transparent,rgba(142,227,214,.6) 12%,rgba(142,227,214,.6) 88%,transparent);clip-path:polygon(14px 0, calc(100% - 14px) 0, 100% 100%, 0 100%)}
 `;
+
+const stripManAndSatan = (theme: string) =>
+  theme.replace(/man\s+and\s+satan/i, "").replace(/\s+/g, " ").trim().toUpperCase() ||
+  "IN CONTENTION AGAINST THE HOLY GOD";
 
 export function Hero() {
   const { theme, heroDatesLabel, startsAt, endsAt } = useLandingSettings();
+  const themeShort = stripManAndSatan(theme);
 
   return (
     <section
@@ -76,10 +57,8 @@ export function Hero() {
     >
       <style dangerouslySetInnerHTML={{ __html: HB_CSS }} />
 
-      {/* Heavenly sun/halo behind the WebGL globe (mobile only; hidden on desktop) */}
-      <div aria-hidden className="hero-heaven absolute inset-0 pointer-events-none lg:hidden" />
+      {/* REMOVED: hero-heaven white glow */}
 
-      {/* Layer 1: Globe background (slowest / farthest) */}
       <ParallaxLayer speed={0.4} className="absolute inset-0">
         <HeroBackground desktopLift={10} />
       </ParallaxLayer>
@@ -88,7 +67,6 @@ export function Hero() {
         <div className="hidden lg:block lg:col-span-5" />
 
         <div data-hero-content className="lg:col-span-7 flex flex-col items-start space-y-5 sm:space-y-8 text-left w-full">
-          {/* Layer 2: Date badge */}
           <ParallaxLayer speed={0.04}>
             <div
               className="hero-fade inline-flex items-center gap-2 text-xs sm:text-sm font-semibold tracking-wider uppercase text-gray-300 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-sm"
@@ -99,11 +77,11 @@ export function Hero() {
             </div>
           </ParallaxLayer>
 
-          {/* Layer 3: title + theme plates */}
           <ParallaxLayer speed={0.1} className="w-full">
             <div className="hb-wrap -mx-[6px] w-[calc(100%+12px)] sm:mx-0 sm:w-full">
+              <div aria-hidden className="hb-top-cut mb-1.5 sm:mb-2" />
+
               <div className="relative grid grid-rows-2 gap-1 sm:gap-1.5">
-                {/* TOP PLATE: conference name */}
                 <div className="hero-fade relative" style={{ animationDelay: "0.2s" }}>
                   <div
                     className="hb-plate hb-top relative flex h-full flex-col justify-center py-4 pl-4 pr-4 sm:py-5 sm:pl-6 sm:pr-6"
@@ -124,13 +102,13 @@ export function Hero() {
                   />
                 </div>
 
-                {/* BOTTOM PLATE: theme, always one line */}
+                {/* THEME BOX */}
                 <div className="hero-fade relative" style={{ animationDelay: "0.5s" }}>
                   <div
                     className="hb-plate hb-bot relative flex h-full flex-col justify-center py-4 pl-4 sm:py-5 sm:pl-6"
                     style={{ clipPath: shape(BOT_OUTER) }}
+                    data-theme-box
                   >
-                    {/* Big faded quote mark */}
                     <span
                       aria-hidden
                       className="pointer-events-none absolute right-4 -top-3 select-none font-serif text-[88px] leading-none text-[#8EE3D6]/15 sm:right-6 sm:text-[110px]"
@@ -143,13 +121,24 @@ export function Hero() {
                       THEME
                     </span>
 
-                    {/* Always one line; the component shrinks the type to fit */}
-                    <FitTwoLines
-                      text={theme.toUpperCase()}
-                      minFont={7}
-                      lines={1}
-                      className="relative z-[2] mt-1 whitespace-nowrap pr-4 text-[9px] font-extrabold leading-snug tracking-tight text-white sm:mt-1.5 sm:pr-6 sm:text-xl md:text-2xl"
-                    />
+                    {/* MOBILE ONLY: wrapped, so e no leak to desktop */}
+                    <span className="relative z-[2] mt-1.5 block pr-4 text-[14px] font-extrabold uppercase leading-[1.25] tracking-tight text-white sm:hidden">
+                     MAN AND SATAN IN CONTENTION
+                      <br />
+                      AGAINST THE HOLY GOD
+                    </span>
+
+                    {/* DESKTOP ONLY: 👇 FIX - wrapper div dey hide am for mobile.
+                        Before, hidden sm:block dey inside FitTwoLines className,
+                        FitTwoLines no dey forward am, so desktop text dey show for mobile. */}
+                    <div aria-hidden className="relative z-[2] mt-1 hidden sm:block sm:mt-1.5 sm:pr-6">
+                      <FitTwoLines
+                        text={themeShort}
+                        minFont={7}
+                        lines={1}
+                        className="whitespace-nowrap pr-4 text-[9px] font-extrabold leading-snug tracking-tight text-white sm:text-xl md:text-2xl"
+                      />
+                    </div>
                   </div>
                   <div
                     aria-hidden
@@ -159,15 +148,14 @@ export function Hero() {
                 </div>
               </div>
 
-              {/* Thin cut: ties the countdown to the boxes/Why Attend flow */}
               <div aria-hidden className="hb-seam mt-3 sm:mt-4" />
             </div>
           </ParallaxLayer>
 
-          {/* Layer 4: 3D logo clock + flip countdown */}
           <ParallaxLayer speed={0.16} className="w-full">
             <div className="hero-fade pt-1 pb-0 sm:pt-2" style={{ animationDelay: "0.8s" }}>
-              <CountdownClock startsAt={startsAt} endsAt={endsAt} theme={theme} />
+              {/* No dup: countdown no go print theme again */}
+              <CountdownClock startsAt={startsAt} endsAt={endsAt} theme="" />
             </div>
           </ParallaxLayer>
         </div>

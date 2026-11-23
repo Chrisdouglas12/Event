@@ -25,18 +25,24 @@ const mobilePos = (progress: number) =>
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+const FULL_TEXT = "INTERNATIONAL HOLINESS GENERAL CONFERENCE 2026";
+
 /**
- * Interactive journey tracker.
- * - Drag the car (desktop vertical / mobile horizontal) to scrub the page
- * - Tap / click any waypoint dot to jump to that section
- * - Still follows scroll automatically when you are not dragging
+ * Interactive journey tracker + scroll-typing ON THE RAIL.
+ * - No pre-rendered / ghost text. Empty at top.
+ * - Letters appear one-by-one as car moves, like footsteps.
+ * - Only completes at bottom (100% scroll).
+ * - Drag car to scrub, tap dot to jump.
  */
 export function ScrollTrace() {
   const { subscribe } = useLandingProgress();
   const [nodes, setNodes] = useState<TraceNode[]>([]);
   const [activeLabel, setActiveLabel] = useState("Hero");
+  const [typedText, setTypedText] = useState("");
+  const [scrollProgress, setScrollProgress] = useState(0);
   const nodesRef = useRef<TraceNode[]>([]);
   const activeRef = useRef("Hero");
+  const typedRef = useRef("");
 
   const carRef = useRef<HTMLDivElement>(null);
   const mobileCarRef = useRef<HTMLDivElement>(null);
@@ -44,13 +50,11 @@ export function ScrollTrace() {
   const mobileTrailRef = useRef<HTMLDivElement>(null);
   const mobileLabelRef = useRef<HTMLSpanElement>(null);
 
-  // Track / rail refs for drag math
   const desktopRailRef = useRef<HTMLDivElement>(null);
   const mobileRailRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<"desktop" | "mobile" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // ---- Scroll helpers ----
   const scrollToProgress = (progress: number) => {
     const max = document.documentElement.scrollHeight - window.innerHeight;
     if (max <= 0) return;
@@ -58,12 +62,10 @@ export function ScrollTrace() {
   };
 
   const scrollToNode = (node: TraceNode) => {
-    // Try to find real section first — more accurate than progress math
     const el =
       document.getElementById(node.id) ||
       document.querySelector(`[data-scene="${node.scene}"]`) ||
       document.querySelector(`[data-trace="${node.id}"]`);
-
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
@@ -72,7 +74,6 @@ export function ScrollTrace() {
     }
   };
 
-  // ---- Drag handlers ----
   const handleDesktopPointerMove = (e: PointerEvent) => {
     if (draggingRef.current !== "desktop" || !desktopRailRef.current) return;
     const rect = desktopRailRef.current.getBoundingClientRect();
@@ -117,6 +118,15 @@ export function ScrollTrace() {
       subscribe((snapshot) => {
         const percent = `${(snapshot.progress * 100).toFixed(3)}%`;
 
+        // FOOTSTEP TYPING: 0% = "", 100% = full text. Nothing pre-rendered.
+        const charCount = Math.floor(clamp01(snapshot.progress) * FULL_TEXT.length);
+        const nextTyped = FULL_TEXT.slice(0, charCount);
+        if (nextTyped !== typedRef.current) {
+          typedRef.current = nextTyped;
+          setTypedText(nextTyped);
+        }
+        setScrollProgress(snapshot.progress);
+
         if (carRef.current) carRef.current.style.top = percent;
         if (trailRef.current) trailRef.current.style.height = percent;
         if (mobileTrailRef.current) mobileTrailRef.current.style.width = percent;
@@ -140,15 +150,33 @@ export function ScrollTrace() {
     [subscribe]
   );
 
+  const isComplete = scrollProgress >= 0.995;
+
   return (
     <>
-      {/* Desktop journey rail */}
+      {/* Desktop rail - typing VERTICALLY on rail, footstep style */}
       <aside
         aria-label="Page journey tracker - drag car or tap a stop"
         className="fixed bottom-6 left-0 top-[72px] z-[40] hidden w-10 lg:block"
       >
         <div className="relative h-full">
-          {/* Rail - clickable anywhere to jump */}
+          {/* Only typed letters show - no ghost */}
+          <div className="pointer-events-none absolute left-[28px] top-0 flex h-full items-center justify-center overflow-hidden">
+            <span
+              className="whitespace-nowrap text-[9px] font-extrabold uppercase tracking-[0.28em] text-[#8EE3D6]"
+              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            >
+              {typedText}
+              {!isComplete && typedText.length > 0 && (
+                <span className="ml-1 inline-block h-3 w-[2px] animate-pulse bg-[#8EE3D6]" />
+              )}
+              {/* At very top, show only blinking cursor, no text */}
+              {typedText.length === 0 && (
+                <span className="inline-block h-3 w-[2px] animate-pulse bg-[#8EE3D6]" />
+              )}
+            </span>
+          </div>
+
           <div
             ref={desktopRailRef}
             onPointerDown={(e) => {
@@ -166,7 +194,6 @@ export function ScrollTrace() {
               />
             </div>
 
-            {/* Waypoint dots - TAP TO JUMP */}
             {nodes.map((node) => {
               const active = node.label === activeLabel;
               return (
@@ -193,7 +220,6 @@ export function ScrollTrace() {
               );
             })}
 
-            {/* DRAGGABLE CAR */}
             <div
               ref={carRef}
               onPointerDown={(e) => {
@@ -213,20 +239,26 @@ export function ScrollTrace() {
               <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#8EE3D6]/70 bg-[#0E1020] text-[#8EE3D6] shadow-[0_0_26px_rgba(142,227,214,0.55)] active:scale-110">
                 <CarFront className="h-4 w-4" strokeWidth={1.8} />
               </span>
-              {/* Hint */}
-              <span className="pointer-events-none absolute left-full top-1/2 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white/70 opacity-0 transition group-hover:opacity-100 lg:block">
-                Drag me
-              </span>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Mobile/tablet progress trace */}
+      {/* Mobile / tablet - typing ON the rail, footstep style */}
       <div
         aria-label="Page journey tracker - drag car or tap a stop"
-        className="fixed inset-x-0 top-[60px] z-[40] h-10 lg:hidden"
+        className="fixed inset-x-0 top-[60px] z-[40] h-[46px] lg:hidden"
       >
+        {/* Only typed letters show - starts empty, grows as car moves */}
+        <div className="pointer-events-none absolute inset-x-2 top-[-2px] z-10 flex justify-center">
+          <span className="max-w-full truncate text-center text-[8.5px] font-extrabold uppercase leading-none tracking-[0.14em] text-white sm:text-[9.5px] sm:tracking-[0.18em]">
+            {typedText}
+            {!isComplete && (
+              <span className="ml-0.5 inline-block h-2.5 w-[1.5px] translate-y-[2px] animate-pulse bg-[#8EE3D6]" />
+            )}
+          </span>
+        </div>
+
         <div
           ref={mobileRailRef}
           onPointerDown={(e) => {
@@ -234,7 +266,7 @@ export function ScrollTrace() {
             const p = clamp01((e.clientX - rect.left) / rect.width);
             scrollToProgress(p);
           }}
-          className="absolute inset-x-0 top-3 h-6 cursor-pointer touch-none"
+          className="absolute inset-x-0 top-[20px] h-6 cursor-pointer touch-none"
         >
           <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/15">
             <div
@@ -262,7 +294,6 @@ export function ScrollTrace() {
           ))}
         </div>
 
-        {/* DRAGGABLE CAR - MOBILE */}
         <div
           ref={mobileCarRef}
           onPointerDown={(e) => {
@@ -272,7 +303,7 @@ export function ScrollTrace() {
             setIsDragging(true);
             (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
           }}
-          className={`trace-car-mobile absolute top-[1px] left-0 -translate-x-1/2 touch-none select-none ${
+          className={`trace-car-mobile absolute top-[12px] left-0 -translate-x-1/2 touch-none select-none ${
             isDragging ? "cursor-grabbing scale-110" : "cursor-grab"
           }`}
           style={{ left: mobilePos(0) }}
@@ -284,7 +315,7 @@ export function ScrollTrace() {
 
         <span
           ref={mobileLabelRef}
-          className="trace-mobile-label pointer-events-none absolute right-3 top-[22px]"
+          className="trace-mobile-label pointer-events-none absolute right-3 top-[32px]"
         >
           Hero
         </span>
