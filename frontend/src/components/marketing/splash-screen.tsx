@@ -31,6 +31,9 @@ function easeOutBack(t: number) {
  * overshoot, spins the two flag belts, then dissolves into the landing page.
  * The HOREMOW logo is carried on its own orbit and also appears as a crisp
  * HTML lockup with the welcome message.
+ *
+ * FIX: Brand text + initializing text now show together from 0s.
+ * Animation plays behind them, then everything fades into landing.
  */
 export function SplashScreen() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
@@ -429,11 +432,8 @@ export function SplashScreen() {
       <div className="intro-vignette pointer-events-none absolute inset-0" />
       <div className="intro-grid pointer-events-none absolute inset-0" />
 
-      <div
-        className={`intro-brand pointer-events-none absolute inset-x-0 top-[15%] z-10 flex flex-col items-center px-6 text-center ${
-          stage === "entering" ? "" : "intro-brand-visible"
-        }`}
-      >
+      {/* BRAND - ALWAYS VISIBLE FROM 0s, together with Initialising */}
+      <div className="intro-brand intro-brand-visible pointer-events-none absolute inset-x-0 top-[15%] z-10 flex flex-col items-center px-6 text-center">
         <span className="mb-5 text-[10px] font-bold uppercase tracking-[0.42em] text-[#8EE3D6]/70">
           {LANDING_THEME.copy.introEyebrow}
         </span>
@@ -459,6 +459,7 @@ export function SplashScreen() {
         </p>
       </div>
 
+      {/* INITIALISING - SHOWS TOGETHER WITH BRAND */}
       <div className="pointer-events-none absolute inset-x-0 bottom-[12%] z-10 flex flex-col items-center">
         <div className="intro-progress h-px w-40 overflow-hidden bg-white/10 sm:w-56">
           <span className="intro-progress-fill block h-full w-full bg-[#8EE3D6]" />

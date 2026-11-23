@@ -1,53 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { InlineStyle } from "@/components/marketing/inline-style";
+import { useEffect, useRef } from "react";
 import {
   createFallbackModel,
   createModelInstance,
   loadTravelModel,
 } from "@/lib/travel-models";
-import { getLandingPerformance } from "@/lib/landing-performance";
-import {
-  FLAGS,
-  makeFallbackEarth,
-  makeFlagGeometry,
-  makeFlagTexture,
-} from "./flag-textures";
-
-type FlagDef = (typeof FLAGS)[number];
-
-const CSS_FLAG_RINGS = [
-  { className: "globe-flags globe-flags--meridian", count: 14, offset: 0 },
-  { className: "globe-flags globe-flags--equator", count: 18, offset: 11 },
-] as const;
-
-/** Small CSS version of the canvas flag artwork for the no-WebGL fallback. */
-function flagBackground(flag: FlagDef): string {
-  if (flag.custom === "us") {
-    return "linear-gradient(90deg, #3c3b6e 0 40%, transparent 40%), repeating-linear-gradient(to bottom, #b22234 0 7.69%, #ffffff 7.69% 15.38%)";
-  }
-  if (flag.custom === "gb") {
-    return [
-      "linear-gradient(45deg, transparent 43%, #ffffff 43% 57%, transparent 57%)",
-      "linear-gradient(-45deg, transparent 43%, #ffffff 43% 57%, transparent 57%)",
-      "linear-gradient(90deg, transparent 44%, #c8102e 44% 56%, transparent 56%)",
-      "linear-gradient(0deg, transparent 44%, #c8102e 44% 56%, transparent 56%)",
-      "#012169",
-    ].join(", ");
-  }
-  if (!flag.stripes.length) return "#0e7a6e";
-
-  const direction = flag.dir === "v" ? "to right" : "to bottom";
-  const layers = [`linear-gradient(${direction}, ${flag.stripes.join(", ")})`];
-  if (flag.emblem) {
-    const size = Math.round((flag.emblem.r ?? 0.3) * 55);
-    layers.unshift(
-      `radial-gradient(circle at 50% 50%, ${flag.emblem.color} 0 ${size}%, transparent ${size + 2}%)`
-    );
-  }
-  return layers.join(", ");
-}
 
 /**
  * Earth with two orbits of flags, as in the sketch:
@@ -58,6 +16,8 @@ function flagBackground(flag: FlagDef): string {
  * - Flags connect seamlessly into one continuous belt
  * - Both rings rotate as ONE rigid body
  * - Background features moving constellations and starfields
+ * - A 3D campground photo sits far behind everything as a depth backdrop:
+ *   navy-graded, vignetted, slowly drifting and parallaxing with the pointer
  *
  * DESKTOP LAYOUT: the globe always stays on the camera axis and is moved on
  * screen with a camera "lens shift" (setViewOffset) instead of moving it in 3D.
@@ -65,65 +25,44 @@ function flagBackground(flag: FlagDef): string {
  * oval; the lens shift keeps it a perfect circle. The globe is centred in the
  * free space between the screen edge and the hero text column
  * ([data-hero-content]), so the gap to the screen edge equals the gap to the boxes.
- * `desktopLift` nudges the globe upward in pixels on desktop only. With
- * `shrinkOnScroll`, the globe keeps shrinking over the full page like a drone
- * rising, instead of only reacting to the first viewport.
- *
- * The background is intentionally a single flat navy field (#0E1020): the
- * WebGL canvas is transparent and no photo/gradient layers sit behind it.
  */
 
 // Visual radius of the globe + rings, in world units (outer ring 2.44 + flag depth)
 const R_VIS = 2.55;
-const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 export function HeroBackground({
   align = "left",
-  desktopLift = 0,
-  mobileLift = 0,
-  shrinkOnScroll = false,
-  richAtmosphere = false,
+  desktopLift = 1.5,
 }: {
   align?: "left" | "right";
+  /** Desktop only: how far above the vertical centre the globe sits, in % of the hero height. */
   desktopLift?: number;
-  /** Pixel shift on small screens. Negative moves the globe down. */
-  mobileLift?: number;
-  shrinkOnScroll?: boolean;
-  /** Extra galaxy/nebula depth. Off on the landing hero, which has its own scene. */
-  richAtmosphere?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
-  // null until the capability check runs: the CSS belts only mount when the
-  // WebGL globe has been ruled out, so capable devices never see them flash.
-  const [heroWebgl, setHeroWebgl] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setHeroWebgl(getLandingPerformance().heroWebgl);
-  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
-    const perf = getLandingPerformance();
-    if (!perf.heroWebgl) return;
-
     let disposed = false;
     let cleanup = () => {};
 
     (async () => {
-      const THREE = await import("three");
+      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
+        import("three"),
+        import("./flag-textures"),
+      ]);
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       const renderer = new THREE.WebGLRenderer({
-        antialias: false,
+        antialias: true,
         alpha: true,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
@@ -156,7 +95,7 @@ export function HeroBackground({
         roughness: 0.85,
         metalness: 0,
       });
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 64, 64), earthMat);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 96), earthMat);
       earthTilt.add(earth);
 
       const sources = [
@@ -185,17 +124,13 @@ export function HeroBackground({
       };
       tryLoad(0);
 
-      // Atmosphere: a tight blue rim plus a wider mint halo, so the globe sits
-      // inside a visible sphere of light instead of ending at a hard edge.
+      // Atmosphere glow (uGlow is lowered on desktop so it stays a soft blue rim)
       const atmosphereMat = new THREE.ShaderMaterial({
         transparent: true,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        uniforms: {
-          uGlow: { value: 1 },
-          uColor: { value: new THREE.Color(0x73ccff) },
-        },
+        uniforms: { uGlow: { value: 1 } },
         vertexShader: `
           varying vec3 vN;
           void main(){
@@ -204,29 +139,14 @@ export function HeroBackground({
           }`,
         fragmentShader: `
           uniform float uGlow;
-          uniform vec3 uColor;
           varying vec3 vN;
           void main(){
-            float facing = dot(vN, vec3(0.0, 0.0, 1.0));
-            float rim = pow(max(0.0, 0.78 - facing), 3.0);
-            float haze = pow(max(0.0, 1.0 - abs(facing)), 6.0) * 0.22;
-            gl_FragColor = vec4(uColor, 1.0) * (rim + haze) * uGlow;
+            float i = pow(0.74 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.5);
+            gl_FragColor = vec4(0.45, 0.8, 1.0, 1.0) * i * uGlow;
           }`,
       });
       const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 48, 48), atmosphereMat);
       worldScroll.add(atmosphere);
-
-      let outerAtmosphere: InstanceType<typeof THREE.Mesh> | null = null;
-      let galaxy: InstanceType<typeof THREE.Points> | null = null;
-      let nebulaGroup: InstanceType<typeof THREE.Group> | null = null;
-      if (richAtmosphere) {
-        const outerAtmosphereMat = atmosphereMat.clone();
-        outerAtmosphereMat.uniforms = THREE.UniformsUtils.clone(atmosphereMat.uniforms);
-        outerAtmosphereMat.uniforms.uGlow.value = 0.16;
-        outerAtmosphereMat.uniforms.uColor.value = new THREE.Color(0x7ff0d2);
-        outerAtmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.78, 64, 64), outerAtmosphereMat);
-        worldScroll.add(outerAtmosphere);
-      }
 
       // Airliners circle above the globe. They are loaded from a local GLB and
       // share the scene lights, so they feel part of the same 3D world.
@@ -240,9 +160,70 @@ export function HeroBackground({
         height: number;
       }[] = [];
 
+      // ---------- Campground backdrop (3D plane far behind the globe) ----------
+      const BACKDROP_Z = -14;
+      let imgAspect = 1.5;
+      let backdropTex: InstanceType<typeof THREE.Texture> | null = null;
+      // Where the backdrop must sit so it stays centred on screen even though
+      // the camera lens is shifted (set in layout()).
+      const backdropBase = { x: 0, y: 0 };
+
+      const backdropMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uMap: { value: null as InstanceType<typeof THREE.Texture> | null },
+          uScale: { value: new THREE.Vector2(1, 1) },
+          uOffset: { value: new THREE.Vector2(0, 0) },
+          uTime: { value: 0 },
+          uOpacity: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec2 vNdc;
+          void main(){
+            vUv = uv;
+            vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vNdc = p.xy / p.w;
+            gl_Position = p;
+          }`,
+        fragmentShader: `
+          uniform sampler2D uMap;
+          uniform vec2 uScale;
+          uniform vec2 uOffset;
+          uniform float uTime;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          varying vec2 vNdc;
+          void main(){
+            // slow cinematic drift
+            vec2 drift = vec2(sin(uTime * 0.05), cos(uTime * 0.04)) * 0.012;
+            vec2 uv = vUv * uScale + uOffset + drift;
+            vec3 c = texture2D(uMap, uv).rgb;
+
+            // navy colour grade: blend the photo with a blue-tinted mono version
+            float l = dot(c, vec3(0.299, 0.587, 0.114));
+            vec3 tinted = vec3(l) * vec3(0.42, 0.62, 1.0) * 1.05;
+            vec3 col = mix(c * 0.75, tinted, 0.55) * 0.8;
+
+            // screen-space fades so it melts into the dark blue background
+            float vig = 1.0 - smoothstep(0.55, 1.35, length(vNdc * vec2(0.85, 1.0)));
+            float bottom = smoothstep(-1.0, -0.2, vNdc.y);
+            float top = smoothstep(1.05, 0.7, vNdc.y);
+
+            float a = uOpacity * 0.6 * vig * bottom * top;
+            gl_FragColor = vec4(col, a);
+          }`,
+      });
+      const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), backdropMat);
+      backdrop.position.z = BACKDROP_Z;
+      backdrop.renderOrder = -10; // draw first, everything else sits in front
+      backdrop.visible = false; // shown once the image has loaded
+      scene.add(backdrop);
+
       // ---------- Constellations & Stars ----------
       // Background Starfield
-      const starCount = Math.round(480 * perf.density);
+      const starCount = 800;
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
         const r = 18 + Math.random() * 22;
@@ -265,7 +246,7 @@ export function HeroBackground({
       const starShape = new THREE.SphereGeometry(0.04, 4, 4);
       const starMat = new THREE.MeshBasicMaterial({ color: 0x8EE3D6 }); // Mint color
 
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
         const mesh = new THREE.Mesh(starShape, starMat);
         scene.add(mesh);
         shootingStars.push({
@@ -280,90 +261,12 @@ export function HeroBackground({
       // Counts keep each flag about the same size as before, so the belts stay
       // continuous with no gaps.
       const rings = [
-        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.14, count: 17 },
-        { r: 2.44, rot: [0, 0, 0.3], speed: 0.11, count: 20 },
+        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
+        { r: 2.44, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
       ];
 
       const spinners: { g: InstanceType<typeof THREE.Group>; speed: number }[] = [];
       const textures: InstanceType<typeof THREE.Texture>[] = [];
-
-      // ---------- Galaxy dust & nebula atmosphere (registration only) ----------
-      if (richAtmosphere) {
-        const galaxyCount = 560;
-        const galaxyPos = new Float32Array(galaxyCount * 3);
-        const galaxyColors = new Float32Array(galaxyCount * 3);
-        const galaxyPalette = [
-          new THREE.Color(0x8ee3d6),
-          new THREE.Color(0xa8ceff),
-          new THREE.Color(0xffffff),
-          new THREE.Color(0xd7b7ff),
-        ];
-        for (let i = 0; i < galaxyCount; i++) {
-          const r = 3.1 + Math.random() * 3.4;
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.acos(2 * Math.random() - 1);
-          galaxyPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-          galaxyPos[i * 3 + 1] = r * Math.cos(phi) * 0.7;
-          galaxyPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-          const c = galaxyPalette[i % galaxyPalette.length];
-          galaxyColors[i * 3] = c.r;
-          galaxyColors[i * 3 + 1] = c.g;
-          galaxyColors[i * 3 + 2] = c.b;
-        }
-        const galaxyGeo = new THREE.BufferGeometry();
-        galaxyGeo.setAttribute("position", new THREE.BufferAttribute(galaxyPos, 3));
-        galaxyGeo.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
-        galaxy = new THREE.Points(
-          galaxyGeo,
-          new THREE.PointsMaterial({
-            size: 0.07,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.28,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            sizeAttenuation: true,
-          })
-        );
-        worldScroll.add(galaxy);
-
-        // Soft nebula puffs give the sphere a deeper, cloudy atmosphere.
-        const glowCanvas = document.createElement("canvas");
-        glowCanvas.width = glowCanvas.height = 128;
-        const glowCtx = glowCanvas.getContext("2d");
-        if (glowCtx) {
-          const grad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-          grad.addColorStop(0, "rgba(255,255,255,0.75)");
-          grad.addColorStop(0.35, "rgba(255,255,255,0.22)");
-          grad.addColorStop(1, "rgba(255,255,255,0)");
-          glowCtx.fillStyle = grad;
-          glowCtx.fillRect(0, 0, 128, 128);
-          const glowTex = new THREE.CanvasTexture(glowCanvas);
-          textures.push(glowTex);
-
-          nebulaGroup = new THREE.Group();
-          worldScroll.add(nebulaGroup);
-          [
-            { color: 0x63e6c9, x: -2.6, y: 1.4, z: -2.2, scale: 3.2 },
-            { color: 0x6aa9ff, x: 2.8, y: -1.2, z: -2.8, scale: 3.8 },
-            { color: 0xb48cff, x: 0.6, y: 2.6, z: -3.4, scale: 2.9 },
-          ].forEach((puff) => {
-            const sprite = new THREE.Sprite(
-              new THREE.SpriteMaterial({
-                map: glowTex,
-                color: puff.color,
-                transparent: true,
-                opacity: 0.05,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-              })
-            );
-            sprite.position.set(puff.x, puff.y, puff.z);
-            sprite.scale.set(puff.scale, puff.scale, 1);
-            nebulaGroup?.add(sprite);
-          });
-        }
-      }
 
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
@@ -405,17 +308,13 @@ export function HeroBackground({
             map: tex,
             roughness: 0.48,
             metalness: 0.04,
-            // A touch of self-light keeps the small flags readable against the
-            // dark globe even when the hero is lit from the side.
-            emissive: new THREE.Color(0x1b4f6b),
-            emissiveIntensity: 0.35,
+            emissive: new THREE.Color(0x0d1f38),
+            emissiveIntensity: 0.12,
           });
           const flagEdge = new THREE.MeshStandardMaterial({
-            color: 0x2b6f77,
+            color: 0x102f4d,
             roughness: 0.38,
             metalness: 0.12,
-            emissive: new THREE.Color(0x0e3a3a),
-            emissiveIntensity: 0.3,
           });
           // BoxGeometry material order: +x, -x, +y, -y, +z, -z.
           // The large +z/-z faces carry the artwork; the rest are the edge.
@@ -480,7 +379,9 @@ export function HeroBackground({
           const diameter = Math.max(200, Math.min(freeW - gap * 2, h * 0.86));
 
           const cx = (freeLeft + freeRight) / 2;
-          const cy = h * 0.485 - desktopLift;
+          // Lift the globe, but keep it fully inside the hero (never cropped top or bottom)
+          const half = diameter / 2 + 12;
+          const cy = Math.min(h - half, Math.max(half, h * (0.5 - desktopLift / 100)));
 
           const pxPerUnit = h / vh;
           const s = diameter / (2 * R_VIS * pxPerUnit);
@@ -508,8 +409,7 @@ export function HeroBackground({
           camera.clearViewOffset();
           const s = Math.min((vw * 0.98) / FIT, (vh * 0.98) / FIT);
           world.scale.setScalar(s);
-          // Small screens have no lens shift, so move the world itself.
-          world.position.set(0, mobileLift / Math.max(1, h / vh), 0);
+          world.position.set(0, 0, 0);
           if (atmosphereMat.uniforms.uGlow) atmosphereMat.uniforms.uGlow.value = 1;
 
           if (poster) {
@@ -519,10 +419,49 @@ export function HeroBackground({
             poster.style.height = "";
           }
         }
+
+        // Backdrop: 30% larger than the view at its depth (room for parallax),
+        // with "cover" UVs so the photo is never stretched.
+        const dFar = camera.position.z - BACKDROP_Z;
+        const vhF = 2 * Math.tan((camera.fov * Math.PI) / 360) * dFar;
+        const vwF = vhF * camera.aspect;
+        backdrop.scale.set(vwF * 1.3, vhF * 1.3, 1);
+        // Cancel the lens shift so the photo stays centred on screen
+        backdropBase.x = -ndcX * (vwF / 2);
+        backdropBase.y = -ndcY * (vhF / 2);
+
+        let sx = 1;
+        let sy = 1;
+        if (imgAspect > camera.aspect) sx = camera.aspect / imgAspect;
+        else sy = imgAspect / camera.aspect;
+        sx *= 0.94;
+        sy *= 0.94;
+        backdropMat.uniforms.uScale.value.set(sx, sy);
+        backdropMat.uniforms.uOffset.value.set((1 - sx) / 2, (1 - sy) / 2);
       };
       layout();
       const ro = new ResizeObserver(layout);
       ro.observe(host);
+
+      // Load the campground photo (public/images/campground_2.jpg)
+      // NB: no colorSpace set on purpose, the shader grades raw sRGB values.
+      new THREE.TextureLoader().load(
+        "/images/campground_2.jpg",
+        (tex) => {
+          if (disposed) {
+            tex.dispose();
+            return;
+          }
+          tex.anisotropy = 4;
+          backdropTex = tex;
+          backdropMat.uniforms.uMap.value = tex;
+          imgAspect = tex.image.width / tex.image.height;
+          backdrop.visible = true;
+          layout();
+        },
+        undefined,
+        (err) => console.warn("[HeroBackground] campground image failed to load:", err)
+      );
 
       // ---------- Realistic hero aircraft ----------
       (async () => {
@@ -558,9 +497,7 @@ export function HeroBackground({
         pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
         pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
       };
-      if (perf.pointerEffects) {
-        window.addEventListener("pointermove", onPointer, { passive: true });
-      }
+      window.addEventListener("pointermove", onPointer, { passive: true });
 
       // ---------- Loop ----------
       const timer = new THREE.Timer();
@@ -569,30 +506,17 @@ export function HeroBackground({
       let inView = true;
       let tabVisible = !document.hidden;
       let posterHidden = false;
-      let lastRender = 0;
-      const frameInterval = 1000 / perf.fps;
       const motion = reduceMotion ? 0.2 : 1;
 
       const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
-        if (timestamp && timestamp - lastRender < frameInterval) {
-          schedule();
-          return;
-        }
-        lastRender = timestamp || performance.now();
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05) * motion;
         const t = timer.getElapsed();
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
-        if (outerAtmosphere) outerAtmosphere.rotation.y -= dt * 0.012;
-        if (galaxy) {
-          galaxy.rotation.y -= dt * 0.009;
-          galaxy.rotation.x = Math.sin(t * 0.05) * 0.08;
-        }
-        if (nebulaGroup) nebulaGroup.rotation.y += dt * 0.004;
         stars.rotation.y += dt * 0.005;
 
         // Animate heavenly bodies in an arc
@@ -622,15 +546,21 @@ export function HeroBackground({
         world.rotation.y += (pointer.x * 0.08 - world.rotation.y) * 0.04;
 
         // Scroll: the globe settles back into the page as the next section
-        // arrives. On the registration page it is fixed, so the shrink is tied
-        // to the full document height to keep the drone-ascent feel throughout.
-        const scrollT = shrinkOnScroll
-          ? clamp01(window.scrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight))
-          : clamp01(window.scrollY / Math.max(1, window.innerHeight));
-        worldScroll.scale.setScalar(1 - scrollT * (shrinkOnScroll ? 0.42 : 0.22));
-        worldScroll.position.set(0, -scrollT * (shrinkOnScroll ? 3.4 : 1.4), -scrollT * 2.5);
-        worldScroll.rotation.z = scrollT * (shrinkOnScroll ? 0.28 : 0.18);
-        stars.position.y = -scrollT * (shrinkOnScroll ? 2.6 : 1.5);
+        // arrives, handing off to the page-wide depth layer.
+        const scrollT = Math.min(1, Math.max(0, window.scrollY / Math.max(1, window.innerHeight)));
+        worldScroll.scale.setScalar(1 - scrollT * 0.22);
+        worldScroll.position.set(0, -scrollT * 1.4, -scrollT * 2.5);
+        worldScroll.rotation.z = scrollT * 0.18;
+        stars.position.y = -scrollT * 1.5;
+
+        // Backdrop: fade in, drift, and shift opposite to the globe for depth
+        const u = backdropMat.uniforms;
+        u.uTime.value = t * motion;
+        if (backdropTex) u.uOpacity.value = Math.min(1, u.uOpacity.value + dt * 0.7);
+        backdrop.position.x += (backdropBase.x - pointer.x * 0.7 - backdrop.position.x) * 0.03;
+        backdrop.position.y += (backdropBase.y + pointer.y * 0.4 - scrollT * 2 - backdrop.position.y) * 0.03;
+        backdrop.rotation.y += (pointer.x * 0.05 - backdrop.rotation.y) * 0.03;
+        backdrop.rotation.x += (-pointer.y * 0.03 - backdrop.rotation.x) * 0.03;
 
         renderer.render(scene, camera);
         if (!posterHidden && posterRef.current) {
@@ -678,6 +608,7 @@ export function HeroBackground({
           else mat?.dispose?.();
         });
         textures.forEach((t) => t.dispose());
+        backdropTex?.dispose();
         earthMat.map?.dispose();
         renderer.dispose();
         renderer.domElement.remove();
@@ -690,47 +621,23 @@ export function HeroBackground({
       disposed = true;
       cleanup();
     };
-  }, [align, desktopLift, mobileLift, shrinkOnScroll, richAtmosphere]);
+  }, [align, desktopLift]);
 
   return (
     <div aria-hidden className="absolute inset-0 pointer-events-none">
-      {/* The poster texture is always needed; the model is only preloaded when
-          this device will actually build the 3D scene. */}
+      {/* Preload the poster texture and hero airliner before JS asks for them. */}
       <link rel="preload" as="image" href="/textures/earth.jpg" />
-      {heroWebgl === true && (
-        <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
-      )}
+      <link rel="preload" as="fetch" href="/models/airliner.glb" crossOrigin="anonymous" />
 
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
         <div
-          className="absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[calc(52%_-_20px)] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
-          style={{ translate: mobileLift ? `0 ${-mobileLift}px` : undefined } as InlineStyle}
-        >
-          <div ref={posterRef} className="globe-poster absolute inset-0" />
-
-          {heroWebgl === false &&
-            CSS_FLAG_RINGS.map((ring) => (
-              <div key={ring.className} className={ring.className}>
-                {Array.from({ length: ring.count }, (_, i) => {
-                  const flag = FLAGS[(i + ring.offset) % FLAGS.length];
-                  return (
-                    <span
-                      key={`${flag.code}-${i}`}
-                      className="globe-flag"
-                      style={
-                        {
-                          "--a": `${(i / ring.count) * 360}deg`,
-                          background: flagBackground(flag),
-                        } as InlineStyle
-                      }
-                    />
-                  );
-                })}
-              </div>
-            ))}
-        </div>
+          ref={posterRef}
+          className="globe-poster absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[52%] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
+        />
         <div ref={hostRef} className="absolute inset-0" />
       </div>
+      <div className="absolute inset-x-0 top-[270px] sm:top-[370px] h-[100px] bg-gradient-to-b from-transparent to-[#0E1020] lg:hidden" />
+      <div className="hidden lg:block absolute inset-0 bg-gradient-to-l from-[#0E1020]/90 via-[#0E1020]/35 to-transparent" />
     </div>
   );
 }
