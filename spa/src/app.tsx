@@ -79,7 +79,7 @@ function LandingPage() {
               <section
                 data-scene="road"
                 data-enter
-                className="ms-root cv-auto relative isolate overflow-hidden pb-10 pt-6 sm:pt-7 lg:pb-12 lg:pt-8"
+                className="ms-root cv-auto relative isolate overflow-hidden pb-10 pt-6 sm:pt-7 lg:pb-8 lg:pt-6"
               >
                 <div aria-hidden className="ms-bg">
                   <span className="ms-stars" />

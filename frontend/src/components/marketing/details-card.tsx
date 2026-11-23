@@ -3,7 +3,6 @@
 import {
   useEffect,
   useRef,
-  type CSSProperties,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -11,6 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Parallax } from "@/components/ui/parallax";
 import { RevealText } from "@/components/ui/reveal-text";
+import type { InlineStyle } from "@/components/marketing/inline-style";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
 import { getLandingPerformance } from "@/lib/landing-performance";
 
@@ -77,93 +77,25 @@ function ShareIcon({ className }: IconProps) {
 /**
  * Conference Details: "Plan Your Journey".
  *
- *  - Full-bleed light surface with a slanted top edge, drifting blobs and a dot
- *    grid revealed around the pointer (drifts with the scroll on touch screens).
- *  - The campground photo bleeds to the left screen edge with a slanted cut,
- *    a parallax photo and a floating venue chip.
- *  - The three facts are stops on a ROUTE. A small car drives along the road as
- *    you scroll (across on large screens, down on phones). Each stop lights up
- *    when the car reaches it, like the page tracker.
- *  - Magnetic Register button, spotlight on the stop cards.
- *
- * Motion is written to CSS variables (no React re-renders). Reduced-motion
- * users get the static layout.
+ * Uses the same two-column landing-card as the flyer, About and gallery cards:
+ * framed venue photo on the left, copy + animated route on the right. The
+ * three facts remain stops on a ROUTE, with a car that drives along as you
+ * scroll and lights each stop up when it arrives.
  */
 
 const DC_CSS = `
-.dc-root{--p:0;--px:0;--py:0;--mx:72%;--my:26%;--rp:0;--cp:0;--cdir:0;
-  --dc-slant:28px;padding-top:calc(var(--dc-slant) + 2rem);padding-bottom:2.5rem;
-  clip-path:polygon(0 var(--dc-slant),100% 0,100% 100%,0 100%)}
-@media (min-width:1024px){.dc-root{--dc-slant:56px;padding-top:calc(var(--dc-slant) + 3rem);padding-bottom:3.5rem}}
-
-/* ---------- background ---------- */
-.dc-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
-.dc-dots{position:absolute;inset:0;background-image:radial-gradient(rgba(14,122,110,.6) 1.1px,transparent 1.7px);background-size:22px 22px;
-  -webkit-mask-image:radial-gradient(380px circle at var(--mx) var(--my),#000 0%,transparent 70%);
-  mask-image:radial-gradient(380px circle at var(--mx) var(--my),#000 0%,transparent 70%)}
-.dc-spot{position:absolute;inset:0;background:radial-gradient(520px circle at var(--mx) var(--my),rgba(142,227,214,.4),transparent 65%)}
-.dc-blob{position:absolute;border-radius:9999px;filter:blur(70px);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-.dc-blob-a{width:420px;height:420px;left:-140px;top:-80px;background:rgba(142,227,214,.5);
-  transform:translate3d(calc(var(--px) * 40px),calc(var(--p) * -120px + var(--py) * -24px),0)}
-.dc-blob-b{width:360px;height:360px;right:-140px;bottom:6%;background:rgba(14,122,110,.2);
-  transform:translate3d(calc(var(--px) * -34px),calc(var(--p) * 110px + var(--py) * 20px),0)}
-
-/* ---------- heading plate ---------- */
-.dc-heading{margin-bottom:.5rem}
-.dc-heading-inner{position:relative;overflow:hidden;
-  border:1px solid rgba(142,227,214,.35);border-radius:18px;
-  background:
-    radial-gradient(circle at 18% 18%,rgba(142,227,214,.24),transparent 42%),
-    radial-gradient(circle at 85% 82%,rgba(14,122,110,.42),transparent 46%),
-    linear-gradient(135deg,rgba(7,16,30,.96),rgba(13,35,45,.94) 55%,rgba(7,16,30,.96));
-  box-shadow:0 22px 60px rgba(7,16,30,.28),inset 0 1px 0 rgba(255,255,255,.08)}
-.dc-heading-inner::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
-  background-image:radial-gradient(rgba(142,227,214,.5) .8px,transparent 1.2px);background-size:16px 16px;
-  -webkit-mask-image:linear-gradient(100deg,#000,transparent 42%,transparent 60%,#000);
-  mask-image:linear-gradient(100deg,#000,transparent 42%,transparent 60%,#000)}
-.dc-heading-inner::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(142,227,214,.8),transparent)}
-.dc-heading-glow{position:absolute;inset:-18px -6px;z-index:-1;border-radius:32px;
-  background:radial-gradient(ellipse at center,rgba(142,227,214,.22),transparent 65%);filter:blur(18px)}
-.dc-heading-title{text-shadow:0 2px 24px rgba(7,16,30,.65)}
-
-/* ---------- compact feature card ---------- */
-.dc-feature{position:relative;isolation:isolate;overflow:hidden;
-  border:1px solid rgba(142,227,214,.5);border-radius:18px;
-  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.72));
-  box-shadow:0 28px 70px rgba(7,16,30,.16),0 2px 0 rgba(255,255,255,.8) inset}
-.dc-feature::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;
-  box-shadow:0 0 0 1px rgba(14,122,110,.08) inset}
-.dc-kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(14,122,110,.25);
-  border-radius:999px;background:rgba(142,227,214,.16);padding:5px 11px;
-  color:#0E7A6E;font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
-.dc-kicker::before{content:"";width:6px;height:6px;border-radius:999px;background:#0E7A6E;
-  box-shadow:0 0 0 3px rgba(14,122,110,.12)}
-.dc-fee{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
-  background:#0E1020;padding:6px 12px;color:#8EE3D6;font-size:11px;font-weight:700}
-
 /* ---------- reveal ---------- */
 .dc-js .dc-reveal{opacity:0;transform:translate3d(0,24px,0);
   transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .dc-js .dc-reveal.dc-in{opacity:1;transform:none}
 
-/* ---------- photo ---------- */
-.dc-photo{position:relative;overflow:hidden;background:#0E1020;aspect-ratio:5/4}
-@media (min-width:1024px){
-  .dc-photo{aspect-ratio:auto;min-height:300px;height:100%}
-}
-.dc-par{position:absolute;inset:0;
-  transform:scale(1.08) translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
-  transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-.dc-chip{position:absolute;left:16px;bottom:34px;z-index:5;
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);
-  transform:translate3d(calc(var(--px) * 12px),calc(var(--py) * 10px),0)}
-@media (min-width:1024px){.dc-chip{left:28px;bottom:28px}}
-.dc-chip-body{animation:dc-float 6s ease-in-out infinite}
+/* ---------- venue chip ---------- */
+.dc-chip{position:absolute;left:14px;bottom:14px;z-index:5;
+  animation:dc-float 6s ease-in-out infinite}
 @keyframes dc-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
 .dc-pin{position:relative}
-.dc-pin::after{content:"";position:absolute;inset:-4px;border-radius:9999px;border:1.5px solid rgba(14,122,110,.5);
-  animation:dc-ping 2.2s ease-out infinite}
+.dc-pin::after{content:"";position:absolute;inset:-4px;border-radius:9999px;
+  border:1.5px solid rgba(14,122,110,.5);animation:dc-ping 2.2s ease-out infinite}
 @keyframes dc-ping{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 
 /* ---------- route (phones: vertical, md+: horizontal) ---------- */
@@ -275,7 +207,6 @@ export function DetailsCard() {
     reveals.forEach((el) => revealIO.observe(el));
 
     let near = true;
-    let hovering = false;
     let scrollRaf = 0;
     let pointerRaf = 0;
     let routeRaf = 0;
@@ -322,16 +253,6 @@ export function DetailsCard() {
       const p = clamp01((vh - rect.top) / (rect.height + vh));
       root.style.setProperty("--p", p.toFixed(4));
 
-      // No mouse (touch screens): let the light drift with the scroll
-      if (!hovering) {
-        const px = Math.sin(p * 7) * 0.6;
-        const py = Math.cos(p * 5) * 0.5;
-        root.style.setProperty("--px", px.toFixed(3));
-        root.style.setProperty("--py", py.toFixed(3));
-        root.style.setProperty("--mx", `${(50 + px * 35).toFixed(1)}%`);
-        root.style.setProperty("--my", `${(40 + py * 30).toFixed(1)}%`);
-      }
-
       if (route) {
         const rr = route.getBoundingClientRect();
         const L = mq.matches ? route.clientWidth : route.clientHeight;
@@ -342,29 +263,6 @@ export function DetailsCard() {
     };
     const scheduleScroll = () => {
       if (!scrollRaf) scrollRaf = requestAnimationFrame(update);
-    };
-
-    const applyPointer = () => {
-      pointerRaf = 0;
-      if (!pending) return;
-      const r = root.getBoundingClientRect();
-      const x = pending.clientX - r.left;
-      const y = pending.clientY - r.top;
-      root.style.setProperty("--mx", `${x.toFixed(0)}px`);
-      root.style.setProperty("--my", `${y.toFixed(0)}px`);
-      root.style.setProperty("--px", ((x / r.width) * 2 - 1).toFixed(3));
-      root.style.setProperty("--py", ((y / r.height) * 2 - 1).toFixed(3));
-      pending = null;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType === "touch") return;
-      hovering = true;
-      pending = e;
-      if (!pointerRaf) pointerRaf = requestAnimationFrame(applyPointer);
-    };
-    const onLeave = () => {
-      hovering = false;
-      scheduleScroll();
     };
 
     const nearIO = new IntersectionObserver(
@@ -379,6 +277,24 @@ export function DetailsCard() {
     update();
     window.addEventListener("scroll", scheduleScroll, { passive: true });
     window.addEventListener("resize", scheduleScroll, { passive: true });
+
+    // Keep the pointer variables for the stop-card spotlight.
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      pending = e;
+      if (!pointerRaf) pointerRaf = requestAnimationFrame(applyPointer);
+    };
+    const onLeave = () => {
+      pending = null;
+    };
+    const applyPointer = () => {
+      pointerRaf = 0;
+      if (!pending) return;
+      const r = root.getBoundingClientRect();
+      root.style.setProperty("--mx", `${(pending.clientX - r.left).toFixed(0)}px`);
+      root.style.setProperty("--my", `${(pending.clientY - r.top).toFixed(0)}px`);
+      pending = null;
+    };
     root.addEventListener("pointermove", onMove, { passive: true });
     root.addEventListener("pointerleave", onLeave);
 
@@ -444,202 +360,218 @@ export function DetailsCard() {
       data-scene="road"
       data-track="details"
       data-enter
-      className="dc-root relative isolate overflow-hidden"
+      className="cv-auto relative overflow-hidden py-12 lg:py-10"
     >
       <style dangerouslySetInnerHTML={{ __html: DC_CSS }} />
 
-      {/* Living background */}
-      <div aria-hidden className="dc-bg">
-        <div className="dc-blob dc-blob-a" />
-        <div className="dc-blob dc-blob-b" />
-        <div className="dc-dots" />
-        <div className="dc-spot" />
-      </div>
-
-      {/* ---------- Header ---------- */}
-      <div className="dc-heading relative mx-auto max-w-2xl px-5 text-center">
-        <span aria-hidden className="dc-heading-glow" />
-        <div className="dc-heading-inner relative px-6 py-6 sm:px-10 sm:py-8">
-          <div className="flex items-center justify-center gap-3">
-            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
-            <RevealText
-              as="span"
-              text="Plan Your Journey"
-              className="text-xs font-bold uppercase tracking-[0.2em] text-[#8EE3D6]"
-              speed={18}
-            />
-            <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
-          </div>
-          <RevealText
-            as="h2"
-            text="Conference Details"
-            className="dc-heading-title mt-4 text-3xl font-bold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[40px] xl:text-[44px]"
-            speed={14}
+      <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
+        <div className="relative overflow-hidden">
+          {/* Ambient glow — same treatment as the other two-column cards */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#8EE3D6] opacity-[0.10] blur-3xl"
           />
-          <RevealText
-            as="p"
-            text="Essential dates, venue location, and session times"
-            className="mx-auto mt-3 max-w-xl text-sm text-white/70 lg:text-base"
-            speed={9}
-          />
-        </div>
-      </div>
 
-      {/* ---------- Compact photo + details feature card ---------- */}
-      <div className="relative mx-auto mt-8 max-w-[1320px] px-5 sm:px-8 lg:mt-10 lg:px-12">
-        <div className="dc-feature grid grid-cols-1 lg:grid-cols-12">
-          <div className="dc-photo lg:col-span-5">
-            <div className="dc-par">
-              <Parallax speed={0.14} className="absolute inset-0">
-                <Image
-                  src="/images/campground.jpg"
-                  alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 42vw"
-                />
-              </Parallax>
-            </div>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
-
-            {/* Floating venue chip */}
-            <div className="dc-chip">
-              <div className="dc-chip-body flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
-                <span className="dc-pin flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
-                  <MapPinIcon className="h-3.5 w-3.5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
-                    Venue
-                  </span>
-                  <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
-                    {venueName}
-                  </span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col p-6 sm:p-8 lg:col-span-7 lg:p-9">
-            <span className="dc-kicker w-fit">Event at a glance</span>
-            <h3 className="mt-4 max-w-xl text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl lg:text-[32px]">
-              {eventName}
-            </h3>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base">
-              Theme: <span className="font-semibold text-[#0E7A6E]">&ldquo;{theme}&rdquo;</span>
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="dc-fee">{registrationFeeLabel} per participant</span>
-              <span className="rounded-full border border-[#0E7A6E]/25 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-[#0E7A6E]">
-                {heroDatesLabel}
-              </span>
-            </div>
-
-            <div
-              data-dc-reveal
-              className="dc-reveal mt-6 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 lg:mt-auto lg:pt-6"
-              style={{ "--d": "200ms" } as CSSProperties}
-            >
-              <button
-                type="button"
-                onClick={handleShare}
-                aria-label="Share Conference Details"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
-              >
-                <ShareIcon className="h-4 w-4" />
-              </button>
-
-              <div className="-m-3 inline-block p-3" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
-                <Link
-                  href="/register"
-                  className="dc-cta group inline-flex items-center justify-center gap-2 rounded-full bg-[#8EE3D6] px-6 py-3 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
-                >
-                  Register Now
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M5 12h14" />
-                    <path d="M13 6l6 6-6 6" />
-                  </svg>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ---------- The route: three stops, a car drives between them ---------- */}
-      <div className="relative mx-auto mt-7 max-w-[1320px] px-5 sm:px-8 lg:mt-9 lg:px-12">
-        <div data-dc-route className="dc-route">
-          <div aria-hidden className="dc-road">
-            <div className="dc-line" />
-            <div className="dc-fill" />
-            <div className="dc-car">
-              <div className="dc-car-body">
-                <svg
-                  width="20"
-                  height="34"
-                  viewBox="0 0 20 34"
-                  style={{ overflow: "visible" }}
-                  className="drop-shadow-[0_2px_6px_rgba(14,122,110,0.5)]"
-                  aria-hidden
-                >
-                  <defs>
-                    <linearGradient id="dc-beam" x1="0" y1="1" x2="0" y2="0">
-                      <stop offset="0" stopColor="#fff6c2" stopOpacity="0.55" />
-                      <stop offset="1" stopColor="#fff6c2" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M5 3 L-3 -16 L23 -16 L15 3 Z" fill="url(#dc-beam)" />
-                  <rect x="0" y="6" width="3" height="7" rx="1.2" fill="#0b0f1a" />
-                  <rect x="17" y="6" width="3" height="7" rx="1.2" fill="#0b0f1a" />
-                  <rect x="0" y="22" width="3" height="7" rx="1.2" fill="#0b0f1a" />
-                  <rect x="17" y="22" width="3" height="7" rx="1.2" fill="#0b0f1a" />
-                  <rect x="2" y="2" width="16" height="30" rx="6" fill="#8EE3D6" />
-                  <rect x="4.5" y="9" width="11" height="6" rx="2" fill="#0E1020" />
-                  <rect x="4.5" y="21" width="11" height="5" rx="2" fill="#0E1020" opacity="0.85" />
-                  <circle cx="5.2" cy="4.6" r="1.6" fill="#fff6c2" />
-                  <circle cx="14.8" cy="4.6" r="1.6" fill="#fff6c2" />
-                  <rect x="3.2" y="29" width="4" height="1.8" rx="0.9" fill="#ff5d6c" />
-                  <rect x="12.8" y="29" width="4" height="1.8" rx="0.9" fill="#ff5d6c" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4">
-            {info.map(({ icon: Icon, title, note }, i) => (
-              <div
-                key={note}
-                data-dc-stop
-                data-dc-reveal
-                data-lit="false"
-                className="dc-stop dc-reveal min-w-0"
-                style={{ "--d": `${i * 140}ms` } as CSSProperties}
-              >
-                <span aria-hidden className="dc-dot" />
-                <span aria-hidden className="dc-stem" />
+          <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
+            {/* Left: framed venue photo */}
+            <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-8">
+              <div className="relative w-full max-w-[380px]">
                 <div
-                  onPointerMove={onCardMove}
-                  className="dc-card flex h-full min-w-0 items-center gap-3 rounded-lg border border-[#D5E3E0] bg-white/85 p-3 backdrop-blur-sm lg:p-3.5"
-                >
-                  <span className="dc-ico relative flex h-8 w-8 flex-none items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                  <div className="relative min-w-0">
-                    <div className="truncate text-[13px] font-bold leading-snug text-[#0E1020]">{title}</div>
-                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[#6B7280]">{note}</div>
+                  aria-hidden
+                  className="absolute inset-0 rounded-[4px] border"
+                  style={{
+                    borderColor: "rgba(142,227,214,0.35)",
+                    transform: "translate(14px, -14px)",
+                  }}
+                />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 rounded-[4px] border-2 border-[#3A404B]"
+                  style={{ transform: "translate(-14px, 14px)" }}
+                />
+
+                <div className="image-frame relative z-10 aspect-[4/3] w-full overflow-hidden bg-[#0E1020]">
+                  <Parallax speed={0.14} className="absolute inset-0">
+                    <Image
+                      src="/images/campground.jpg"
+                      alt="Holiness Campground, Kwali, Abuja, during the 2025 conference"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 80vw, 380px"
+                    />
+                  </Parallax>
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
+
+                  <div className="dc-chip">
+                    <div className="flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
+                      <span className="dc-pin flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
+                        <MapPinIcon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
+                          Venue
+                        </span>
+                        <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
+                          {venueName}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Right: copy, route and actions */}
+            <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-7 lg:p-8 xl:p-10">
+              <div className="flex items-center gap-3">
+                <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
+                <RevealText
+                  as="span"
+                  text="Plan Your Journey"
+                  className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
+                  speed={18}
+                />
+              </div>
+
+              <RevealText
+                as="h2"
+                text="Conference Details"
+                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
+                speed={14}
+              />
+
+              <RevealText
+                as="p"
+                text="Essential dates, venue location, and session times"
+                className="mt-6 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
+                speed={9}
+              />
+
+              <div
+                data-dc-reveal
+                className="dc-reveal mt-6 w-full max-w-xl"
+                style={{ "--d": "120ms" } as InlineStyle}
+              >
+                <h3 className="text-2xl font-bold leading-[1.15] tracking-tight text-[#0E1020] sm:text-3xl">
+                  {eventName}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#4B5563] lg:text-base">
+                  Theme: <span className="font-semibold text-[#0E7A6E]">&ldquo;{theme}&rdquo;</span>
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[#0E1020] px-4 py-1.5 text-[11px] font-bold text-[#8EE3D6]">
+                    {registrationFeeLabel} per participant
+                  </span>
+                  <span className="rounded-full border border-[#0E7A6E]/25 bg-white/70 px-4 py-1.5 text-[11px] font-semibold text-[#0E7A6E]">
+                    {heroDatesLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* ---------- The route: three stops, a car drives between them ---------- */}
+              <div data-dc-route className="dc-route mt-6 w-full">
+                <div aria-hidden className="dc-road">
+                  <div className="dc-line" />
+                  <div className="dc-fill" />
+                  <div className="dc-car">
+                    <div className="dc-car-body">
+                      <svg
+                        width="20"
+                        height="34"
+                        viewBox="0 0 20 34"
+                        style={{ overflow: "visible" }}
+                        className="drop-shadow-[0_2px_6px_rgba(14,122,110,0.5)]"
+                        aria-hidden
+                      >
+                        <defs>
+                          <linearGradient id="dc-beam" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0" stopColor="#fff6c2" stopOpacity="0.55" />
+                            <stop offset="1" stopColor="#fff6c2" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M5 3 L-3 -16 L23 -16 L15 3 Z" fill="url(#dc-beam)" />
+                        <rect x="0" y="6" width="3" height="7" rx="1.2" fill="#0b0f1a" />
+                        <rect x="17" y="6" width="3" height="7" rx="1.2" fill="#0b0f1a" />
+                        <rect x="0" y="22" width="3" height="7" rx="1.2" fill="#0b0f1a" />
+                        <rect x="17" y="22" width="3" height="7" rx="1.2" fill="#0b0f1a" />
+                        <rect x="2" y="2" width="16" height="30" rx="6" fill="#8EE3D6" />
+                        <rect x="4.5" y="9" width="11" height="6" rx="2" fill="#0E1020" />
+                        <rect x="4.5" y="21" width="11" height="5" rx="2" fill="#0E1020" opacity="0.85" />
+                        <circle cx="5.2" cy="4.6" r="1.6" fill="#fff6c2" />
+                        <circle cx="14.8" cy="4.6" r="1.6" fill="#fff6c2" />
+                        <rect x="3.2" y="29" width="4" height="1.8" rx="0.9" fill="#ff5d6c" />
+                        <rect x="12.8" y="29" width="4" height="1.8" rx="0.9" fill="#ff5d6c" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4">
+                  {info.map(({ icon: Icon, title, note }, i) => (
+                    <div
+                      key={note}
+                      data-dc-stop
+                      data-dc-reveal
+                      data-lit="false"
+                      className="dc-stop dc-reveal min-w-0"
+                      style={{ "--d": `${i * 140}ms` } as InlineStyle}
+                    >
+                      <span aria-hidden className="dc-dot" />
+                      <span aria-hidden className="dc-stem" />
+                      <div
+                        onPointerMove={onCardMove}
+                        className="dc-card flex h-full min-w-0 items-center gap-3 rounded-lg border border-[#D5E3E0] bg-white/85 p-3 backdrop-blur-sm lg:p-3.5"
+                      >
+                        <span className="dc-ico relative flex h-8 w-8 flex-none items-center justify-center rounded-full border border-[#0E7A6E]/30 bg-[#EAF9F7] text-[#0E7A6E]">
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <div className="relative min-w-0">
+                          <div className="truncate text-[13px] font-bold leading-snug text-[#0E1020]">{title}</div>
+                          <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[#6B7280]">{note}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                data-dc-reveal
+                className="dc-reveal mt-6 flex w-full max-w-xl items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5"
+                style={{ "--d": "200ms" } as InlineStyle}
+              >
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  aria-label="Share Conference Details"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
+                >
+                  <ShareIcon className="h-4 w-4" />
+                </button>
+
+                <div className="-m-3 inline-block p-3" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
+                  <Link
+                    href="/register"
+                    className="dc-cta group inline-flex items-center justify-center gap-2 rounded-full bg-[#8EE3D6] px-7 py-3.5 text-sm font-semibold tracking-wide text-[#0E1020] shadow-[0_8px_30px_rgba(142,227,214,0.35)] transition-all duration-200 hover:bg-[#7BD4C7] hover:shadow-[0_12px_40px_rgba(142,227,214,0.5)] active:scale-95"
+                  >
+                    Register Now
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M5 12h14" />
+                      <path d="M13 6l6 6-6 6" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -3,11 +3,11 @@
 import {
   useEffect,
   useRef,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
+import type { InlineStyle } from "@/components/marketing/inline-style";
 import { FacebookIcon, YoutubeIcon, XIcon } from "@/components/icons/social-icons";
 import { RevealText } from "@/components/ui/reveal-text";
 import { Parallax } from "@/components/ui/parallax";
@@ -63,6 +63,7 @@ const MC_CSS = `
     border:0;border-radius:0;box-shadow:none}
   .ms-group .mc-card:hover{border-color:transparent;box-shadow:none}
   .ms-group .mc-card + .mc-card{border-left:1px solid rgba(14,122,110,.14)}
+  .ms-group .mc-photo{aspect-ratio:auto;height:230px;min-height:0}
 }
 
 /* ---------- living background inside the card ---------- */
@@ -400,12 +401,12 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
         </div>
 
         {/* Content */}
-        <div className="flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-8">
+        <div className="flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-6">
           <div className="space-y-4">
             <div
               data-mc-reveal
               className="mc-reveal flex items-center gap-3"
-              style={{ "--d": "0ms" } as CSSProperties}
+              style={{ "--d": "0ms" } as InlineStyle}
             >
               <span aria-hidden className="h-px w-6 bg-[#0E7A6E]" />
               <RevealText
@@ -419,7 +420,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             <div
               data-mc-reveal
               className="mc-reveal"
-              style={{ "--d": "80ms" } as CSSProperties}
+              style={{ "--d": "80ms" } as InlineStyle}
             >
               <RevealText
                 as="h3"
@@ -433,7 +434,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             <div
               data-mc-reveal
               className="mc-reveal"
-              style={{ "--d": "160ms" } as CSSProperties}
+              style={{ "--d": "160ms" } as InlineStyle}
             >
               <RevealText
                 as="p"
@@ -448,7 +449,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
           <div
             data-mc-reveal
             className="mc-reveal mt-7 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 md:mt-auto md:pt-6"
-            style={{ "--d": "260ms" } as CSSProperties}
+            style={{ "--d": "260ms" } as InlineStyle}
           >
             <div className="flex items-center gap-2.5">
               {socials?.youtube && (

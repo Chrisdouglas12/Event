@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { InlineStyle } from "@/components/marketing/inline-style";
 import {
   createFallbackModel,
   createModelInstance,
@@ -703,7 +704,7 @@ export function HeroBackground({
       <div className="absolute inset-x-0 top-0 h-[360px] sm:h-[460px] lg:inset-0 lg:h-auto">
         <div
           className="absolute left-1/2 top-1/2 h-[min(70vw,290px)] w-[min(70vw,290px)] -translate-x-1/2 -translate-y-1/2 lg:left-[22%] lg:top-[calc(52%_-_20px)] lg:h-[min(22vw,320px)] lg:w-[min(22vw,320px)]"
-          style={{ translate: mobileLift ? `0 ${-mobileLift}px` : undefined } as CSSProperties}
+          style={{ translate: mobileLift ? `0 ${-mobileLift}px` : undefined } as InlineStyle}
         >
           <div ref={posterRef} className="globe-poster absolute inset-0" />
 
@@ -720,7 +721,7 @@ export function HeroBackground({
                         {
                           "--a": `${(i / ring.count) * 360}deg`,
                           background: flagBackground(flag),
-                        } as CSSProperties
+                        } as InlineStyle
                       }
                     />
                   );

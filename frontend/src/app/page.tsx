@@ -11,7 +11,7 @@ import { MinisterCard } from "@/components/marketing/minister-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
-import { Gallery3D } from "@/components/marketing/gallery-3d";
+import { GalleryCollage } from "@/components/marketing/gallery-collage";
 import { FlyerSection } from "@/components/marketing/flyer-section";
 import { Footer } from "@/components/marketing/footer";
 import { RevealText } from "@/components/ui/reveal-text";
@@ -81,7 +81,7 @@ export default function HomePage() {
                 data-scene="road"
                 data-trace-node
                 data-trace-label="Ministers"
-                className="ms-root cv-auto relative isolate overflow-hidden pb-10 pt-6 sm:pt-7 lg:pb-12 lg:pt-8"
+                className="ms-root cv-auto relative isolate overflow-hidden pb-10 pt-6 sm:pt-7 lg:pb-8 lg:pt-6"
               >
                 <div aria-hidden className="ms-bg">
                   <span className="ms-stars" />
@@ -139,7 +139,7 @@ export default function HomePage() {
               <TimelineDivider label="About" scene="road" />
               <AboutPreview />
               <TimelineDivider label="Gallery" scene="sea" />
-              <Gallery3D />
+              <GalleryCollage />
               <TimelineDivider label="Flyer" scene="arrival" />
               <FlyerSection />
             </div>

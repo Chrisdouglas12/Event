@@ -29,7 +29,7 @@ export function FlyerSection() {
   const { eventName, flyerDescription } = useLandingSettings();
 
   return (
-    <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-16">
+    <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-10">
       <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <div className="relative overflow-hidden">
           {/* Ambient glow */}
@@ -40,8 +40,8 @@ export function FlyerSection() {
 
           <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
             {/* Left: flyer stage */}
-            <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-14">
-              <div className="relative w-full max-w-[380px]">
+            <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-8">
+              <div className="relative w-full max-w-[300px]">
                 {/* Accent frame, top-right */}
                 <div
                   aria-hidden
@@ -60,7 +60,7 @@ export function FlyerSection() {
 
                 <Parallax
                   speed={0.15}
-                  className="image-frame relative z-10 aspect-[3/4] w-full max-w-[320px] overflow-hidden bg-[#0E1020]"
+                  className="image-frame relative z-10 aspect-[3/4] w-full max-w-[320px] overflow-hidden bg-[#0E1020] lg:max-w-[260px]"
                 >
                   <Image
                     src="/images/conference_flyer.png"
@@ -68,14 +68,14 @@ export function FlyerSection() {
                     fill
                     className="object-contain"
                     quality={95}
-                    sizes="(max-width: 1024px) 80vw, 380px"
+                    sizes="(max-width: 1024px) 80vw, 260px"
                   />
                 </Parallax>
               </div>
             </div>
 
             {/* Right: copy */}
-            <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-7 lg:p-16 xl:p-20">
+            <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-7 lg:p-10 xl:p-12">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
                 <RevealText

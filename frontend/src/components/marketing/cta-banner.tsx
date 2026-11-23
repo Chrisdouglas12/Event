@@ -10,7 +10,7 @@ export function CtaBanner() {
   const { eventName, theme, datesText, venueAddress } = useLandingSettings();
 
   return (
-    <section data-scene="sea" data-enter className="cv-auto relative w-full py-12 lg:py-16 overflow-hidden">
+    <section data-scene="sea" data-enter className="cv-auto relative w-full py-12 lg:py-10 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -35,7 +35,7 @@ export function CtaBanner() {
 
       {/* Content */}
       <div className="relative z-20 w-full px-[3px] sm:px-8 lg:px-8 xl:px-10">
-        <TiltCard intensity={0} className="landing-card px-8 py-12 sm:px-12 space-y-6 text-center">
+        <TiltCard intensity={0} className="landing-card px-8 py-12 sm:px-12 sm:py-9 lg:py-8 space-y-4 text-center">
           <RevealText
             as="h2"
             text={eventName}

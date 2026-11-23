@@ -13,7 +13,7 @@ export function Footer() {
       className="w-full bg-[#0E1020]/85 text-gray-300"
     >
       {/* 3-Column Main Footer */}
-      <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-20">
+      <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
           
           {/* Column 1: Logo & Blurb (5 cols) */}

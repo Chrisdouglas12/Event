@@ -3,12 +3,12 @@
 import {
   useEffect,
   useRef,
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CalendarDays, MapPin, Sparkles } from "lucide-react";
+import type { InlineStyle } from "@/components/marketing/inline-style";
 import { useLandingSettings } from "@/components/marketing/landing-settings";
 import { getLandingPerformance } from "@/lib/landing-performance";
 
@@ -36,7 +36,7 @@ const WA_CSS = `
   clip-path:polygon(0 var(--wa-slant),100% 0,100% 100%,0 100%);
 }
 @media (min-width:640px){.wa-root{margin-top:-3.25rem}}
-@media (min-width:1024px){.wa-root{--wa-slant:56px;margin-top:0;padding-top:calc(var(--wa-slant) + 3rem)}}
+@media (min-width:1024px){.wa-root{--wa-slant:56px;margin-top:0;padding-top:calc(var(--wa-slant) + 1.5rem)}}
 
 /* ---------- background ---------- */
 .wa-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
@@ -66,7 +66,7 @@ const WA_CSS = `
 .wa-photo-caption strong{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8EE3D6}
 .wa-photo-caption span{display:block;margin-top:3px;font-size:12px;line-height:1.4;color:rgba(255,255,255,.85)}
 @media (min-width:1024px){
-  .wa-photo{min-height:420px;clip-path:polygon(0 0,100% 0,100% 100%,56px 100%)}
+  .wa-photo{min-height:320px;clip-path:polygon(0 0,100% 0,100% 100%,56px 100%)}
 }
 
 /* ---------- CTA ---------- */
@@ -306,7 +306,7 @@ export function WhyAttend() {
           "--wa-subtle": "#6B7280",
           "--wa-line": "rgba(14,16,32,0.10)",
           "--wa-frame": "#D1D5DB",
-        } as CSSProperties
+        } as InlineStyle
       }
     >
       <style dangerouslySetInnerHTML={{ __html: WA_CSS }} />
@@ -320,7 +320,7 @@ export function WhyAttend() {
       </div>
 
       {/* ---------- Layer 2: copy + flyer background ---------- */}
-      <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-10 px-5 pb-8 sm:px-8 lg:min-h-[calc(100vh-320px)] lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pb-8 xl:gap-16">
+      <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-10 px-5 pb-8 sm:px-8 lg:min-h-[380px] lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pb-6 xl:gap-16">
         {/* Left: copy */}
         <div className="flex flex-col items-start lg:col-span-6">
           <div className="flex items-center gap-3">
@@ -342,7 +342,7 @@ export function WhyAttend() {
             <div
               data-wa-reveal
               className="wa-reveal -m-4 inline-block p-4"
-              style={{ "--d": "250ms" } as CSSProperties}
+              style={{ "--d": "250ms" } as InlineStyle}
               onPointerMove={onCtaMove}
               onPointerLeave={onCtaLeave}
             >
@@ -374,7 +374,7 @@ export function WhyAttend() {
           <div
             data-wa-reveal
             className="wa-reveal wa-photo relative h-[320px] w-full sm:h-[400px] lg:h-full"
-            style={{ "--d": "150ms" } as CSSProperties}
+            style={{ "--d": "150ms" } as InlineStyle}
           >
             <Image
               src="/images/conference_flyer.jpg"
@@ -407,8 +407,8 @@ export function WhyAttend() {
               data-on="false"
               data-wa-reveal
               onPointerMove={onPointMove}
-              className="wa-point wa-reveal border-t border-white/10 px-5 py-8 first:border-t-0 sm:px-8 md:border-l md:border-t-0 md:py-8 md:first:border-l-0 lg:px-12"
-              style={{ "--d": `${idx * 140}ms` } as CSSProperties}
+              className="wa-point wa-reveal border-t border-white/10 px-5 py-8 first:border-t-0 sm:px-8 md:border-l md:border-t-0 md:py-5 md:first:border-l-0 lg:px-8"
+              style={{ "--d": `${idx * 140}ms` } as InlineStyle}
             >
               <span aria-hidden className="wa-ghost">
                 {String(idx + 1).padStart(2, "0")}

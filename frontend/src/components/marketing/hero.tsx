@@ -112,7 +112,7 @@ export function Hero() {
   return (
     <section
       data-track="hero"
-      className="relative w-full lg:min-h-[720px] flex items-center bg-[#0E1020] overflow-hidden"
+      className="relative w-full lg:min-h-[640px] flex items-center bg-[#0E1020] overflow-hidden"
     >
       <style dangerouslySetInnerHTML={{ __html: HB_CSS }} />
 
@@ -121,13 +121,13 @@ export function Hero() {
 
       {/* Layer 1: Globe background (slowest / farthest) */}
       <ParallaxLayer speed={0.4} className="absolute inset-0">
-        <HeroBackground desktopLift={30} />
+        <HeroBackground desktopLift={10} />
       </ParallaxLayer>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1240px] grid-cols-1 items-center gap-8 px-4 pb-10 pt-[350px] sm:px-8 sm:pt-[390px] lg:grid-cols-12 lg:pb-8 lg:pt-10">
+      <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-8 pt-[350px] sm:pt-[390px] pb-14 lg:py-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         <div className="hidden lg:block lg:col-span-5" />
 
-        <div data-hero-content className="flex w-full flex-col items-start space-y-4 text-left sm:space-y-6 lg:col-span-7 lg:space-y-4">
+        <div data-hero-content className="lg:col-span-7 flex flex-col items-start space-y-5 sm:space-y-8 text-left w-full">
           {/* Layer 2: Date badge */}
           <ParallaxLayer speed={0.04}>
             <div
@@ -140,7 +140,7 @@ export function Hero() {
           </ParallaxLayer>
 
           {/* Layer 3: glass plaque (title + theme) with the logo medallion */}
-          <ParallaxLayer speed={0.1} className="w-full lg:-mt-[22px]">
+          <ParallaxLayer speed={0.1} className="w-full">
             <div
               className="hb-wrap w-full [--s:44px] sm:[--s:56px]"
               onPointerMove={onPlaqueMove}
@@ -149,13 +149,13 @@ export function Hero() {
                 {/* TOP PLATE: conference name */}
                 <div className="hero-fade relative" style={{ animationDelay: "0.2s" }}>
                   <div
-                    className="hb-plate hb-top relative flex h-full flex-col justify-center py-4 pl-4 pr-10 sm:py-4 sm:pl-6 sm:pr-14"
+                    className="hb-plate hb-top relative flex h-full flex-col justify-center py-4 pl-4 pr-10 sm:py-5 sm:pl-6 sm:pr-14"
                     style={{ clipPath: shape(TOP_OUTER) }}
                   >
                     <span aria-hidden className="hb-bar" />
                     <span aria-hidden className="hb-sweep" />
                     <span aria-hidden className="hb-spot" />
-                    <h1 className="relative z-[2] whitespace-nowrap bg-gradient-to-r from-white to-[#CFF5EE] bg-clip-text text-[4.2vw] font-extrabold uppercase leading-[1.1] tracking-tight text-transparent sm:text-3xl">
+                    <h1 className="relative z-[2] whitespace-nowrap text-[4.2vw] font-extrabold uppercase leading-[1.1] tracking-tight text-white [text-shadow:0_2px_18px_rgba(142,227,214,0.3)] sm:text-3xl">
                       INTERNATIONAL HOLINESS
                     </h1>
                     <h2 className="relative z-[2] mt-0.5 whitespace-nowrap text-[3.2vw] font-bold uppercase leading-[1.2] tracking-wide text-[#8EE3D6] sm:mt-1 sm:text-xl">
@@ -172,7 +172,7 @@ export function Hero() {
                 {/* BOTTOM PLATE: theme, never more than 2 lines */}
                 <div className="hero-fade relative" style={{ animationDelay: "0.5s" }}>
                   <div
-                    className="hb-plate hb-bot relative flex h-full flex-col justify-center py-4 pl-4 sm:py-4 sm:pl-6"
+                    className="hb-plate hb-bot relative flex h-full flex-col justify-center py-4 pl-4 sm:py-5 sm:pl-6"
                     style={{ clipPath: shape(BOT_OUTER) }}
                   >
                     <span aria-hidden className="hb-sweep" />
@@ -232,8 +232,8 @@ export function Hero() {
           </ParallaxLayer>
 
           {/* Layer 4: 3D logo clock + flip countdown */}
-          <ParallaxLayer speed={0.16} className="w-full max-w-none">
-            <div className="hero-fade w-full max-w-none pt-1 pb-1" style={{ animationDelay: "0.8s" }}>
+          <ParallaxLayer speed={0.16} className="w-full">
+            <div className="hero-fade pt-1 pb-1" style={{ animationDelay: "0.8s" }}>
               <CountdownClock startsAt={startsAt} endsAt={endsAt} theme={theme} />
             </div>
           </ParallaxLayer>
