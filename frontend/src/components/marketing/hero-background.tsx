@@ -7,7 +7,7 @@ import {
   loadTravelModel,
 } from "@/lib/travel-models";
 
-const R_VIS = 2.55;
+const R_VIS = 2.65;
 
 export function HeroBackground({
   align = "left",
@@ -123,13 +123,12 @@ export function HeroBackground({
 
       // ---------- The two flag orbits ----------
       const rings = [
-        { r: 2.18, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
-        { r: 2.44, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
+        { r: 2.32, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
+        { r: 2.52, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
       ];
 
       const spinners: { g: any; speed: number }[] = [];
       const textures: any[] = [];
-      const flagMeshes: any[] = [];
       const flagMaterials: any[] = [];
 
       rings.forEach((ring, ri) => {
@@ -159,7 +158,6 @@ export function HeroBackground({
           flagMaterials.push(flagFace);
           const flagEdge = new THREE.MeshStandardMaterial({ color: 0x102f4d, roughness: 0.38, metalness: 0.12 });
           const mesh = new THREE.Mesh(geo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
-          flagMeshes.push(mesh);
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
@@ -177,12 +175,12 @@ export function HeroBackground({
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
 
-        // On desktop the globe is smaller, so the flags need a little more
-        // presence to stay readable beside the hero copy.
+        // Keep flags at their natural spacing. Scaling the plates up on
+        // desktop made neighbours overlap and look broken, so desktop only
+        // gets a stronger emissive lift for readability. The orbits sit just
+        // outside the atmosphere now, so no plate is swallowed by the globe.
         const desktop = w >= 1024;
-        const flagScale = desktop ? 1.5 : 1;
-        flagMeshes.forEach((mesh) => mesh.scale.setScalar(flagScale));
-        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.28 : 0.12; });
+        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.32 : 0.12; });
 
         const vh = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const vw = vh * camera.aspect;

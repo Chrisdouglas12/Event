@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { CheckCircle2, Globe2, MapPin, ScanLine, Sparkles, Users, Wallet } from "lucide-react";
+import { getSession } from "@/lib/auth/session";
 import {
   CURRENCIES,
   formatMoneyMinor,
@@ -258,6 +260,10 @@ function RankedList({
 }
 
 export default async function AdminDashboardPage() {
+  const user = await getSession();
+  if (!user) redirect("/staff/login");
+  if (user.role !== "admin") redirect("/admin/participants");
+
   let stats: DashboardStats = EMPTY_STATS;
   let dbAvailable = true;
 
