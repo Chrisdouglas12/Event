@@ -24,16 +24,21 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
+        working-directory: frontend
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
+        working-directory: frontend
         run: pnpm tsc --noEmit
 
       - name: Unit & Crypto Tests
+        working-directory: frontend
         run: pnpm test
 
       - name: Production dependency audit
+        working-directory: frontend
         run: pnpm audit --prod --audit-level high
 
