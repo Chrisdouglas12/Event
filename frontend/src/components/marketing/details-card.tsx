@@ -540,14 +540,22 @@ export function DetailsCard() {
                 className="dc-reveal mt-6 flex w-full max-w-xl items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5"
                 style={{ "--d": "200ms" } as InlineStyle}
               >
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  aria-label="Share Conference Details"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
-                >
-                  <ShareIcon className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    aria-label="Share Conference Details"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
+                  >
+                    <ShareIcon className="h-4 w-4" />
+                  </button>
+                  <Link
+                    href="/programme"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#D1D5DB] bg-white text-xs font-bold text-[#0E1020] hover:border-[#0E7A6E] hover:text-[#0E7A6E] transition-all"
+                  >
+                    View Timetable
+                  </Link>
+                </div>
 
                 <div className="-m-3 inline-block p-3" onPointerMove={onCtaMove} onPointerLeave={onCtaLeave}>
                   <Link

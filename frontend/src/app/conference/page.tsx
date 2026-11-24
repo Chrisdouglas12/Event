@@ -124,13 +124,47 @@ export default function ConferencePage() {
             </div>
           </div>
 
-          {/* Programme status */}
-          <div className="space-y-6">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
-              Programme
-            </h2>
-            <div className="rounded-[18px] border border-gray-200 bg-[#F8FAFC] p-6 text-sm leading-relaxed text-[#6B7280]">
-              The full programme will be available at the conference on 8 December 2026. Session details have not been supplied.
+          {/* Official Programme & Schedule Section */}
+          <div className="bg-[#F8FAFC] rounded-[24px] border border-gray-100 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2">
+              <div className="relative aspect-[3/4] lg:aspect-auto lg:min-h-[500px] bg-[#0E1020] p-4 flex items-center justify-center">
+                <div className="relative w-full h-full max-h-[480px]">
+                  <Image
+                    src="/images/conference_programme.jpeg"
+                    alt="Official Conference Programme Timetable for IHGC 2026"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                  />
+                </div>
+              </div>
+              <div className="p-8 sm:p-12 flex flex-col justify-center space-y-6">
+                <span className="text-xs font-bold uppercase tracking-widest text-[#0E7A6E]">
+                  Official Timetable
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#111320] tracking-tight">
+                  Conference Programme & Daily Schedule
+                </h2>
+                <p className="text-sm text-[#6B7280] leading-relaxed">
+                  The complete 4-day timetable includes Morning Warfare, Morning Message, Expository Teachings, Afternoon Varieties, Book Reviews, Prayer Sessions, and Revival Messages.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <a
+                    href="/images/conference_programme.jpeg"
+                    download="IHGC-2026-Programme-Schedule.jpeg"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0E1020] text-white font-bold text-sm hover:bg-[#1A1D36] transition-colors"
+                  >
+                    <Download className="w-4 h-4 text-[#8EE3D6]" />
+                    Download Timetable Image
+                  </a>
+                  <Link
+                    href="/programme"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#0E1020] text-[#0E1020] font-bold text-sm hover:bg-[#0E1020] hover:text-white transition-colors"
+                  >
+                    View Interactive Schedule
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -89,7 +89,7 @@ export function Header() {
                 priority
               />
               <span className="text-xs sm:text-sm font-black tracking-widest text-[#0E1020] uppercase">
-                Events
+                Registration
               </span>
             </Link>
 
