@@ -1,0 +1,38 @@
+services:
+  backend:
+    build: ./backend
+    expose:
+      - "3000"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TRUST_PROXY=1
+      - FRONTEND_URL=https://register.horemow.com
+      - CORS_ORIGIN=https://register.horemow.com
+
+  frontend:
+    build: ./frontend
+    expose:
+      - "3001"
+    depends_on:
+      - backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - NEXT_PUBLIC_API_URL=https://register.horemow.com/api
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+      - frontend
+    restart: always
