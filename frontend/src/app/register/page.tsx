@@ -192,31 +192,40 @@ const STYLES = `
 
 /* Conference intro panel: compact above the form on mobile, sticky beside it on desktop */
 .r-side{
+  position:relative;
   display:flex; color:#fff; border-radius:6px; overflow:hidden;
   background:linear-gradient(160deg,rgba(14,22,38,.96) 0%,rgba(7,16,30,.98) 100%);
   border:1px solid rgba(142,227,214,.22);
   box-shadow:0 30px 80px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
 }
-.r-side-inner{ margin:0; width:100%; padding:20px 18px; text-align:center; }
-.r-side-logo{ display:block; width:auto; height:30px; margin:0 auto 12px; object-fit:contain; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
-/* Below 1280px the countdown lives in the sticky form header; on wide screens
-   the sidebar is the only header, so it keeps its countdown there. */
-.r-side-label{ display:none; font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--r-mint); }
-.r-side-clock{ display:none; margin-top:10px; padding:8px 12px; border-radius:6px; background:rgba(5,10,20,.6); box-shadow:0 0 0 1px rgba(142,227,214,.16); }
-@media (min-width:1280px){ .r-side-label{ display:block; } .r-side-clock{ display:inline-block; } }
-.r-side-title{ margin-top:12px; font-size:18px; font-weight:800; line-height:1.2; letter-spacing:-.01em; }
-.r-side-lead{ margin:8px auto 0; max-width:310px; font-size:13px; line-height:1.55; color:rgba(255,255,255,.72); }
-.r-side-steps{ display:none; }
-.r-side-steps li{ display:flex; gap:14px; }
-.r-side-steps li + li{ margin-top:18px; }
-.r-side-num{ flex:none; display:grid; place-items:center; width:27px; height:27px; border-radius:999px; font-size:12px; font-weight:800; color:var(--r-navy); background:var(--r-mint); box-shadow:0 0 18px rgba(142,227,214,.28); }
-.r-side-steps b{ display:block; font-size:14px; font-weight:700; letter-spacing:-.01em; }
-.r-side-steps span span{ display:block; margin-top:3px; font-size:13px; line-height:1.5; color:rgba(255,255,255,.66); }
+/* Our globe, softened into a faint wash behind the panel copy. */
+.r-side::before{
+  content:''; position:absolute; z-index:0; pointer-events:none;
+  left:50%; top:64%; width:min(135%,460px); aspect-ratio:1;
+  transform:translate(-50%,-50%); border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(14,122,110,.22),transparent 65%),
+    url('/textures/earth.jpg') center/cover no-repeat;
+  opacity:.14; filter:blur(3px) saturate(.7);
+  -webkit-mask-image:radial-gradient(circle,#000 30%,rgba(0,0,0,.5) 56%,transparent 74%);
+  mask-image:radial-gradient(circle,#000 30%,rgba(0,0,0,.5) 56%,transparent 74%);
+}
+.r-side-inner{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  margin:0; width:100%; min-height:100%; padding:20px 18px; text-align:center;
+}
+.r-side-logo{ display:block; width:auto; height:30px; margin:0 auto 18px; object-fit:contain; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.r-side-eyebrow{ display:block; width:100%; font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--r-mint); }
+.r-side-title{ width:100%; margin:6px 0 0; font-size:17px; font-weight:800; line-height:1.25; letter-spacing:-.01em; }
+/* Below 1280px the countdown stays in the sticky form header. */
+.r-side-countdown{ display:none; margin-top:24px; }
+.r-side-label{ display:block; font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--r-mint); }
+.r-side-clock{ display:inline-block; margin-top:10px; padding:8px 12px; border-radius:6px; background:rgba(5,10,20,.6); box-shadow:0 0 0 1px rgba(142,227,214,.16); }
+@media (min-width:1280px){ .r-side-countdown{ display:block; } }
 @media (min-width:640px){
   .r-side-inner{ padding:26px 24px; }
-  .r-side-title{ font-size:20px; }
-  .r-side-lead{ font-size:14px; }
-  .r-side-steps{ display:inline-block; margin-top:20px; padding:0; list-style:none; text-align:left; }
+  .r-side-title{ font-size:19px; }
 }
 @media (min-width:768px){
   .r-side{
@@ -232,10 +241,8 @@ const STYLES = `
     height:calc(100vh - var(--r-header-h) - 56px);
     min-height:480px;
   }
-  .r-side-inner{ margin:auto; max-width:400px; padding:40px 32px; }
-  .r-side-steps{ margin-top:30px; }
+  .r-side-inner{ max-width:400px; margin:0 auto; padding:40px 32px; }
 }
-@media (max-height:700px){ .r-side-lead{ display:none; } }
 
 /* Card */
 .r-card{
@@ -243,22 +250,22 @@ const STYLES = `
   color:var(--r-text);
   background:#fff;
   border:1px solid rgba(142,227,214,.32);
-  border-radius:6px;
+  border-radius:28px 28px 8px 8px;
   box-shadow:0 30px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.9);
   overflow:clip;
 }
 
 /* Sticky header + progress (below desktop) */
 .r-head{ position:sticky; top:var(--r-header-h); z-index:20; background:var(--r-navy); color:#fff; }
-.r-head-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:4px var(--r-pad); }
-.r-head-steps{ font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--r-mint); white-space:nowrap; }
+.r-head-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:52px; padding:8px var(--r-pad); }
+.r-head-steps{ font-size:13.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--r-mint); white-space:nowrap; }
 .r-head-brand{ display:none; align-items:center; gap:12px; min-width:0; }
-.r-head-sep{ width:1px; height:18px; background:rgba(255,255,255,.2); }
-.r-head-tag{ font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--r-mint); }
-.r-head-clock{ display:flex; align-items:center; gap:8px; font-size:11.5px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.78); white-space:nowrap; }
+.r-head-sep{ width:1px; height:22px; background:rgba(255,255,255,.2); }
+.r-head-tag{ font-size:13.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--r-mint); }
+.r-head-clock{ display:flex; align-items:center; gap:8px; font-size:13.5px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.78); white-space:nowrap; }
 .r-progress{ height:3px; background:rgba(255,255,255,.14); }
 .r-progress span{ display:block; height:100%; background:var(--r-mint); transition:width .35s ease; }
-@media (min-width:640px){ .r-head-row{ min-height:52px; } .r-head-brand{ display:flex; } .r-head-steps{ display:none; } }
+@media (min-width:640px){ .r-head-row{ min-height:56px; } .r-head-brand{ display:flex; } .r-head-steps{ display:none; } }
 @media (min-width:1280px){ .r-head{ display:none; } }
 
 /* Steps */
@@ -328,18 +335,15 @@ const STYLES = `
 .r-choice[aria-pressed=true]{ color:var(--r-on-primary); background:var(--r-active); }
 
 /* Registration type */
-.r-type{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; }
-.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; min-height:56px; padding:8px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:0; border-radius:0; cursor:pointer; transition:background .15s, box-shadow .15s; }
+.r-type{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; background:#fff; border:1px solid var(--r-border-strong); border-radius:var(--r-radius); }
+.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; min-height:52px; padding:8px 10px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:0; border-radius:0; cursor:pointer; transition:background .15s, box-shadow .15s; }
 .r-typecard + .r-typecard{ border-left:1px solid var(--r-border-strong); }
 .r-typecard:hover{ background:var(--r-subtle); }
 .r-typecard[aria-pressed=true]{ background:var(--r-active); color:var(--r-on-primary); box-shadow:inset 0 0 0 1.5px var(--r-active); }
-.r-typecard[aria-pressed=true] .r-typesub{ color:rgba(255,255,255,.72); }
 .r-typeicon{ flex:none; width:32px; height:32px; border-radius:999px; display:grid; place-items:center; background:var(--r-subtle); color:var(--r-muted); border:1px solid var(--r-border); transition:background .15s, color .15s; }
 .r-typecard[aria-pressed=true] .r-typeicon{ background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.28); color:var(--r-on-primary); }
-.r-typeicon svg{ width:17px; height:17px; }
+.r-typeicon svg{ width:16px; height:16px; }
 .r-typetitle{ display:block; font-size:14.5px; font-weight:700; line-height:1.2; }
-.r-typesub{ display:none; margin-top:2px; font-size:12.5px; line-height:1.35; color:var(--r-muted); }
-@media (min-width:768px){ .r-typecard{ padding:10px 12px; gap:12px; } .r-typeicon{ width:36px; height:36px; } .r-typeicon svg{ width:18px; height:18px; } .r-typesub{ display:block; } .r-typetitle{ font-size:15px; } }
 
 /* Panels + reveal */
 .r-panel{ display:flex; flex-direction:column; gap:18px; padding:14px; background:var(--r-subtle); border:1px solid var(--r-border); border-radius:16px; }
@@ -434,7 +438,7 @@ const STYLES = `
 .r-spin{ flex:none; width:16px; height:16px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:r-spin .7s linear infinite; }
 @keyframes r-spin{ to{ transform:rotate(360deg); } }
 
-@media (min-width:640px){ .r-card{ border-radius:6px; } }
+@media (min-width:640px){ .r-card{ border-radius:32px 32px 8px 8px; } }
 
 @media (prefers-reduced-motion:reduce){
   .r-root *, .r-root *::before, .r-root *::after{ animation:none !important; transition:none !important; }
@@ -1486,32 +1490,14 @@ export default function RegisterPage() {
                 style={{ width: "auto" }}
                 priority
               />
-              <span className="r-side-label">Conference starts in</span>
-              <div>
+              <span className="r-side-eyebrow">Register for the</span>
+              <h2 className="r-side-title">{SITE_CONFIG.eventTitle.toUpperCase()}</h2>
+              <div className="r-side-countdown">
+                <span className="r-side-label">Conference starts in</span>
                 <div className="r-side-clock">
                   <Countdown compact />
                 </div>
               </div>
-              <h2 className="r-side-title">{`REGISTER FOR THE ${SITE_CONFIG.eventTitle.toUpperCase()}`}</h2>
-              <p className="r-side-lead">Register yourself or your whole chapter in a few minutes.</p>
-              <ol className="r-side-steps">
-                {[
-                  ["Fill in the form", "Register one person, or a chapter or zone of 2 to 500."],
-                  [
-                    "Pay online",
-                    `Pay in ${CURRENCY_LIST.slice(0, -1).join(", ")} or ${CURRENCY_LIST[CURRENCY_LIST.length - 1]}.`,
-                  ],
-                  ["Get your QR ticket", "It is issued instantly."],
-                ].map(([title, text], index) => (
-                  <li key={title}>
-                    <span className="r-side-num">{index + 1}</span>
-                    <span>
-                      <b>{title}</b>
-                      <span>{text}</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
             </div>
           </aside>
 
@@ -1529,7 +1515,7 @@ export default function RegisterPage() {
                       alt="Horemow"
                       width={96}
                       height={33}
-                      className="h-7 w-auto object-contain"
+                      className="h-8 w-auto object-contain"
                       style={{ width: "auto" }}
                       priority
                     />
@@ -1569,7 +1555,6 @@ export default function RegisterPage() {
                       </span>
                       <span>
                         <span className="r-typetitle">Individual</span>
-                        <span className="r-typesub">Register one person</span>
                       </span>
                     </button>
                     <button
@@ -1583,7 +1568,6 @@ export default function RegisterPage() {
                       </span>
                       <span>
                         <span className="r-typetitle">Group</span>
-                        <span className="r-typesub">Register a chapter or zone together</span>
                       </span>
                     </button>
                   </div>

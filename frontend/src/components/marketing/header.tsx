@@ -10,6 +10,7 @@ import { SITE_CONFIG } from "@/config/site";
 
 export function Header() {
   const pathname = usePathname();
+  const isRegisterPage = pathname?.startsWith("/register") ?? false;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSocialBar, setShowSocialBar] = useState(true);
   const lastScrollY = useRef(0);
@@ -116,28 +117,31 @@ export function Header() {
 
           {/* Right: Desktop socials, Phone, Register, Mobile Menu */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* Desktop: social bar lives in the header, right beside the phone icon. */}
-            <div className="hidden lg:flex items-center gap-1.5">
-              {socials.map((social) => (
-                <a
-                  key={`header-${social.label}`}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
+            {/* Desktop: social bar lives in the header, right beside the phone icon.
+                Hidden on the registration page to keep the form distraction-free. */}
+            {!isRegisterPage && (
+              <div className="hidden lg:flex items-center gap-1.5">
+                {socials.map((social) => (
+                  <a
+                    key={`header-${social.label}`}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={social.label}
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+                <button
+                  onClick={handleShare}
+                  aria-label="Share"
                   className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
                 >
-                  {social.icon}
-                </a>
-              ))}
-              <button
-                onClick={handleShare}
-                aria-label="Share"
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
-              >
-                <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-              </button>
-            </div>
+                  <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
 
             <a
               href={SITE_CONFIG.contact.phoneTel}
@@ -198,7 +202,9 @@ export function Header() {
         )}
       </header>
 
-      {/* Bottom Floating Social Bar (Hidden on scroll down, reveals on scroll up) */}
+      {/* Bottom Floating Social Bar (hidden on /register, while the menu drawer
+          is open, and on scroll down; reveals on scroll up) */}
+      {!isRegisterPage && !mobileMenuOpen && (
       <div
         className={`lg:hidden fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${
           showSocialBar ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
@@ -227,6 +233,7 @@ export function Header() {
           </button>
         </div>
       </div>
+      )}
     </>
   );
 }
