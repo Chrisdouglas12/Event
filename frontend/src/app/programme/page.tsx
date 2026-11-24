@@ -23,7 +23,6 @@ type ScheduleSession = {
   time: string;
   category: string;
   title: string;
-  speaker?: string;
   badgeColor?: string;
 };
 
