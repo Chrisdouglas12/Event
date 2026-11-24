@@ -88,7 +88,7 @@ export function Header() {
                 style={{ width: "auto" }}
                 priority
               />
-              <span className="text-xs sm:text-sm font-black tracking-widest text-[#0E1020] uppercase">
+              <span className="font-heading text-xs sm:text-sm font-extrabold tracking-widest text-[#0E1020] uppercase">
                 Registration
               </span>
             </Link>
