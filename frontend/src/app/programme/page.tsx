@@ -50,7 +50,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "4:30 PM – 6:00 PM",
         category: "Book Review",
         title: "HOREMOW Ministry Celebrated At The Birthday Of The International Director",
-        speaker: "Reviewer",
         badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
       },
       {
@@ -63,7 +62,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "7:30 PM – 9:00 PM",
         category: "Revival Message",
         title: "Jesus The Way, The Truth And The Life",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
       },
     ],
@@ -83,14 +81,12 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "8:00 AM – 9:30 AM",
         category: "Morning Message",
         title: "Turning From Idols, Demons, And Charms To Jesus And Righteousness",
-        speaker: "Guest Minister",
         badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
       },
       {
         time: "10:45 AM – 12:15 PM",
         category: "Morning Teaching",
         title: "The Christian Religion",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
       },
       {
@@ -103,7 +99,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "4:30 PM – 6:00 PM",
         category: "Book Review",
         title: "Instructions To Women On Godly Living With Any Kind Of Husband",
-        speaker: "Reviewer",
         badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
       },
       {
@@ -116,7 +111,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "7:30 PM – 9:00 PM",
         category: "Revival Message",
         title: "The Way The Lord Ministers To Me In Prophecies And Revelations",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
       },
     ],
@@ -136,14 +130,12 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "8:00 AM – 9:30 AM",
         category: "Morning Message",
         title: "At The Name Of Jesus, Every Power Must Bow",
-        speaker: "Guest Minister",
         badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
       },
       {
         time: "10:45 AM – 12:15 PM",
         category: "Morning Teaching",
         title: "The Religion Of Darkness",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
       },
       {
@@ -156,7 +148,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "4:30 PM – 6:00 PM",
         category: "Book Review",
         title: "Understanding Witchcrafts And Their Activities In The Church",
-        speaker: "Reviewer",
         badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
       },
       {
@@ -169,7 +160,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "7:30 PM – 9:00 PM",
         category: "Revival Message",
         title: "The Victory Of Christ Kingdom Over Satan's Kingdom",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
       },
     ],
@@ -189,14 +179,12 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "8:00 AM – 9:30 AM",
         category: "Morning Message",
         title: "The Doctrine And Activities Of False Exorcist",
-        speaker: "Guest Minister",
         badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
       },
       {
         time: "10:45 AM – 12:15 PM",
         category: "Morning Teaching",
         title: "The Religion of Ishmaelites",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
       },
       {
@@ -209,7 +197,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "4:30 PM – 6:00 PM",
         category: "Book Review",
         title: "Question And Answer",
-        speaker: "Panel & Ministers",
         badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
       },
       {
@@ -222,7 +209,6 @@ const OFFICIAL_SCHEDULE: DaySchedule[] = [
         time: "7:30 PM – 9:00 PM",
         category: "Revival Message",
         title: "Partaking In The Lord's Supper",
-        speaker: "Pastor Paul Rika",
         badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
       },
     ],
@@ -455,11 +441,6 @@ export default function ProgrammePage() {
                       <h4 className="text-base sm:text-lg font-bold text-slate-900">
                         {session.title}
                       </h4>
-                      {session.speaker && (
-                        <p className="text-xs font-medium text-slate-500">
-                          Speaker: <span className="font-semibold text-slate-700">{session.speaker}</span>
-                        </p>
-                      )}
                     </div>
                   </article>
                 ))}
