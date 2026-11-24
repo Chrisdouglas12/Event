@@ -68,7 +68,11 @@ type FormState = {
   country: string;
   state: string;
   fullName: string;
+  email: string;
   whatsapp: string;
+  isMinor: boolean;
+  guardianName: string;
+  guardianPhone: string;
   // Step 4: Ministry Details & Attendance
   attendanceMode: "in_person" | "online" | "undecided";
   // Step 5: Payment
@@ -235,7 +239,7 @@ function RegistrationLayout({
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<FormState>({
-    step: 3, // Initialized at Step 3 to match the primary screenshot, fully navigable 1-6
+    step: 1, // Starts at Step 1 as requested
     category: "individual",
     role: "Brother",
     attendeeType: "Returning",
@@ -244,7 +248,11 @@ export default function RegisterPage() {
     country: "Nigeria",
     state: "Akwa Ibom",
     fullName: "",
+    email: "",
     whatsapp: "",
+    isMinor: false,
+    guardianName: "",
+    guardianPhone: "",
     attendanceMode: "in_person",
     currency: "NGN",
     amount: 5000,
@@ -328,8 +336,20 @@ export default function RegisterPage() {
       if (!formData.country.trim()) errors.country = "Select your country.";
       if (!formData.state.trim()) errors.state = "Provide your state or region.";
       if (!formData.fullName.trim()) errors.fullName = "Enter your full name.";
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!formData.email.trim() || !EMAIL_RE.test(formData.email.trim())) {
+        errors.email = "Enter a valid email address (e.g. name@example.com).";
+      }
       if (!formData.whatsapp.trim() || formData.whatsapp.replace(/\D/g, "").length < 7) {
         errors.whatsapp = "Enter a valid WhatsApp phone number.";
+      }
+      if (formData.isMinor) {
+        if (!formData.guardianName.trim()) {
+          errors.guardianName = "Enter parent or guardian full name.";
+        }
+        if (!formData.guardianPhone.trim() || formData.guardianPhone.replace(/\D/g, "").length < 7) {
+          errors.guardianPhone = "Enter a valid parent or guardian phone number.";
+        }
       }
     } else if (currentStep === 4) {
       if (!formData.attendanceMode)
@@ -710,6 +730,33 @@ export default function RegisterPage() {
               />
             </Field>
 
+            {/* Field: Email address */}
+            <Field
+              label="Email address"
+              htmlFor="field-email"
+              error={fieldErrors.email}
+            >
+              <input
+                id="field-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                value={formData.email}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, email: e.target.value }));
+                  if (fieldErrors.email) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.email;
+                      return next;
+                    });
+                  }
+                }}
+                className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
+              />
+            </Field>
+
             {/* Field: WhatsApp number with gray left addon */}
             <Field
               label="WhatsApp number"
@@ -730,6 +777,96 @@ export default function RegisterPage() {
                 />
               </div>
             </Field>
+
+            {/* Field: Age confirmation (Above 18 vs Below 18) */}
+            <Field label="Age confirmation" htmlFor="age-select">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, isMinor: false }))}
+                  className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
+                    !formData.isMinor
+                      ? "bg-[#0F6E56] text-white border-[#0F6E56] shadow-sm"
+                      : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
+                  }`}
+                >
+                  18 years or older
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, isMinor: true }))}
+                  className={`h-[60px] rounded-[12px] font-semibold text-[15px] border transition-all ${
+                    formData.isMinor
+                      ? "bg-[#0F6E56] text-white border-[#0F6E56] shadow-sm"
+                      : "bg-white border-[#D1D5DB] text-[#111C18] hover:border-gray-400"
+                  }`}
+                >
+                  Under 18 years
+                </button>
+              </div>
+            </Field>
+
+            {/* Parent / Guardian details if under 18 */}
+            {formData.isMinor && (
+              <div className="space-y-6 p-5 sm:p-6 rounded-[16px] bg-[#EEF4F1]/70 border border-[#D1E5DE]">
+                <div className="text-[14px] font-bold text-[#0F6E56]">
+                  Parent / Guardian Information (Required for under 18)
+                </div>
+                <Field
+                  label="Parent / Guardian name"
+                  htmlFor="field-guardian-name"
+                  error={fieldErrors.guardianName}
+                >
+                  <input
+                    id="field-guardian-name"
+                    type="text"
+                    placeholder="Parent or Guardian Full Name"
+                    value={formData.guardianName}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        guardianName: e.target.value,
+                      }));
+                      if (fieldErrors.guardianName) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.guardianName;
+                          return next;
+                        });
+                      }
+                    }}
+                    className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
+                  />
+                </Field>
+
+                <Field
+                  label="Parent / Guardian phone number"
+                  htmlFor="field-guardian-phone"
+                  error={fieldErrors.guardianPhone}
+                >
+                  <input
+                    id="field-guardian-phone"
+                    type="tel"
+                    placeholder="Parent or Guardian Phone Number"
+                    value={formData.guardianPhone}
+                    onChange={(e) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        guardianPhone: e.target.value,
+                      }));
+                      if (fieldErrors.guardianPhone) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.guardianPhone;
+                          return next;
+                        });
+                      }
+                    }}
+                    className="w-full h-[60px] px-4 rounded-[12px] border border-[#D1D5DB] text-[#111C18] text-[16px] bg-white placeholder:text-gray-400 focus:outline-none focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 transition-all"
+                  />
+                </Field>
+              </div>
+            )}
           </div>
 
           {/* Footer row: Back on left, green Continue button on right */}
@@ -1042,6 +1179,25 @@ export default function RegisterPage() {
               {formData.state ? `, ${formData.state}` : ""}
             </span>
           </div>
+
+          {formData.email && (
+            <div className="py-3.5 flex items-center justify-between text-[15px]">
+              <span className="text-[#6B7280]">Email</span>
+              <span className="font-bold text-[#111C18] truncate max-w-[260px] sm:max-w-[340px]">
+                {formData.email}
+              </span>
+            </div>
+          )}
+
+          {formData.isMinor && formData.guardianName && (
+            <div className="py-3.5 flex items-center justify-between text-[15px]">
+              <span className="text-[#6B7280]">Guardian</span>
+              <span className="font-bold text-[#111C18] truncate max-w-[260px] sm:max-w-[340px]">
+                {formData.guardianName}
+                {formData.guardianPhone ? ` (${formData.guardianPhone})` : ""}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Total Payable Row */}
@@ -1123,8 +1279,11 @@ export default function RegisterPage() {
                   role: formData.role,
                   attendeeType: formData.attendeeType,
                   fullName: formData.fullName,
-                  email: "",
+                  email: formData.email,
                   whatsapp: formData.whatsapp,
+                  isMinor: formData.isMinor,
+                  guardianName: formData.guardianName,
+                  guardianPhone: formData.guardianPhone,
                   country: formData.country,
                   state: formData.state,
                   attendanceMode: formData.attendanceMode,
