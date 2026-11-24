@@ -94,10 +94,11 @@ export function LandingSettingsProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const { tier } = getLandingPerformance();
     root.dataset.landingPerf = tier;
+    root.classList.toggle("perf-full", tier === "full");
     root.classList.toggle("perf-lite", tier === "lite");
     root.classList.toggle("perf-static", tier === "static");
     return () => {
-      root.classList.remove("perf-lite", "perf-static");
+      root.classList.remove("perf-full", "perf-lite", "perf-static");
       delete root.dataset.landingPerf;
     };
   }, []);

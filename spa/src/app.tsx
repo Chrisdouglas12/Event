@@ -7,6 +7,7 @@ import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingProgressProvider } from "@/components/marketing/landing-progress";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { ScrollTrace } from "@/components/marketing/scroll-trace";
+import { SmoothScroll } from "@/components/marketing/smooth-scroll";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
 import { DetailsCard } from "@/components/marketing/details-card";
@@ -58,6 +59,7 @@ function EventStructuredData() {
 function LandingPage() {
   return (
     <LandingSettingsProvider>
+      <SmoothScroll />
       <LandingProgressProvider>
         <div className="landing-navy min-h-screen flex flex-col">
           <EventStructuredData />
@@ -112,7 +114,6 @@ function LandingPage() {
                         <MinisterCard
                           key={minister.id}
                           name={minister.name}
-                          role={minister.role}
                           bio={minister.bio}
                           image={minister.image}
                           socials={{

@@ -187,8 +187,11 @@ const STYLES = `
 }
 .r-side-inner{ margin:0; width:100%; padding:20px 18px; text-align:center; }
 .r-side-logo{ display:block; width:auto; height:30px; margin:0 auto 12px; object-fit:contain; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
-.r-side-label{ display:block; font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--r-mint); }
-.r-side-clock{ display:inline-block; margin-top:10px; padding:8px 12px; border-radius:6px; background:rgba(5,10,20,.6); box-shadow:0 0 0 1px rgba(142,227,214,.16); }
+/* Below 1280px the countdown lives in the sticky form header; on wide screens
+   the sidebar is the only header, so it keeps its countdown there. */
+.r-side-label{ display:none; font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--r-mint); }
+.r-side-clock{ display:none; margin-top:10px; padding:8px 12px; border-radius:6px; background:rgba(5,10,20,.6); box-shadow:0 0 0 1px rgba(142,227,214,.16); }
+@media (min-width:1280px){ .r-side-label{ display:block; } .r-side-clock{ display:inline-block; } }
 .r-side-title{ margin-top:12px; font-size:18px; font-weight:800; line-height:1.2; letter-spacing:-.01em; }
 .r-side-lead{ margin:8px auto 0; max-width:310px; font-size:13px; line-height:1.55; color:rgba(255,255,255,.72); }
 .r-side-steps{ display:none; }
@@ -232,7 +235,7 @@ const STYLES = `
 .r-head-brand{ display:none; align-items:center; gap:12px; min-width:0; }
 .r-head-sep{ width:1px; height:18px; background:rgba(255,255,255,.2); }
 .r-head-tag{ font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--r-mint); }
-.r-head-clock{ display:none; align-items:center; gap:8px; font-size:11.5px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.78); white-space:nowrap; }
+.r-head-clock{ display:flex; align-items:center; gap:8px; font-size:11.5px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.78); white-space:nowrap; }
 .r-progress{ height:3px; background:rgba(255,255,255,.14); }
 .r-progress span{ display:block; height:100%; background:var(--r-mint); transition:width .35s ease; }
 @media (min-width:640px){ .r-head-row{ min-height:52px; } .r-head-brand{ display:flex; } .r-head-steps{ display:none; } }
@@ -306,7 +309,7 @@ const STYLES = `
 
 /* Registration type */
 .r-type{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; }
-.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; min-height:66px; padding:10px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:0; border-radius:0; cursor:pointer; transition:background .15s, box-shadow .15s; }
+.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; min-height:56px; padding:8px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:0; border-radius:0; cursor:pointer; transition:background .15s, box-shadow .15s; }
 .r-typecard + .r-typecard{ border-left:1px solid var(--r-border-strong); }
 .r-typecard:hover{ background:var(--r-subtle); }
 .r-typecard[aria-pressed=true]{ background:var(--r-active); color:var(--r-on-primary); box-shadow:inset 0 0 0 1.5px var(--r-active); }
@@ -316,7 +319,7 @@ const STYLES = `
 .r-typeicon svg{ width:17px; height:17px; }
 .r-typetitle{ display:block; font-size:14.5px; font-weight:700; line-height:1.2; }
 .r-typesub{ display:none; margin-top:2px; font-size:12.5px; line-height:1.35; color:var(--r-muted); }
-@media (min-width:480px){ .r-typecard{ padding:14px 16px; gap:12px; } .r-typeicon{ width:38px; height:38px; } .r-typeicon svg{ width:19px; height:19px; } .r-typesub{ display:block; } .r-typetitle{ font-size:15px; } }
+@media (min-width:768px){ .r-typecard{ padding:10px 12px; gap:12px; } .r-typeicon{ width:36px; height:36px; } .r-typeicon svg{ width:18px; height:18px; } .r-typesub{ display:block; } .r-typetitle{ font-size:15px; } }
 
 /* Panels + reveal */
 .r-panel{ display:flex; flex-direction:column; gap:18px; padding:14px; background:var(--r-subtle); border:1px solid var(--r-border); border-radius:16px; }

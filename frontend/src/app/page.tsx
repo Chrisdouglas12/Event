@@ -5,6 +5,7 @@ import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingProgressProvider } from "@/components/marketing/landing-progress";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
 import { ScrollTrace } from "@/components/marketing/scroll-trace";
+import { SmoothScroll } from "@/components/marketing/smooth-scroll";
 import { SplashScreen } from "@/components/marketing/splash-screen";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
@@ -40,6 +41,7 @@ export default function HomePage() {
 
   return (
     <LandingSettingsProvider>
+      <SmoothScroll />
       <LandingProgressProvider>
         {/* Globe-orbit intro before the landing page */}
         <SplashScreen />
@@ -119,7 +121,6 @@ export default function HomePage() {
                         <MinisterCard
                           key={minister.id}
                           name={minister.name}
-                          role={minister.role}
                           bio={minister.bio}
                           image={minister.image}
                           socials={{

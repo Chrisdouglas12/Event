@@ -70,6 +70,7 @@ export function FlyerSection() {
                     quality={95}
                     sizes="(max-width: 1024px) 80vw, 260px"
                   />
+                  <div className="photo-veil pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/55 via-transparent to-transparent" />
                 </Parallax>
               </div>
             </div>

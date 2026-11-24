@@ -60,6 +60,15 @@ type JourneyWaypoint = {
   progress: number;
 };
 
+type CameraShot = {
+  /** Extra distance from the scene; positive pulls the virtual camera back. */
+  pullback: number;
+  rise: number;
+  lookX: number;
+  lookY: number;
+  roll: number;
+};
+
 const SCENES: SceneName[] = ["hero", "air", "road", "sea", "arrival"];
 
 const FORMATIONS: Formation[] = [
@@ -107,6 +116,17 @@ const SCENE_CAMERA: Record<SceneName, { x: number; y: number; z: number }> = {
 // Scrolling down lifts the virtual drone: the camera pulls back and rises, so
 // every 3D element shrinks and slips behind. Scrolling up restores the altitude.
 const DRONE_ASCENT = { z: 8.5, y: 2.4, lookY: 0.6 };
+
+// Each chapter gets its own restrained camera framing. These values are mixed
+// by the same damped scene weights as the vehicles, so the view settles into a
+// section instead of snapping when the active marker changes.
+const CAMERA_SHOTS: Record<SceneName, CameraShot> = {
+  hero: { pullback: 0, rise: 0, lookX: 0, lookY: 0, roll: 0 },
+  air: { pullback: -0.55, rise: 0.12, lookX: 0.16, lookY: 0.06, roll: -0.012 },
+  road: { pullback: 0.5, rise: -0.08, lookX: -0.14, lookY: -0.05, roll: 0.016 },
+  sea: { pullback: -0.35, rise: 0.16, lookX: 0.1, lookY: -0.08, roll: -0.014 },
+  arrival: { pullback: 0.25, rise: 0.04, lookX: 0, lookY: 0.09, roll: 0.008 },
+};
 
 // The journey filament is a finite 3D ribbon. Its local Y runs from +2 down to
 // -9; shifting it by `progress * span - top` keeps the current section centred
@@ -472,11 +492,14 @@ export function LandingDepth() {
       // Cache section offsets and document height instead of reading layout on
       // every scroll frame. getBoundingClientRect()/scrollHeight in a scroll
       // handler forces synchronous layout and is the usual cause of jank.
-      let sectionMarks: { top: number; name: SceneName }[] = [];
+      let sectionMarks: { top: number; height: number; name: SceneName }[] = [];
       let sectionCount = 1;
       let maxScroll = 1;
       let targetProgress = 0;
       let progress = 0;
+      let sectionProgress = 0;
+      let sectionPulse = 0;
+      let cameraRoll = 0;
       let activeScene: SceneName = "hero";
       const sceneWeights: Record<SceneName, number> = {
         hero: 1,
@@ -494,6 +517,7 @@ export function LandingDepth() {
           const declared = section.dataset.scene as SceneName | undefined;
           return {
             top: section.getBoundingClientRect().top + pageY,
+            height: Math.max(1, section.offsetHeight),
             name: declared && SCENES.includes(declared) ? declared : "hero",
           };
         });
@@ -534,7 +558,11 @@ export function LandingDepth() {
           if (sectionMarks[i].top > marker) break;
           index = i;
         }
-        activeScene = sectionMarks[index]?.name ?? "hero";
+        const active = sectionMarks[index];
+        activeScene = active?.name ?? "hero";
+        sectionProgress = active
+          ? clamp01((window.scrollY - active.top) / active.height)
+          : 0;
       };
 
       measure();
@@ -681,6 +709,9 @@ export function LandingDepth() {
         const spin = mix(a.spin, b.spin, blend);
 
         const altitude = smooth(progress);
+        // A soft in/out pulse inside each section gives the camera a sense of
+        // travelling with the reader without adding another scroll listener.
+        sectionPulse = mix(sectionPulse, Math.sin(sectionProgress * Math.PI), damp(2.5));
         // Stay visible across the landing sections and fade only near the footer.
         const envelope = 1 - smooth((progress - 0.94) / 0.06);
         const controls = journeyControls.get();
@@ -762,34 +793,55 @@ export function LandingDepth() {
         const camTarget = SCENES.reduce(
           (acc, name) => {
             const cfg = SCENE_CAMERA[name];
+            const shot = CAMERA_SHOTS[name];
             const w = sceneWeights[name];
             acc.x += cfg.x * w;
             acc.y += cfg.y * w;
             acc.z += cfg.z * w;
+            acc.pullback += shot.pullback * w;
+            acc.rise += shot.rise * w;
+            acc.lookX += shot.lookX * w;
+            acc.lookY += shot.lookY * w;
+            acc.roll += shot.roll * w;
             return acc;
           },
-          { x: 0, y: 0, z: 0 }
+          { x: 0, y: 0, z: 0, pullback: 0, rise: 0, lookX: 0, lookY: 0, roll: 0 }
         );
         camera.position.x = mix(
           camera.position.x,
-          camTarget.x + pointer.x * 0.35 + controls.yaw * 0.55,
+          camTarget.x + camTarget.lookX * 0.45 + pointer.x * 0.35 + controls.yaw * 0.55,
           damp(2)
         );
         camera.position.y = mix(
           camera.position.y,
-          camTarget.y + pointer.y * 0.3 + altitude * DRONE_ASCENT.y + controls.pitch * 0.4,
+          camTarget.y +
+            camTarget.rise +
+            sectionPulse * 0.12 +
+            pointer.y * 0.3 +
+            altitude * DRONE_ASCENT.y +
+            controls.pitch * 0.4,
           damp(2)
         );
         camera.position.z = mix(
           camera.position.z,
-          camTarget.z + altitude * DRONE_ASCENT.z,
+          camTarget.z +
+            camTarget.pullback -
+            sectionPulse * 0.35 +
+            altitude * DRONE_ASCENT.z,
           damp(2)
         );
         camera.lookAt(
-          controls.yaw * 0.28,
-          altitude * DRONE_ASCENT.lookY + controls.pitch * 0.22,
+          camTarget.lookX + controls.yaw * 0.28,
+          camTarget.lookY + altitude * DRONE_ASCENT.lookY + controls.pitch * 0.22,
           0
         );
+        // lookAt resets rotation, so keep the gentle roll in its own damped value.
+        cameraRoll = mix(
+          cameraRoll,
+          camTarget.roll + pointer.x * 0.01 + controls.yaw * 0.008,
+          damp(2)
+        );
+        camera.rotation.z = cameraRoll;
 
         currentColor.copy(darkColor);
         tracked.forEach(({ mat, base, scene }) => {

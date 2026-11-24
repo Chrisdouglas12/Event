@@ -35,7 +35,6 @@ export default function MinistersPage() {
             <MinisterCard
               key={minister.id}
               name={minister.name}
-              role={minister.role}
               bio={minister.bio}
               image={minister.listingImage || undefined}
               socials={{

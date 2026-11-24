@@ -1,10 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  useCallback,
-  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -73,45 +71,14 @@ const GC_CSS = `
 `;
 
 export function GalleryCollage() {
-  const [active, setActive] = useState<number | null>(null);
   const [spin, setSpin] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const dragRef = useRef<{ startX: number; startSpin: number; moved: boolean } | null>(null);
-  const suppressClickRef = useRef(false);
-
-  const close = useCallback(() => setActive(null), []);
-  const step = useCallback((direction: number) => {
-    setActive((current) =>
-      current === null ? null : (current + direction + COUNT) % COUNT
-    );
-  }, []);
-
-  useEffect(() => {
-    if (active === null) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
-
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") close();
-      if (event.key === "ArrowLeft") step(-1);
-      if (event.key === "ArrowRight") step(1);
-    };
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [active, close, step]);
+  const dragRef = useRef<{ startX: number; startSpin: number } | null>(null);
 
   // ---------- Drag to spin the collage ----------
   const onStageDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
-    suppressClickRef.current = false;
-    dragRef.current = { startX: event.clientX, startSpin: spin, moved: false };
+    dragRef.current = { startX: event.clientX, startSpin: spin };
     setDragging(true);
   };
 
@@ -119,25 +86,13 @@ export function GalleryCollage() {
     const drag = dragRef.current;
     if (!drag) return;
     const delta = event.clientX - drag.startX;
-    if (Math.abs(delta) > 6) drag.moved = true;
     const stepWidth = Math.max(48, event.currentTarget.clientWidth / 10);
     setSpin(drag.startSpin + Math.round(delta / stepWidth));
   };
 
   const endDrag = () => {
-    const drag = dragRef.current;
-    if (!drag) return;
     dragRef.current = null;
     setDragging(false);
-    if (drag.moved) {
-      suppressClickRef.current = true;
-      window.setTimeout(() => { suppressClickRef.current = false; }, 0);
-    }
-  };
-
-  const openPhoto = (index: number) => {
-    if (suppressClickRef.current) return;
-    setActive(index);
   };
 
   return (
@@ -158,7 +113,7 @@ export function GalleryCollage() {
               <div
                 className={`gc-stage${dragging ? " is-dragging" : ""}`}
                 role="group"
-                aria-label="Conference photo collage — drag to spin, tap a photo to enlarge"
+                aria-label="Conference photo collage — drag to spin"
                 onPointerDown={onStageDown}
                 onPointerMove={onStageMove}
                 onPointerUp={endDrag}
@@ -169,9 +124,8 @@ export function GalleryCollage() {
                   const slot = ((index + spin) % COUNT + COUNT) % COUNT;
                   const spot = COLLAGE_LAYOUT[slot];
                   return (
-                    <button
+                    <div
                       key={image.src}
-                      type="button"
                       className="gc-photo aspect-[4/3]"
                       style={{
                         top: spot.top,
@@ -180,8 +134,6 @@ export function GalleryCollage() {
                         zIndex: spot.z,
                         "--r": spot.rotate,
                       } as InlineStyle}
-                      onClick={() => openPhoto(index)}
-                      aria-label={`Enlarge photo ${index + 1}: ${image.alt}`}
                     >
                       <Image
                         src={image.src}
@@ -191,7 +143,7 @@ export function GalleryCollage() {
                         className="object-cover"
                         draggable={false}
                       />
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -218,7 +170,7 @@ export function GalleryCollage() {
 
               <RevealText
                 as="p"
-                text="A scattered collection of worship, baptism and fellowship from past conferences. Drag to spin it, or tap any photo to see it up close."
+                text="A scattered collection of worship, baptism and fellowship from past conferences. Drag to spin it and revisit the moments."
                 className="mt-6 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
                 speed={9}
               />
@@ -233,7 +185,7 @@ export function GalleryCollage() {
                   <ChevronLeft className="h-5 w-5" aria-hidden />
                 </button>
 
-                <span className="gc-hint">Drag to spin · tap to enlarge</span>
+                <span className="gc-hint">Drag to spin</span>
 
                 <button
                   type="button"
@@ -249,62 +201,6 @@ export function GalleryCollage() {
         </div>
       </div>
 
-      {active !== null && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050b14]/90 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Conference photo viewer"
-          onClick={close}
-        >
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={close}
-            className="absolute right-5 top-5 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8EE3D6]"
-            aria-label="Close photo viewer"
-          >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); step(-1); }}
-            className="absolute left-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8EE3D6] md:left-10"
-            aria-label="Previous photo"
-          >
-            <ChevronLeft className="h-6 w-6" aria-hidden />
-          </button>
-
-          <figure
-            className="relative max-h-[86vh] w-full max-w-5xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="relative mx-auto aspect-video w-full overflow-hidden rounded-lg bg-[#0E1020] shadow-2xl">
-              <Image
-                src={GALLERY_IMAGES[active].src}
-                alt={GALLERY_IMAGES[active].alt}
-                fill
-                sizes="90vw"
-                className="object-contain"
-                priority
-              />
-            </div>
-            <figcaption className="mt-4 text-center text-sm text-white/80">
-              {GALLERY_IMAGES[active].alt} · {active + 1} / {COUNT}
-            </figcaption>
-          </figure>
-
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); step(1); }}
-            className="absolute right-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8EE3D6] md:right-10"
-            aria-label="Next photo"
-          >
-            <ChevronRight className="h-6 w-6" aria-hidden />
-          </button>
-        </div>
-      )}
     </section>
   );
 }

@@ -168,7 +168,7 @@ export function Header() {
 
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-x-0 top-[60px] bottom-0 bg-white z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+          <div data-lenis-prevent className="md:hidden fixed inset-x-0 top-[60px] bottom-0 bg-white z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col space-y-4">
               {navLinks.map((link) => (
                 <Link

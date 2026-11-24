@@ -6,6 +6,7 @@ import {
   useLandingProgress,
   type TraceNode,
 } from "@/components/marketing/landing-progress";
+import { scrollLandingTo } from "@/components/marketing/smooth-scroll";
 
 function sameNodes(a: TraceNode[], b: TraceNode[]) {
   return (
@@ -58,7 +59,7 @@ export function ScrollTrace() {
   const scrollToProgress = (progress: number) => {
     const max = document.documentElement.scrollHeight - window.innerHeight;
     if (max <= 0) return;
-    window.scrollTo({ top: progress * max, behavior: "auto" });
+    scrollLandingTo(progress * max, { immediate: true });
   };
 
   const scrollToNode = (node: TraceNode) => {
@@ -67,10 +68,10 @@ export function ScrollTrace() {
       document.querySelector(`[data-scene="${node.scene}"]`) ||
       document.querySelector(`[data-trace="${node.id}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollLandingTo(el, { offset: -72 });
     } else {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      window.scrollTo({ top: node.progress * max, behavior: "smooth" });
+      scrollLandingTo(node.progress * max);
     }
   };
 

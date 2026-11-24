@@ -165,7 +165,7 @@ export function AboutPreview() {
                       sizes="(max-width: 1024px) 80vw, 380px"
                     />
                   </Parallax>
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
+                  <div className="photo-veil pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
 
                   <div className="ap-chip">
                     <div className="flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">

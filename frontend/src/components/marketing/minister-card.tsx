@@ -13,7 +13,6 @@ import { getLandingPerformance } from "@/lib/landing-performance";
 
 export interface MinisterProps {
   name: string;
-  role: string;
   bio: string;
   image?: string;
   socials?: {
@@ -30,8 +29,7 @@ export interface MinisterProps {
  *  - Slanted card surface (clip-path) on the light mint background.
  *  - Living background inside the card: mint blobs, dot grid + spotlight
  *    that track the pointer; on touch they drift with the scroll.
- *  - Portrait uses the same offset double frame as About The Movement, with a
- *    floating "Role" chip mirroring the venue chip.
+ *  - Portrait uses the same offset double frame as About The Movement.
  *  - Inside `.ms-group`, the two cards become one joined surface on desktop:
  *    one row, one slant, one shadow, with a hairline divider between them.
  *  - Reveal-on-scroll via IntersectionObserver (same pattern), type-in
@@ -103,20 +101,12 @@ const MC_CSS = `
 .mc-frame{position:relative;width:max-content;max-width:100%;margin-inline:auto}
 @media (min-width:1024px){.mc-frame{max-width:100%}}
 .mc-par{position:relative;
-  transform:translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0);
-  transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  transform:translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0)
+    scale(calc(1 + var(--p) * .035));
+  transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+html.perf-full .mc-card:hover .mc-par{
+  transform:translate3d(calc(var(--px) * -10px),calc(var(--py) * -8px),0) scale(1.055)}
 .mc-photo-img{display:block;width:auto;height:auto;max-width:100%}
-
-/* floating chip — same treatment as DetailsCard's venue chip */
-.mc-chip{position:absolute;left:14px;bottom:14px;z-index:5;
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);
-  transform:translate3d(calc(var(--px) * 12px),calc(var(--py) * 10px),0)}
-.mc-chip-body{animation:mc-float 6s ease-in-out infinite}
-@keyframes mc-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-8px,0)}}
-.mc-pin{position:relative}
-.mc-pin::after{content:"";position:absolute;inset:-4px;border-radius:9999px;
-  border:1.5px solid rgba(14,122,110,.5);animation:mc-ping 2.2s ease-out infinite}
-@keyframes mc-ping{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 
 /* ---------- socials (magnetic pill from the CTAs) ---------- */
 .mc-social{position:relative;overflow:hidden;
@@ -133,7 +123,7 @@ const MC_CSS = `
 
 @media (prefers-reduced-motion:reduce){
   .mc-js .mc-reveal{opacity:1;transform:none;transition:none}
-  .mc-chip-body,.mc-pin::after,.mc-orbit{animation:none}
+  .mc-orbit{animation:none}
   .mc-par{transform:none}
 }
 `;
@@ -148,16 +138,6 @@ function GlobeIcon({ className }: { className?: string }) {
       <path d="M3 12h18" />
       <path d="M12 3a14 14 0 0 1 0 18" />
       <path d="M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  );
-}
-
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
-      <circle cx="12" cy="9.5" r="2.5" />
     </svg>
   );
 }
@@ -193,7 +173,7 @@ function SocialLink({
   );
 }
 
-export function MinisterCard({ name, role, bio, image, socials }: MinisterProps) {
+export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   // ---------- Scroll, pointer, reveal (same system as AboutPreview/DetailsCard) ----------
@@ -391,24 +371,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
                 </div>
               )}
 
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
-
-              {/* Floating "Role" chip — mirrors the About/Details venue chip */}
-              <div className="mc-chip">
-                <div className="mc-chip-body flex max-w-[200px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
-                  <span className="mc-pin flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
-                    <PinIcon className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]">
-                      Role
-                    </span>
-                    <span className="block truncate text-[12px] font-semibold leading-tight text-[#0E1020]">
-                      {role}
-                    </span>
-                  </span>
-                </div>
-              </div>
+              <div className="photo-veil pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/60 via-transparent to-transparent" />
             </div>
           </div>
         </div>
@@ -418,22 +381,8 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
           <div className="space-y-4">
             <div
               data-mc-reveal
-              className="mc-reveal flex items-center gap-3"
-              style={{ "--d": "0ms" } as InlineStyle}
-            >
-              <span aria-hidden className="h-px w-6 bg-[#0E7A6E]" />
-              <RevealText
-                as="span"
-                text={role}
-                className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#0E7A6E]"
-                speed={18}
-              />
-            </div>
-
-            <div
-              data-mc-reveal
               className="mc-reveal"
-              style={{ "--d": "80ms" } as InlineStyle}
+              style={{ "--d": "0ms" } as InlineStyle}
             >
               <RevealText
                 as="h3"
@@ -447,7 +396,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
             <div
               data-mc-reveal
               className="mc-reveal"
-              style={{ "--d": "160ms" } as InlineStyle}
+              style={{ "--d": "80ms" } as InlineStyle}
             >
               <RevealText
                 as="p"
@@ -462,7 +411,7 @@ export function MinisterCard({ name, role, bio, image, socials }: MinisterProps)
           <div
             data-mc-reveal
             className="mc-reveal mt-7 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 md:mt-auto md:pt-6"
-            style={{ "--d": "260ms" } as InlineStyle}
+            style={{ "--d": "180ms" } as InlineStyle}
           >
             <div className="flex items-center gap-2.5">
               {socials?.youtube && (

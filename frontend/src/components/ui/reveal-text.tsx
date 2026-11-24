@@ -7,6 +7,7 @@ import {
   useState,
   type ElementType,
 } from "react";
+import type { InlineStyle } from "@/components/marketing/inline-style";
 import { getLandingPerformance } from "@/lib/landing-performance";
 
 type RevealTextProps = {
@@ -15,49 +16,23 @@ type RevealTextProps = {
   className?: string;
   /** Seconds to wait after the section enters the viewport. */
   delay?: number;
-  /** Milliseconds per character on capable devices. */
+  /** Milliseconds per word; smaller values make a tighter stagger. */
   speed?: number;
 };
 
-type Tick = (now: number) => void;
+type RevealMode = "plain" | "armed" | "visible";
 
-// One shared rAF loop drives every active instance instead of one timer per
-// element. This keeps the typing effect cheap even on low-power hardware.
-const subscribers = new Set<Tick>();
-let tickerFrame = 0;
-
-const runTicker = (now: number) => {
-  tickerFrame = requestAnimationFrame(runTicker);
-  subscribers.forEach((subscriber) => subscriber(now));
-  if (!subscribers.size) {
-    cancelAnimationFrame(tickerFrame);
-    tickerFrame = 0;
-  }
-};
-
-const subscribe = (subscriber: Tick) => {
-  subscribers.add(subscriber);
-  if (!tickerFrame) tickerFrame = requestAnimationFrame(runTicker);
-  return () => {
-    subscribers.delete(subscriber);
-    if (!subscribers.size && tickerFrame) {
-      cancelAnimationFrame(tickerFrame);
-      tickerFrame = 0;
-    }
-  };
-};
-
-const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-const isHeading = (as: RevealTextProps["as"]) =>
-  as === "h1" || as === "h2" || as === "h3" || as === "h4";
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
- * Typewriter reveal. The hidden ghost keeps the final layout stable while the
- * visible copy is typed once the section scrolls into view.
+ * Scroll-linked word reveal.
  *
- * Full effect on capable devices. On low-power devices only headings type (and
- * much faster); static-tier copy renders immediately with no rAF loop.
+ * The server always renders the final copy so crawlers, no-JS visitors and
+ * reduced-motion users see everything. Capable clients wrap each word in a
+ * clipped layer and let CSS stagger it into place once the element enters the
+ * viewport. There is no per-character timer or shared rAF loop: the browser
+ * composites the whole reveal, and it only plays once per mount.
  */
 export function RevealText({
   text,
@@ -67,68 +42,51 @@ export function RevealText({
   speed = 16,
 }: RevealTextProps) {
   const ref = useRef<HTMLElement>(null);
-  // Server markup is the final text: no-JS, crawlers and reduced-motion users
-  // always see content. Capable clients switch to the typing structure in a
-  // layout effect, i.e. before the first paint.
-  const [typedCount, setTypedCount] = useState(text.length);
-  const [done, setDone] = useState(true);
-  const heading = isHeading(as);
+  const [mode, setMode] = useState<RevealMode>("plain");
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const gap = Math.max(22, Math.min(72, Math.round(speed * 3)));
 
   useIsomorphicLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    const perf = getLandingPerformance();
-
-    // Static tier (reduced motion / save-data / software WebGL) shows all copy
-    // immediately. Lite tier only types headings, and does so much faster.
-    if (!perf.ambientMotion || (perf.tier === "lite" && !heading)) {
-      setTypedCount(text.length);
-      setDone(true);
+    // Lite/static tiers keep the copy plain; only the full WebGL tier gets the
+    // extra reveal work.
+    if (!getLandingPerformance().ambientMotion) {
+      setMode("plain");
       return;
     }
 
-    // Set up the ghost structure before paint so the text never flashes full.
-    setTypedCount(0);
-    setDone(false);
-    const charTime = perf.tier === "lite" ? Math.max(4, speed * 0.35) : speed;
-    let startTimer = 0;
-    let unsubscribe = () => {};
+    setMode("armed");
+    let timer = 0;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setMode("visible");
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
         observer.disconnect();
-        startTimer = window.setTimeout(() => {
-          let typed = 0;
-          const startedAt = performance.now();
-          unsubscribe = subscribe((now) => {
-            const next = Math.min(text.length, Math.floor((now - startedAt) / charTime) + 1);
-            if (next === typed) return;
-            typed = next;
-            setTypedCount(typed);
-            if (typed >= text.length) {
-              unsubscribe();
-              setDone(true);
-            }
-          });
-        }, Math.max(0, delay * 1000));
+        const reveal = () => setMode("visible");
+        if (delay > 0) timer = window.setTimeout(reveal, delay * 1000);
+        else reveal();
       },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 }
+      { rootMargin: "0px 0px -6% 0px", threshold: 0.08 }
     );
 
     observer.observe(el);
 
     return () => {
       observer.disconnect();
-      if (startTimer) window.clearTimeout(startTimer);
-      unsubscribe();
+      if (timer) window.clearTimeout(timer);
     };
-  }, [text, delay, speed, heading]);
+  }, [delay, text]);
 
   const Tag = as as ElementType;
 
-  if (done) {
+  if (mode === "plain") {
     return (
       <Tag ref={ref} className={className}>
         {text}
@@ -136,15 +94,28 @@ export function RevealText({
     );
   }
 
+  const style = {
+    "--rt-gap": `${gap}ms`,
+    "--rt-delay": `${Math.max(0, delay) * 1000}ms`,
+  } as InlineStyle;
+
   return (
-    <Tag ref={ref} className={`typing-text ${className}`}>
+    <Tag
+      ref={ref}
+      className={`rt-text ${mode === "visible" ? "is-visible" : ""} ${className}`.trim()}
+      style={style}
+    >
       <span className="sr-only">{text}</span>
-      <span className="typing-ghost" aria-hidden="true">
-        {text}
-      </span>
-      <span className="typing-current" aria-hidden="true">
-        {text.slice(0, typedCount)}
-        <span className="typing-caret" />
+      <span aria-hidden className="rt-words">
+        {words.map((word, index) => (
+          <span
+            key={`${index}-${word}`}
+            className="rt-word"
+            style={{ "--i": index } as InlineStyle}
+          >
+            <span className="rt-word-inner">{word}</span>
+          </span>
+        ))}
       </span>
     </Tag>
   );
