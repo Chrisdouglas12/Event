@@ -6,7 +6,7 @@ import { Header } from "@/components/marketing/header";
 import { Footer } from "@/components/marketing/footer";
 import { Check, ChevronDown, Lock, AlertCircle, ArrowLeft } from "lucide-react";
 import { COUNTRIES, NIGERIA, NIGERIAN_STATES } from "@/config/countries";
-import { SupportedCurrency } from "@/config/currencies";
+import { CURRENCIES, SupportedCurrency } from "@/config/currencies";
 
 /* ---------- Design Tokens (Eyeballed & Tuned to Screenshots) ---------- */
 // Primary emerald: #0F6E56 (hover #0D5E49)
@@ -888,21 +888,25 @@ export default function RegisterPage() {
               <label className="block text-[14px] font-medium text-[#111C18]">
                 Currency
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                 {(["NGN", "USD", "EUR", "GBP"] as SupportedCurrency[]).map((c) => {
                   const isSelected = formData.currency === c;
+                  const meta = CURRENCIES[c];
                   return (
                     <button
                       key={c}
                       type="button"
                       onClick={() => handleCurrencyChange(c)}
-                      className={`h-[50px] w-[72px] sm:w-[76px] rounded-[12px] font-semibold text-[15px] transition-all flex items-center justify-center ${
+                      className={`h-[50px] px-3.5 sm:px-4 rounded-[12px] font-semibold text-[15px] transition-all flex items-center justify-center gap-1.5 ${
                         isSelected
                           ? "bg-[#0F6E56] text-white font-bold shadow-sm"
                           : "bg-white border border-[#D1D5DB] text-[#374151] hover:border-gray-400"
                       }`}
                     >
-                      {c}
+                      <span className="text-[17px] leading-none select-none" aria-hidden>
+                        {meta?.flag}
+                      </span>
+                      <span>{c}</span>
                     </button>
                   );
                 })}
