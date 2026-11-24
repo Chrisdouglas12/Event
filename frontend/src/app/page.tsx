@@ -8,7 +8,6 @@ import { ScrollTrace } from "@/components/marketing/scroll-trace";
 import { SplashScreen } from "@/components/marketing/splash-screen";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
-import { CtaBanner } from "@/components/marketing/cta-banner";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { GalleryCollage } from "@/components/marketing/gallery-collage";
@@ -135,8 +134,6 @@ export default function HomePage() {
                 </div>
               </section>
 
-              <TimelineDivider label="Register" scene="road" />
-              <CtaBanner />
               <TimelineDivider label="Details" scene="road" />
               <DetailsCard />
               <TimelineDivider label="About" scene="road" />

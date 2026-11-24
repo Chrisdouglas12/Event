@@ -162,7 +162,9 @@ export default async function AdminRosterPrintPage() {
                         )}
                       </td>
                       <td className="py-2 px-2 text-gray-700 font-mono">{a.phoneE164}</td>
-                      <td className="py-2 px-2 text-gray-700 truncate max-w-[140px]">{a.chapterZone || "—"}</td>
+                      <td title={a.chapterZone || "—"} className="py-2 px-2 text-gray-700 truncate max-w-[140px]">
+                        {a.chapterZone || "—"}
+                      </td>
                       <td className="py-2 px-2 text-center">
                         <span className="inline-block w-4 h-4 border border-black align-middle text-center text-[10px] leading-3 font-bold">
                           {a.checkedInAt ? "✓" : ""}

@@ -5,6 +5,8 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
+  BookOpen,
   Camera,
   Check,
   ChevronDown,
@@ -14,9 +16,46 @@ import {
   Search,
   Settings2,
   ShieldAlert,
+  Sparkles,
   Wifi,
 } from "lucide-react";
 import { useScannerSession } from "@/components/scanner/use-scanner-session";
+
+const SCAN_SUCCESS_CSS = `
+@keyframes ihgcScanPop{0%{opacity:0;transform:translateY(22px) scale(.86)}65%{opacity:1;transform:translateY(-5px) scale(1.03)}100%{opacity:1;transform:none}}
+@keyframes ihgcScanHalo{0%{transform:scale(.7);opacity:.85}100%{transform:scale(1.85);opacity:0}}
+@keyframes ihgcScanSpark{0%{opacity:0;transform:translate(0,0) scale(.3)}25%{opacity:1}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1)}}
+.scan-win{position:absolute;inset:0;z-50;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 40%,rgba(142,227,214,.2),rgba(5,10,20,.92) 62%);backdrop-filter:blur(6px)}
+.scan-win__card{position:relative;width:min(100%,380px);overflow:hidden;border-radius:30px;border:1px solid rgba(142,227,214,.45);background:linear-gradient(160deg,#11263A,#0B1424 60%,#0E1020);padding:30px 24px 24px;text-align:center;color:white;box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 45px rgba(142,227,214,.2);animation:ihgcScanPop .5s cubic-bezier(.2,.9,.25,1.2) both}
+.scan-win__card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,rgba(255,255,255,.1),transparent 35%,rgba(142,227,214,.08))}
+.scan-win__halo{position:absolute;left:50%;top:46px;width:92px;height:92px;margin-left:-46px;border-radius:999px;border:2px solid rgba(142,227,214,.7);animation:ihgcScanHalo 1.6s ease-out infinite}
+.scan-win__check{position:relative;z-index:2;display:flex;height:92px;width:92px;margin-inline:auto;align-items:center;justify-content:center;border-radius:999px;background:linear-gradient(135deg,#8EE3D6,#43BFAE);color:#062018;box-shadow:0 12px 40px rgba(142,227,214,.45)}
+.scan-win__check svg{height:46px;width:46px;stroke-width:3}
+.scan-win__sparks{position:absolute;left:50%;top:92px;width:0;height:0;pointer-events:none}
+.scan-win__spark{position:absolute;height:8px;width:8px;border-radius:3px;animation:ihgcScanSpark 1.1s ease-out both}
+.scan-win__spark:nth-child(1){--tx:-96px;--ty:-62px;background:#8EE3D6;animation-delay:.05s}
+.scan-win__spark:nth-child(2){--tx:96px;--ty:-58px;background:#FFE08A;animation-delay:.12s}
+.scan-win__spark:nth-child(3){--tx:-112px;--ty:26px;background:#FF9BC4;animation-delay:.18s}
+.scan-win__spark:nth-child(4){--tx:110px;--ty:32px;background:#8EE3D6;animation-delay:.24s}
+.scan-win__spark:nth-child(5){--tx:-48px;--ty:-104px;background:#FFE08A;animation-delay:.1s}
+.scan-win__spark:nth-child(6){--tx:52px;--ty:-108px;background:#A6EBE0;animation-delay:.16s}
+.scan-win__spark:nth-child(7){--tx:-74px;--ty:88px;background:#8EE3D6;animation-delay:.28s}
+.scan-win__spark:nth-child(8){--tx:76px;--ty:90px;background:#FFE08A;animation-delay:.34s}
+.scan-win__eyebrow{position:relative;z-index:2;margin-top:18px;display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:rgba(142,227,214,.14);padding:5px 12px;font-size:10px;font-weight:800;letter-spacing:.18em;color:#8EE3D6}
+.scan-win__title{position:relative;z-index:2;margin-top:10px;font-size:28px;font-weight:900;letter-spacing:-.02em;line-height:1.1}
+.scan-win__name{position:relative;z-index:2;margin-top:7px;font-size:14px;font-weight:700;color:rgba(255,255,255,.78)}
+.scan-win__type{position:relative;z-index:2;margin-top:14px;display:inline-block;border:1px solid rgba(142,227,214,.4);border-radius:999px;padding:4px 12px;font-size:10px;font-weight:800;letter-spacing:.14em;color:#8EE3D6}
+.scan-win__count{position:relative;z-index:2;margin-top:18px;border-radius:22px;border:1px solid rgba(142,227,214,.25);background:rgba(142,227,214,.08);padding:16px}
+.scan-win__count-row{display:flex;align-items:center;justify-content:center;gap:14px}
+.scan-win__count svg{height:30px;width:30px;color:#8EE3D6}
+.scan-win__count strong{display:block;font-size:42px;line-height:1;font-weight:900;color:white}
+.scan-win__count span{display:block;margin-top:5px;font-size:10px;font-weight:800;letter-spacing:.16em;color:#8EE3D6}
+.scan-win__meta{position:relative;z-index:2;margin-top:12px;font-size:11px;color:rgba(255,255,255,.55)}
+.scan-win__next{position:relative;z-index:2;margin-top:20px;display:flex;min-height:52px;width:100%;align-items:center;justify-content:center;gap:10px;border-radius:999px;background:linear-gradient(135deg,#8EE3D6,#71D5C7);font-size:13px;font-weight:900;color:#062018;box-shadow:0 14px 34px rgba(142,227,214,.32);transition:transform .18s ease,filter .18s ease}
+.scan-win__next:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.scan-win__next:active{transform:translateY(0)}
+@media (prefers-reduced-motion:reduce){.scan-win__card,.scan-win__halo,.scan-win__spark{animation:none}.scan-win__next{transition:none}}
+`;
 
 export function ScannerInterface() {
   const session = useScannerSession();
@@ -266,24 +305,20 @@ export function ScannerInterface() {
             </p>
           </div>
 
-          {/* Inline Scan Status */}
-          {session.scanResult.type !== "idle" && (
+          {/* Inline Scan Status (success gets the full celebration overlay) */}
+          {session.scanResult.type !== "idle" && session.scanResult.type !== "valid" && (
             <div
               role="status"
               aria-live="polite"
               className={`mt-3 rounded-2xl border p-3.5 ${
-                session.scanResult.type === "valid"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : session.scanResult.type === "already_checked_in"
+                session.scanResult.type === "already_checked_in"
                   ? "border-amber-200 bg-amber-50 text-amber-900"
                   : "border-red-200 bg-red-50 text-red-900"
               }`}
             >
               <div className="flex items-start gap-2.5">
                 <span className="mt-0.5 shrink-0">
-                  {session.scanResult.type === "valid" ? (
-                    <Check className="h-4 w-4" />
-                  ) : session.scanResult.type === "forged" ? (
+                  {session.scanResult.type === "forged" ? (
                     <ShieldAlert className="h-4 w-4" />
                   ) : (
                     <AlertTriangle className="h-4 w-4" />
@@ -291,18 +326,14 @@ export function ScannerInterface() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="font-heading text-[12px] font-extrabold">
-                    {session.scanResult.type === "valid"
-                      ? session.scanResult.isGroup
-                        ? `Group checked in · ${session.scanResult.seats} seats`
-                        : "Participant checked in"
-                      : session.scanResult.type === "already_checked_in"
+                    {session.scanResult.type === "already_checked_in"
                       ? "Already checked in"
                       : session.scanResult.type === "forged"
                       ? "Ticket rejected"
                       : "Scan needs attention"}
                   </div>
                   <p className="mt-1 font-body text-[11px] leading-relaxed opacity-90">
-                    {session.scanResult.type === "valid" || session.scanResult.type === "already_checked_in"
+                    {session.scanResult.type === "already_checked_in"
                       ? `${session.scanResult.name} · ${session.scanResult.refCode} — ${session.scanResult.message}`
                       : session.scanResult.message}
                   </p>
@@ -355,6 +386,67 @@ export function ScannerInterface() {
             </div>
           )}
         </section>
+
+        {/* Celebration for a freshly accepted ticket */}
+        {session.scanResult.type === "valid" && (
+          <div
+            className="scan-win"
+            role="dialog"
+            aria-modal="true"
+            aria-live="polite"
+            aria-label="Scan successful"
+          >
+            <style dangerouslySetInnerHTML={{ __html: SCAN_SUCCESS_CSS }} />
+            <div className="scan-win__card">
+              <div className="scan-win__sparks" aria-hidden="true">
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+                <span className="scan-win__spark" />
+              </div>
+              <span className="scan-win__halo" aria-hidden="true" />
+              <div className="scan-win__check" aria-hidden="true">
+                <Check />
+              </div>
+
+              <span className="scan-win__eyebrow">
+                <Sparkles className="h-3.5 w-3.5" />
+                SCAN SUCCESSFUL
+              </span>
+              <h2 className="scan-win__title">Check-in complete!</h2>
+              <p className="scan-win__name">{session.scanResult.name}</p>
+              <span className="scan-win__type">
+                {session.scanResult.isGroup ? "GROUP TICKET" : "INDIVIDUAL TICKET"}
+              </span>
+
+              <div className="scan-win__count">
+                <div className="scan-win__count-row">
+                  <BookOpen aria-hidden="true" />
+                  <div>
+                    <strong>{session.scanResult.seats}</strong>
+                    <span>
+                      {session.scanResult.seats === 1 ? "BOOKLET TO ISSUE" : "BOOKLETS TO ISSUE"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="scan-win__meta">
+                {session.scanResult.refCode} · {session.scanResult.seats}{" "}
+                {session.scanResult.seats === 1 ? "participant" : "participants"}
+              </p>
+
+              <button type="button" autoFocus className="scan-win__next" onClick={session.dismissResult}>
+                Next Scan
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Hidden Canvas for QR Extraction */}
         <canvas ref={session.canvasRef} className="hidden" aria-hidden="true" />

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat, Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { SITE_CONFIG } from "@/config/site";
+import { InstallPromptGate } from "@/components/ui/install-prompt-gate";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -23,7 +24,6 @@ export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
     : undefined,
-  manifest: "/manifest.json",
   title: {
     template: "%s | IHGC 2026 — Horemow",
     default: `${SITE_CONFIG.eventTitle} — ${SITE_CONFIG.shortBrandName}`,
@@ -58,6 +58,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
       <body className="min-h-screen bg-white text-[#111320] antialiased selection:bg-[#8EE3D6] selection:text-[#0E1020]">
+        <InstallPromptGate />
         {children}
       </body>
     </html>

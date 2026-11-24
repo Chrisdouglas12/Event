@@ -9,25 +9,6 @@ import {
 
 const R_VIS = 2.55;
 
-// ---------- Coin Texture ----------
-function makeCoinTexture(word: string) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 512;
-  const g = c.getContext("2d")!;
-  const grad = g.createRadialGradient(200, 180, 20, 256, 256, 256);
-  grad.addColorStop(0, "#3A4A5A"); grad.addColorStop(0.5, "#1A2530");
-  grad.addColorStop(0.85, "#0F1822"); grad.addColorStop(1, "#080C12");
-  g.fillStyle = grad; g.beginPath(); g.arc(256, 256, 250, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = "#8EE3D6"; g.lineWidth = 10; g.beginPath(); g.arc(256, 256, 242, 0, Math.PI * 2); g.stroke();
-  g.strokeStyle = "rgba(142,227,214,.6)"; g.lineWidth = 4; g.beginPath(); g.arc(256, 256, 218, 0, Math.PI * 2); g.stroke();
-  g.fillStyle = "#FFFFFF"; g.font = "900 96px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-  g.shadowColor = "rgba(142,227,214,0.8)"; g.shadowBlur = 15; g.fillText(word, 256, 256); g.shadowBlur = 0;
-  return c;
-}
-
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
 export function HeroBackground({
   align = "left",
   desktopLift = 1.5,
@@ -148,6 +129,8 @@ export function HeroBackground({
 
       const spinners: { g: any; speed: number }[] = [];
       const textures: any[] = [];
+      const flagMeshes: any[] = [];
+      const flagMaterials: any[] = [];
 
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
@@ -173,8 +156,10 @@ export function HeroBackground({
           textures.push(tex);
           const geo = makeFlagGeometry(THREE, w, h);
           const flagFace = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.48, metalness: 0.04, emissive: new THREE.Color(0x0d1f38), emissiveIntensity: 0.12 });
+          flagMaterials.push(flagFace);
           const flagEdge = new THREE.MeshStandardMaterial({ color: 0x102f4d, roughness: 0.38, metalness: 0.12 });
           const mesh = new THREE.Mesh(geo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
+          flagMeshes.push(mesh);
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
@@ -184,22 +169,6 @@ export function HeroBackground({
         }
       });
 
-      // ---------- THE 3D COINS ----------
-      const makeCoin = (word: string) => {
-        const group = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.08, 64), new THREE.MeshStandardMaterial({ color: 0x1A2530, metalness: 0.95, roughness: 0.15 }));
-        body.rotation.x = Math.PI / 2; group.add(body);
-        const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 16, 64), new THREE.MeshBasicMaterial({ color: 0x8ee3d6 })); group.add(rimMesh);
-        const tex = new THREE.CanvasTexture(makeCoinTexture(word)); tex.colorSpace = THREE.SRGBColorSpace;
-        const faceMat = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.5, roughness: 0.3 });
-        const front = new THREE.Mesh(new THREE.CircleGeometry(0.39, 64), faceMat); front.position.z = 0.05; group.add(front);
-        const back = new THREE.Mesh(new THREE.CircleGeometry(0.39, 64), faceMat); back.position.z = -0.05; back.rotation.y = Math.PI; group.add(back);
-        world.add(group);
-        return group;
-      };
-
-      const coinMan = makeCoin("MAN"); const coinAnd = makeCoin("AND"); const coinSatan = makeCoin("SATAN");
-
       // ---------- Layout ----------
       const layout = () => {
         const w = host.clientWidth || 1;
@@ -207,6 +176,13 @@ export function HeroBackground({
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+
+        // On desktop the globe is smaller, so the flags need a little more
+        // presence to stay readable beside the hero copy.
+        const desktop = w >= 1024;
+        const flagScale = desktop ? 1.5 : 1;
+        flagMeshes.forEach((mesh) => mesh.scale.setScalar(flagScale));
+        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.28 : 0.12; });
 
         const vh = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const vw = vh * camera.aspect;
@@ -224,7 +200,9 @@ export function HeroBackground({
           }
           const freeW = Math.max(240, freeRight - freeLeft);
           const gap = Math.min(80, Math.max(28, freeW * 0.07));
-          const diameter = Math.max(200, Math.min(freeW - gap * 2, h * 0.86));
+          // Keep the globe noticeably smaller on desktop so the hero copy and
+          // countdown have room to breathe beside it.
+          const diameter = Math.max(140, Math.min((freeW - gap * 2) * 0.66, h * 0.55));
           const cx = (freeLeft + freeRight) / 2;
           const half = diameter / 2 + 12;
           const cy = Math.min(h - half, Math.max(half, h * (0.5 - desktopLift / 100)));
@@ -285,15 +263,12 @@ export function HeroBackground({
       let tabVisible = !document.hidden;
       let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
-      let sp = 0;
-      let coinSpin = 0;
 
       const frame = (timestamp?: number) => {
         raf = 0;
         if (disposed) return;
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05) * motion;
-        const t = timer.getElapsed();
 
         earth.rotation.y += dt * 0.05;
         atmosphere.rotation.y += dt * 0.02;
@@ -314,74 +289,6 @@ export function HeroBackground({
         worldScroll.position.set(0, -scrollT * 1.4, -scrollT * 2.5);
         worldScroll.rotation.z = scrollT * 0.18;
         stars.position.y = -scrollT * 1.5;
-
-        // --- COIN ANIMATION: globe -> 3D clock -> back with scroll ---
-        // Progress is 0 at the top of the hero and 1 once the hero has scrolled
-        // past. The same damped value drives both directions, so scrolling up
-        // sends the coins back to the globe like a parallax layer.
-        const heroEl = document.querySelector('[data-track="hero"]');
-        let heroScroll = 0;
-        if (heroEl) {
-          const rect = heroEl.getBoundingClientRect();
-          heroScroll = clamp01(-rect.top / Math.max(1, rect.height * 0.8));
-        }
-
-        sp += (heroScroll - sp) * (1 - Math.exp(-dt * 8));
-        const ease = easeInOutCubic(sp);
-
-        // Home positions around the globe. They inherit the globe's scroll
-        // shrink/offset so the return trip still feels attached to it.
-        const orbitR = 3.0;
-        const globeDrift = worldScroll.position.clone();
-        const startMan = new THREE.Vector3(-orbitR, 0.4, 0).multiplyScalar(worldScroll.scale.x).add(globeDrift);
-        const startAnd = new THREE.Vector3(0, 0.9, orbitR).multiplyScalar(worldScroll.scale.x).add(globeDrift);
-        const startSatan = new THREE.Vector3(orbitR, 0.4, 0).multiplyScalar(worldScroll.scale.x).add(globeDrift);
-
-        // Convert a point near the real 3D clock from screen space into the
-        // hero scene, then into this group's local space. This keeps the coins
-        // gathered around the clock even while the clock scrolls upward.
-        const clockEl = document.querySelector<HTMLElement>("[data-clock-3d]");
-        let endMan = startMan;
-        let endAnd = startAnd;
-        let endSatan = startSatan;
-
-        if (clockEl) {
-          const clockRect = clockEl.getBoundingClientRect();
-          const canvasRect = renderer.domElement.getBoundingClientRect();
-          if (clockRect.width > 0 && canvasRect.width > 0) {
-            scene.updateMatrixWorld(true);
-            const raycaster = new THREE.Raycaster();
-            const coinPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -1.2);
-            const ndc = new THREE.Vector2();
-            const hit = new THREE.Vector3();
-            const screenToLocal = (dx: number, dy: number) => {
-              const px = clockRect.left + clockRect.width / 2 + dx - canvasRect.left;
-              const py = clockRect.top + clockRect.height / 2 + dy - canvasRect.top;
-              ndc.set((px / canvasRect.width) * 2 - 1, -((py / canvasRect.height) * 2 - 1));
-              raycaster.setFromCamera(ndc, camera);
-              if (!raycaster.ray.intersectPlane(coinPlane, hit)) return new THREE.Vector3();
-              return world.worldToLocal(hit.clone());
-            };
-
-            const spread = clockRect.width * 0.62;
-            endMan = screenToLocal(-spread, clockRect.height * 0.04);
-            endAnd = screenToLocal(0, -clockRect.height * 0.26);
-            endSatan = screenToLocal(spread, clockRect.height * 0.04);
-          }
-        }
-
-        coinMan.position.lerpVectors(startMan, endMan, ease);
-        coinAnd.position.lerpVectors(startAnd, endAnd, ease);
-        coinSatan.position.lerpVectors(startSatan, endSatan, ease);
-
-        // Travel spin eases out as the coins reach the clock, then they rest.
-        coinSpin += dt * Math.PI * 3 * (1 - ease);
-        coinMan.rotation.set(0, coinSpin, Math.sin(t) * 0.05 * (1 - ease));
-        coinSatan.rotation.set(0, coinSpin, Math.cos(t) * 0.05 * (1 - ease));
-        coinAnd.rotation.set(0, coinSpin, 0);
-
-        const s = 1 - ease * 0.1;
-        coinMan.scale.setScalar(s); coinAnd.scale.setScalar(s); coinSatan.scale.setScalar(s);
 
         renderer.render(scene, camera);
         if (!posterHidden && posterRef.current) { posterHidden = true; posterRef.current.style.opacity = "0"; }

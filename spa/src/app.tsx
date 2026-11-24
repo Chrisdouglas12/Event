@@ -9,7 +9,6 @@ import { LandingSettingsProvider } from "@/components/marketing/landing-settings
 import { ScrollTrace } from "@/components/marketing/scroll-trace";
 import { WhyAttend } from "@/components/marketing/why-attend";
 import { MinisterCard } from "@/components/marketing/minister-card";
-import { CtaBanner } from "@/components/marketing/cta-banner";
 import { DetailsCard } from "@/components/marketing/details-card";
 import { AboutPreview } from "@/components/marketing/about-preview";
 import { FlyerSection } from "@/components/marketing/flyer-section";
@@ -128,8 +127,6 @@ function LandingPage() {
                 </div>
               </section>
 
-              <TimelineDivider label="Register" scene="road" />
-              <CtaBanner />
               <TimelineDivider label="Details" scene="road" />
               <DetailsCard />
               <TimelineDivider label="About" scene="road" />

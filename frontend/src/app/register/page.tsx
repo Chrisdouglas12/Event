@@ -111,8 +111,9 @@ function toE164Phone(phone: string): string | null {
 }
 
 /* ---------- Design tokens + component styles ----------
- * Mirrors the landing page: mint dot-grid background, teal primary, navy
- * panels for emphasis, pill buttons. Mobile-first; breakpoints:
+ * Shares the landing page's navy surface, mint accents and restrained type.
+ * The registration card stays white so the form remains calm and readable,
+ * while everything around it uses the same premium site language.
  *   640px  tablet   (two-column fields)
  *   1280px desktop  (info panel beside the form)
  * Scoped to .r-root so nothing leaks to the site header or footer.
@@ -123,20 +124,43 @@ const STYLES = `
   --r-border:#DCE8E5; --r-border-strong:#BCCFCA; --r-border-hover:#8FA9A3;
   --r-text:#0E1626; --r-muted:#4B5767; --r-faint:#6B7686;
   --r-primary:#0E7A6E; --r-primary-hover:#0B655B; --r-on-primary:#ffffff; --r-brand-text:#0B6B60;
+  --r-active:#0B2F43; --r-active-soft:#E8F0F4; --r-active-ring:rgba(11,47,67,.3);
   --r-ring:rgba(14,122,110,.28);
   --r-danger:#B42318; --r-danger-bg:#FEF3F2; --r-danger-border:#F1A9A2;
   --r-success:#0B6B60; --r-warn:#8A4B08; --r-warn-bg:#FFF6E5; --r-warn-border:#F2CC8F;
-  --r-navy:#0E1626; --r-navy-2:#0B2A2B; --r-mint:#8EE3D6;
+  --r-navy:#07101E; --r-navy-2:#0B1B2B; --r-mint:#8EE3D6;
   --r-pad:16px; --r-h:46px; --r-fs:16px; --r-radius:10px;
   --r-header-h:60px;
+  position:relative;
+  isolation:isolate;
   color-scheme:light;
   color:var(--r-text);
   font-family:inherit;
-  background:
-    radial-gradient(rgba(14,122,110,.16) 1.5px, transparent 1.5px) 0 0/24px 24px,
-    linear-gradient(180deg,#EAF7F4 0%,#F7FCFB 50%,#EAF7F4 100%);
-  background-attachment:scroll;
+  background-color:#07101e;
+  background-image:
+    linear-gradient(180deg,rgba(5,10,20,.96) 0%,rgba(7,16,30,.92) 16%,rgba(7,16,30,.78) 55%,rgba(5,10,20,.96) 100%),
+    radial-gradient(circle at 82% 24%,rgba(14,122,110,.18),transparent 34%),
+    radial-gradient(circle at 12% 72%,rgba(32,78,110,.16),transparent 38%);
+  box-shadow:inset 0 0 180px rgba(0,0,0,.35);
 }
+/* Same fixed star texture as the landing, kept behind the form surface. */
+.r-root::before{
+  content:''; position:fixed; inset:-12%; z-index:0; pointer-events:none;
+  opacity:.38;
+  background-image:
+    radial-gradient(circle,rgba(142,227,214,.85) 0 .8px,transparent 1.2px),
+    radial-gradient(circle,rgba(255,255,255,.6) 0 .6px,transparent 1px),
+    radial-gradient(circle,rgba(127,182,217,.5) 0 .7px,transparent 1.1px);
+  background-size:173px 173px,241px 241px,311px 311px;
+  background-position:31px 47px,118px 83px,73px 193px;
+  animation:r-stars 64s ease-in-out infinite;
+}
+@keyframes r-stars{ 0%,100%{ transform:translate3d(0,0,0); opacity:.34; } 50%{ transform:translate3d(1.4%,-1.1%,0); opacity:.5; } }
+/* A whisper of the landing hero imagery, kept behind the form surface. */
+.r-root::after{ content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,16,30,.45),rgba(7,16,30,.82)),url('/images/crowd-bw_3.jpg') center/cover no-repeat;
+  opacity:.16; mix-blend-mode:screen; }
+@media (prefers-reduced-motion:reduce){ .r-root::before{ animation:none; } }
 @media (min-width:640px){ .r-root{ --r-pad:28px; --r-h:44px; } }
 @media (min-width:1024px){ .r-root{ --r-pad:32px; } }
 
@@ -146,74 +170,73 @@ const STYLES = `
 .r-root button:focus-visible, .r-consent input:focus-visible{ outline:2px solid var(--r-primary); outline-offset:2px; }
 
 /* Page layout */
-.r-page{ position:relative; flex:1 1 auto; width:100%; padding:12px 12px 32px; }
+.r-page{ position:relative; z-index:1; flex:1 1 auto; width:100%; padding:16px 12px 36px; }
 .r-layout{ display:grid; grid-template-columns:minmax(0,1fr); gap:24px; width:100%; max-width:760px; margin:0 auto; }
-@media (min-width:640px){ .r-page{ padding:20px 20px 48px; } }
+@media (min-width:640px){ .r-page{ padding:24px 20px 52px; } }
 @media (min-width:1280px){
-  .r-page{ padding:28px 28px 56px; }
-  .r-layout{ max-width:1200px; grid-template-columns:minmax(0,1fr) minmax(0,720px); align-items:start; }
+  .r-page{ padding:32px 28px 60px; }
+  .r-layout{ max-width:1240px; grid-template-columns:minmax(0,1fr) minmax(0,720px); align-items:start; }
 }
 
-/* Desktop info panel */
-.r-side{ display:none; }
+/* Conference intro panel: compact above the form on mobile, sticky beside it on desktop */
+.r-side{
+  display:flex; color:#fff; border-radius:6px; overflow:hidden;
+  background:linear-gradient(160deg,rgba(14,22,38,.96) 0%,rgba(7,16,30,.98) 100%);
+  border:1px solid rgba(142,227,214,.22);
+  box-shadow:0 30px 80px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.r-side-inner{ margin:0; width:100%; padding:20px 18px; text-align:center; }
+.r-side-logo{ display:block; width:auto; height:30px; margin:0 auto 12px; object-fit:contain; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.r-side-label{ display:block; font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--r-mint); }
+.r-side-clock{ display:inline-block; margin-top:10px; padding:8px 12px; border-radius:6px; background:rgba(5,10,20,.6); box-shadow:0 0 0 1px rgba(142,227,214,.16); }
+.r-side-title{ margin-top:12px; font-size:18px; font-weight:800; line-height:1.2; letter-spacing:-.01em; }
+.r-side-lead{ margin:8px auto 0; max-width:310px; font-size:13px; line-height:1.55; color:rgba(255,255,255,.72); }
+.r-side-steps{ display:none; }
+.r-side-steps li{ display:flex; gap:14px; }
+.r-side-steps li + li{ margin-top:18px; }
+.r-side-num{ flex:none; display:grid; place-items:center; width:27px; height:27px; border-radius:999px; font-size:12px; font-weight:800; color:var(--r-navy); background:var(--r-mint); box-shadow:0 0 18px rgba(142,227,214,.28); }
+.r-side-steps b{ display:block; font-size:14px; font-weight:700; letter-spacing:-.01em; }
+.r-side-steps span span{ display:block; margin-top:3px; font-size:13px; line-height:1.5; color:rgba(255,255,255,.66); }
+@media (min-width:640px){
+  .r-side-inner{ padding:26px 24px; }
+  .r-side-title{ font-size:20px; }
+  .r-side-lead{ font-size:14px; }
+  .r-side-steps{ display:inline-block; margin-top:20px; padding:0; list-style:none; text-align:left; }
+}
 @media (min-width:1280px){
   .r-side{
-    display:flex; position:sticky; top:calc(var(--r-header-h) + 24px);
-    height:calc(100vh - var(--r-header-h) - 48px); min-height:480px; overflow-y:auto; scrollbar-width:none;
-    color:#fff; border-radius:20px;
-    background:linear-gradient(160deg,var(--r-navy) 0%,var(--r-navy-2) 100%);
-    box-shadow:0 0 0 1px rgba(142,227,214,.18), 0 24px 60px rgba(14,22,38,.22);
+    position:sticky; top:calc(var(--r-header-h) + 28px);
+    height:calc(100vh - var(--r-header-h) - 56px); min-height:480px; overflow-y:auto; scrollbar-width:none;
   }
   .r-side::-webkit-scrollbar{ display:none; }
+  .r-side-inner{ margin:auto; max-width:400px; padding:40px 32px; }
+  .r-side-steps{ margin-top:30px; }
 }
-.r-side-inner{ margin:auto; width:100%; max-width:380px; padding:32px 28px; text-align:center; }
-.r-side-label{ font-size:12px; font-weight:600; color:var(--r-mint); }
-.r-side-clock{ display:inline-block; margin-top:8px; padding:8px 12px; border-radius:12px; background:rgba(14,22,38,.7); box-shadow:0 0 0 1px rgba(255,255,255,.1); }
-.r-side-title{ margin-top:24px; font-size:34px; font-weight:800; line-height:1.15; letter-spacing:-.02em; }
-.r-side-lead{ margin:10px auto 0; max-width:300px; font-size:15px; line-height:1.55; color:rgba(255,255,255,.75); }
-.r-side-steps{ display:inline-block; margin-top:24px; padding:0; list-style:none; text-align:left; }
-.r-side-steps li{ display:flex; gap:12px; }
-.r-side-steps li + li{ margin-top:14px; }
-.r-side-num{ flex:none; display:grid; place-items:center; width:26px; height:26px; border-radius:999px; font-size:12px; font-weight:700; color:var(--r-navy); background:var(--r-mint); }
-.r-side-steps b{ display:block; font-size:14px; font-weight:650; }
-.r-side-steps span span{ display:block; margin-top:2px; font-size:13px; line-height:1.45; color:rgba(255,255,255,.7); }
 @media (max-height:700px){ .r-side-lead{ display:none; } }
 
 /* Card */
 .r-card{
+  color-scheme:light;
   color:var(--r-text);
-  background:linear-gradient(160deg,#ffffff 0%,#F2FAF8 100%);
-  border:1px solid rgba(14,122,110,.26);
-  border-radius:16px;
-  box-shadow:0 1px 2px rgba(14,22,38,.04), 0 20px 48px rgba(14,122,110,.12);
+  background:#fff;
+  border:1px solid rgba(142,227,214,.32);
+  border-radius:6px;
+  box-shadow:0 30px 80px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.9);
   overflow:clip;
 }
 
 /* Sticky header + progress (below desktop) */
 .r-head{ position:sticky; top:var(--r-header-h); z-index:20; background:var(--r-navy); color:#fff; }
 .r-head-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:4px var(--r-pad); }
-.r-head-steps{ font-size:12.5px; font-weight:600; color:var(--r-mint); white-space:nowrap; }
+.r-head-steps{ font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--r-mint); white-space:nowrap; }
 .r-head-brand{ display:none; align-items:center; gap:12px; min-width:0; }
 .r-head-sep{ width:1px; height:18px; background:rgba(255,255,255,.2); }
-.r-head-tag{ font-size:12.5px; font-weight:600; color:var(--r-mint); }
-.r-head-clock{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(255,255,255,.75); white-space:nowrap; }
+.r-head-tag{ font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--r-mint); }
+.r-head-clock{ display:none; align-items:center; gap:8px; font-size:11.5px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.78); white-space:nowrap; }
 .r-progress{ height:3px; background:rgba(255,255,255,.14); }
 .r-progress span{ display:block; height:100%; background:var(--r-mint); transition:width .35s ease; }
 @media (min-width:640px){ .r-head-row{ min-height:52px; } .r-head-brand{ display:flex; } .r-head-steps{ display:none; } }
 @media (min-width:1280px){ .r-head{ display:none; } }
-
-/* Hero */
-.r-hero{ padding:24px var(--r-pad) 4px; }
-.r-eyebrow{ display:flex; align-items:center; gap:12px; margin-bottom:10px; font-size:12px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--r-brand-text); }
-.r-eyebrow::before{ content:''; width:36px; height:2px; background:var(--r-primary); }
-.r-title{ font-size:26px; line-height:1.15; font-weight:800; letter-spacing:-.02em; }
-@media (min-width:640px){ .r-title{ font-size:32px; } }
-.r-meta{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:12px; font-size:13.5px; color:var(--r-muted); }
-.r-meta span{ display:inline-flex; align-items:center; gap:6px; }
-.r-meta svg{ width:16px; height:16px; color:var(--r-primary); }
-.r-meta .r-meta-ticket{ display:none; }
-@media (min-width:640px){ .r-meta .r-meta-ticket{ display:inline-flex; } }
-.r-sub{ margin-top:10px; font-size:13.5px; line-height:1.5; color:var(--r-muted); }
 
 /* Steps */
 .r-form{ padding:0 var(--r-pad); }
@@ -221,11 +244,11 @@ const STYLES = `
 .r-step-head{ margin-bottom:16px; }
 .r-step-top{ display:flex; align-items:center; gap:10px; }
 .r-badge{ flex:none; width:28px; height:28px; border-radius:999px; display:grid; place-items:center; font-size:12.5px; font-weight:700; background:var(--r-tint); color:var(--r-brand-text); border:1.5px solid var(--r-primary); transition:background .2s,color .2s; }
-.r-badge[data-done=true]{ background:var(--r-primary); color:var(--r-on-primary); }
+.r-badge[data-done=true]{ background:var(--r-active); color:var(--r-on-primary); }
 .r-badge svg{ width:14px; height:14px; }
 .r-step-title{ flex:1; min-width:0; font-size:17px; font-weight:750; line-height:1.3; letter-spacing:-.01em; }
 .r-step-tag{ flex:none; font-size:12px; color:var(--r-faint); }
-.r-step-tag[data-done=true]{ color:var(--r-success); font-weight:600; }
+.r-step-tag[data-done=true]{ color:var(--r-active); font-weight:700; }
 @media (max-width:379px){ .r-step-tag{ display:none; } }
 .r-step-note{ margin:6px 0 0 38px; font-size:13.5px; line-height:1.5; color:var(--r-muted); }
 
@@ -279,19 +302,21 @@ const STYLES = `
 .r-choices{ display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:3px; padding:3px; background:var(--r-subtle); border:1px solid var(--r-border-strong); border-radius:999px; }
 .r-choice{ display:flex; align-items:center; justify-content:center; min-height:calc(var(--r-h) - 8px); padding:0 10px; font:inherit; font-size:14px; font-weight:600; color:var(--r-muted); background:transparent; border:0; border-radius:999px; cursor:pointer; transition:background .15s, color .15s; }
 .r-choice:hover{ color:var(--r-text); }
-.r-choice[aria-pressed=true]{ color:var(--r-on-primary); background:var(--r-primary); }
+.r-choice[aria-pressed=true]{ color:var(--r-on-primary); background:var(--r-active); }
 
 /* Registration type */
-.r-type{ display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
-.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; padding:10px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
-.r-typecard:hover{ border-color:var(--r-border-hover); }
-.r-typecard[aria-pressed=true]{ background:var(--r-tint); border-color:var(--r-primary); box-shadow:0 0 0 1px var(--r-primary); }
+.r-type{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; }
+.r-typecard{ display:flex; gap:10px; align-items:center; min-width:0; min-height:66px; padding:10px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:0; border-radius:0; cursor:pointer; transition:background .15s, box-shadow .15s; }
+.r-typecard + .r-typecard{ border-left:1px solid var(--r-border-strong); }
+.r-typecard:hover{ background:var(--r-subtle); }
+.r-typecard[aria-pressed=true]{ background:var(--r-active); color:var(--r-on-primary); box-shadow:inset 0 0 0 1.5px var(--r-active); }
+.r-typecard[aria-pressed=true] .r-typesub{ color:rgba(255,255,255,.72); }
 .r-typeicon{ flex:none; width:32px; height:32px; border-radius:999px; display:grid; place-items:center; background:var(--r-subtle); color:var(--r-muted); border:1px solid var(--r-border); transition:background .15s, color .15s; }
-.r-typecard[aria-pressed=true] .r-typeicon{ background:var(--r-primary); border-color:var(--r-primary); color:var(--r-on-primary); }
+.r-typecard[aria-pressed=true] .r-typeicon{ background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.28); color:var(--r-on-primary); }
 .r-typeicon svg{ width:17px; height:17px; }
 .r-typetitle{ display:block; font-size:14.5px; font-weight:700; line-height:1.2; }
 .r-typesub{ display:none; margin-top:2px; font-size:12.5px; line-height:1.35; color:var(--r-muted); }
-@media (min-width:480px){ .r-typecard{ padding:14px; gap:12px; } .r-typeicon{ width:38px; height:38px; } .r-typeicon svg{ width:19px; height:19px; } .r-typesub{ display:block; } .r-typetitle{ font-size:15px; } }
+@media (min-width:480px){ .r-typecard{ padding:14px 16px; gap:12px; } .r-typeicon{ width:38px; height:38px; } .r-typeicon svg{ width:19px; height:19px; } .r-typesub{ display:block; } .r-typetitle{ font-size:15px; } }
 
 /* Panels + reveal */
 .r-panel{ display:flex; flex-direction:column; gap:18px; padding:14px; background:var(--r-subtle); border:1px solid var(--r-border); border-radius:16px; }
@@ -302,12 +327,13 @@ const STYLES = `
 /* Switch rows */
 .r-switch{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:10px 14px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
 .r-switch:hover{ border-color:var(--r-border-hover); }
-.r-switch[aria-checked=true]{ background:var(--r-tint); border-color:var(--r-primary); box-shadow:0 0 0 1px var(--r-primary); }
+.r-switch[aria-checked=true]{ background:var(--r-active); border-color:var(--r-active); color:var(--r-on-primary); box-shadow:0 0 0 1px var(--r-active); }
 .r-switch-text{ flex:1; min-width:0; font-size:14px; font-weight:600; line-height:1.35; }
 .r-switch-text small{ display:block; margin-top:2px; font-size:12.5px; font-weight:400; color:var(--r-muted); }
+.r-switch[aria-checked=true] .r-switch-text small{ color:rgba(255,255,255,.74); }
 .r-track{ flex:none; position:relative; width:40px; height:22px; border-radius:999px; background:var(--r-border-strong); transition:background .2s; }
 .r-track::after{ content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transition:transform .2s; }
-.r-switch[aria-checked=true] .r-track{ background:var(--r-primary); }
+.r-switch[aria-checked=true] .r-track{ background:rgba(255,255,255,.3); }
 .r-switch[aria-checked=true] .r-track::after{ transform:translateX(18px); }
 
 /* Number stepper */
@@ -326,7 +352,7 @@ const STYLES = `
 /* Tally */
 .r-tally{ display:flex; flex-direction:column; gap:6px; }
 .r-meter{ height:4px; overflow:hidden; border-radius:999px; background:var(--r-border); }
-.r-meter span{ display:block; height:100%; background:var(--r-primary); transition:width .25s ease, background .2s; }
+.r-meter span{ display:block; height:100%; background:var(--r-active); transition:width .25s ease, background .2s; }
 .r-tally-text{ display:flex; gap:6px; align-items:flex-start; font-size:12.5px; line-height:1.4; color:var(--r-muted); }
 .r-tally-text svg{ width:14px; height:14px; flex:none; margin-top:1px; }
 .r-tally[data-state=ok] .r-tally-text{ color:var(--r-success); font-weight:600; }
@@ -337,12 +363,13 @@ const STYLES = `
 .r-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .r-chip{ min-height:34px; padding:0 14px; font:inherit; font-size:13px; font-weight:600; color:var(--r-muted); background:#fff; border:1px solid var(--r-border-strong); border-radius:999px; cursor:pointer; transition:border-color .15s, background .15s, color .15s; }
 .r-chip:hover{ border-color:var(--r-border-hover); color:var(--r-text); }
-.r-chip[aria-pressed=true]{ background:var(--r-tint); color:var(--r-brand-text); border-color:var(--r-primary); }
+.r-chip[aria-pressed=true]{ background:var(--r-active); color:var(--r-on-primary); border-color:var(--r-active); }
 .r-cur{ display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
 @media (min-width:640px){ .r-cur{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 .r-curbtn{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width:0; padding:10px 12px; font:inherit; text-align:left; color:var(--r-text); background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
 .r-curbtn:hover:not(:disabled){ border-color:var(--r-border-hover); }
-.r-curbtn[aria-pressed=true]:not(:disabled){ background:var(--r-tint); border-color:var(--r-primary); box-shadow:0 0 0 1px var(--r-primary); }
+.r-curbtn[aria-pressed=true]:not(:disabled){ background:var(--r-active); border-color:var(--r-active); color:var(--r-on-primary); box-shadow:0 0 0 1px var(--r-active); }
+.r-curbtn[aria-pressed=true]:not(:disabled) .r-curprice{ color:rgba(255,255,255,.75); }
 .r-curbtn:disabled{ opacity:.5; cursor:not-allowed; }
 .r-curcode{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:700; }
 .r-curprice{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; line-height:1.35; color:var(--r-muted); }
@@ -352,7 +379,7 @@ const STYLES = `
 .r-consent{ display:flex; gap:12px; align-items:flex-start; padding:14px; font-size:13.5px; line-height:1.5; color:var(--r-muted); background:#fff; border:1px solid var(--r-border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, background .15s; }
 .r-consent:hover{ border-color:var(--r-border-hover); }
 .r-consent[data-invalid=true]{ background:var(--r-danger-bg); border-color:var(--r-danger); }
-.r-consent input{ flex:none; width:20px; height:20px; margin-top:1px; accent-color:var(--r-primary); }
+.r-consent input{ flex:none; width:20px; height:20px; margin-top:1px; accent-color:var(--r-active); }
 .r-consent a{ color:var(--r-brand-text); font-weight:600; text-decoration:underline; }
 
 .r-summary{ margin:0; padding:16px; color:#fff; background:linear-gradient(135deg,var(--r-navy) 0%,var(--r-navy-2) 100%); border-radius:16px; }
@@ -384,7 +411,7 @@ const STYLES = `
 .r-spin{ flex:none; width:16px; height:16px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:r-spin .7s linear infinite; }
 @keyframes r-spin{ to{ transform:rotate(360deg); } }
 
-@media (min-width:640px){ .r-card{ border-radius:20px; } }
+@media (min-width:640px){ .r-card{ border-radius:6px; } }
 
 @media (prefers-reduced-motion:reduce){
   .r-root *, .r-root *::before, .r-root *::after{ animation:none !important; transition:none !important; }
@@ -486,33 +513,6 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <Icon className={className}>
       <path d="M12 5v14M5 12h14" />
-    </Icon>
-  );
-}
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <Icon className={className}>
-      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
-      <path d="M3.5 10h17M8 3v4M16 3v4" />
-    </Icon>
-  );
-}
-
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <Icon className={className}>
-      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
-      <circle cx="12" cy="10" r="2.4" />
-    </Icon>
-  );
-}
-
-function TicketIcon({ className }: { className?: string }) {
-  return (
-    <Icon className={className}>
-      <path d="M3.5 8.5a2 2 0 0 0 0 7V18a1.5 1.5 0 0 0 1.5 1.5h14A1.5 1.5 0 0 0 20.5 18v-2.5a2 2 0 0 1 0-7V6A1.5 1.5 0 0 0 19 4.5H5A1.5 1.5 0 0 0 3.5 6z" />
-      <path d="M14 5v14" strokeDasharray="2 3" />
     </Icon>
   );
 }
@@ -1214,7 +1214,7 @@ export default function RegisterPage() {
         customNairaMinor === null ||
         customNairaMinor < minimumNairaMinor
       ) {
-        errs.customNairaAmount = `Enter a whole-naira amount of at least ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`;
+        errs.customNairaAmount = "Enter a valid whole-naira amount.";
       }
     }
 
@@ -1439,10 +1439,10 @@ export default function RegisterPage() {
 
   const phoneValid = Boolean(toE164Phone(payerPhone));
   const emailValid = EMAIL_RE.test(payerEmail.trim());
-  const nairaChips: { label: string; minor: number }[] = [{ label: "Minimum", minor: minimumNairaMinor }];
-  if (typeof pricesMinor.NGN === "number" && pricesMinor.NGN !== minimumNairaMinor) {
-    nairaChips.push({ label: "Standard", minor: pricesMinor.NGN });
-  }
+  const nairaChips: { label: string; minor: number }[] =
+    typeof pricesMinor.NGN === "number" && pricesMinor.NGN !== minimumNairaMinor
+      ? [{ label: "Standard", minor: pricesMinor.NGN }]
+      : [];
 
   return (
     <div className="r-root flex min-h-screen flex-col">
@@ -1454,13 +1454,22 @@ export default function RegisterPage() {
           {/* Desktop (1280px+): info panel stays in view while the form scrolls */}
           <aside className="r-side" aria-label="Conference information">
             <div className="r-side-inner">
+              <Image
+                src={SITE_CONFIG.logo.src}
+                alt={SITE_CONFIG.logo.alt}
+                width={132}
+                height={44}
+                className="r-side-logo"
+                style={{ width: "auto" }}
+                priority
+              />
               <span className="r-side-label">Conference starts in</span>
               <div>
                 <div className="r-side-clock">
                   <Countdown compact />
                 </div>
               </div>
-              <h2 className="r-side-title">Join us at IHGC 2026</h2>
+              <h2 className="r-side-title">{`REGISTER FOR THE ${SITE_CONFIG.eventTitle.toUpperCase()}`}</h2>
               <p className="r-side-lead">Register yourself or your whole chapter in a few minutes.</p>
               <ol className="r-side-steps">
                 {[
@@ -1522,44 +1531,9 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Title */}
-              <div className="r-hero">
-                <div className="r-eyebrow">Registration</div>
-                <h1 className="r-title">Register for IHGC 2026</h1>
-                <div className="r-meta">
-                  <span>
-                    <CalendarIcon />
-                    8 – 11 Dec 2026
-                  </span>
-                  <span>
-                    <PinIcon />
-                    Kwali, Abuja
-                  </span>
-                  <span className="r-meta-ticket">
-                    <TicketIcon />
-                    Instant QR ticket
-                  </span>
-                </div>
-                <p className="r-sub">Complete the steps below. Every field is required.</p>
-
-                {configState === "error" && (
-                  <div role="alert" className="r-alert" style={{ marginTop: 14 }}>
-                    <AlertIcon />
-                    <span>Registration pricing could not be loaded. Refresh the page to try again.</span>
-                  </div>
-                )}
-                {configState === "ready" && !registrationOpen && (
-                  <div role="status" className="r-alert r-alert--warn" style={{ marginTop: 14 }}>
-                    <AlertIcon />
-                    <span>Online registration is closed.</span>
-                  </div>
-                )}
-              </div>
-
               <form id="register-form" noValidate onSubmit={handleSubmit} className="r-form">
                 {/* Step 1: type */}
                 <div className="r-step" style={{ borderTop: 0 }}>
-                  <StepHeader n={1} done={stepDone.type} title="Who are you registering?" />
                   <div className="r-type" role="group" aria-label="Registration type">
                     <button
                       type="button"
@@ -1590,6 +1564,7 @@ export default function RegisterPage() {
                       </span>
                     </button>
                   </div>
+
                 </div>
 
                 {/* Step 2: group details / attendee details */}
@@ -1739,12 +1714,12 @@ export default function RegisterPage() {
                         <div className="r-grid r-grid--2">
                           <Field
                             htmlFor="field-genderCounts"
-                            label="Number of brothers"
+                            label="Number of males"
                             hint="Include boys in this count."
                           >
                             <NumberField
                               id="field-genderCounts"
-                              label="brothers"
+                              label="males"
                               value={genderCounts.male}
                               min={0}
                               max={seatsCount}
@@ -1759,12 +1734,12 @@ export default function RegisterPage() {
                           </Field>
                           <Field
                             htmlFor="field-genderCounts-female"
-                            label="Number of sisters"
+                            label="Number of females"
                             hint="Include girls in this count."
                           >
                             <NumberField
                               id="field-genderCounts-female"
-                              label="sisters"
+                              label="females"
                               value={genderCounts.female}
                               min={0}
                               max={seatsCount}
@@ -1802,7 +1777,7 @@ export default function RegisterPage() {
                                 clearErr("gender");
                               }}
                             >
-                              {value === "male" ? "Brother" : "Sister"}
+                              {value === "male" ? "Male" : "Female"}
                             </button>
                           ))}
                         </div>
@@ -1810,13 +1785,13 @@ export default function RegisterPage() {
 
                       <Field
                         htmlFor="field-firstTime"
-                        label="Is it your first time attending a conference in HOREMOW?"
+                        label="Are you a first timer or invitee?"
                         error={fieldErrors.firstTime}
                       >
                         <div
                           id="field-firstTime"
                           role="group"
-                          aria-label="First time attending"
+                          aria-label="First timer or invitee"
                           className="r-choices"
                           tabIndex={-1}
                         >
@@ -2098,9 +2073,7 @@ export default function RegisterPage() {
                           hint={
                             isGroup
                               ? "Calculated automatically from the standard price and your participant count."
-                              : `Minimum ${formatMoneyMinor(minimumNairaMinor, "NGN")} for ${effectiveSeats} ${
-                                  effectiveSeats === 1 ? "participant" : "participants"
-                                }.`
+                              : undefined
                           }
                         >
                           <div className="r-wrap r-narrow">
@@ -2130,7 +2103,7 @@ export default function RegisterPage() {
                           </div>
                         </Field>
 
-                        {!isGroup && (
+                        {!isGroup && nairaChips.length > 0 && (
                           <div className="r-chips" role="group" aria-label="Quick amounts">
                             {nairaChips.map((chip) => (
                               <button
@@ -2184,10 +2157,6 @@ export default function RegisterPage() {
                         <dd>{formatMoneyMinor(unitMinor, currency)}</dd>
                       </div>
                     )}
-                    <div className="r-row">
-                      <dt>Pay with</dt>
-                      <dd>Paystack</dd>
-                    </div>
                     <div className="r-total">
                       <span className="r-total-label">Total ({currency})</span>
                       <span className="r-total-value">{formattedTotal}</span>
@@ -2258,7 +2227,21 @@ export default function RegisterPage() {
                       </div>
                     )}
 
-                    <p className="r-note">You will be taken to Paystack to complete your payment.</p>
+                    <p className="r-note">You will be taken to our secure checkout to complete your payment.</p>
+
+                    {(configState === "error" || (configState === "ready" && !registrationOpen)) && (
+                      <div
+                        role={configState === "error" ? "alert" : "status"}
+                        className={`r-alert ${configState === "error" ? "" : "r-alert--warn"}`}
+                      >
+                        <AlertIcon />
+                        <span>
+                          {configState === "error"
+                            ? "Registration pricing could not be loaded. Refresh the page to try again."
+                            : "Online registration is closed."}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </form>

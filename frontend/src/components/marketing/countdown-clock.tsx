@@ -64,9 +64,10 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
 }
 
 const FC_CSS = `
-/* ---------- transparent stack: timer above the clock on phones ---------- */
+/* ---------- timer above the clock on phones, beside it on desktop ---------- */
 .cc-wrap{position:relative;width:100%}
 .cc-body{position:relative;display:flex;flex-direction:column;align-items:center}
+@media (min-width:640px){.cc-body{flex-direction:row;align-items:center}}
 .cc-clock-glow{position:absolute;inset:6%;border-radius:9999px;pointer-events:none;
   background:radial-gradient(closest-side,rgba(142,227,214,.30),transparent 72%);filter:blur(14px);animation:cc-breathe 5s ease-in-out infinite}
 @keyframes cc-breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.06);opacity:1}}
@@ -182,9 +183,9 @@ export function CountdownClock({
     <div className="cc-wrap">
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
-      <div className="cc-body gap-4 sm:flex-row sm:gap-6">
+      <div data-countdown className="cc-body gap-4 sm:flex-row sm:gap-6">
         {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
-        <div data-clock-3d className="relative z-[2] order-2 shrink-0 sm:order-1">
+        <div data-clock-3d className="relative z-[2] order-2 shrink-0">
           <span aria-hidden className="cc-clock-glow" />
           <ConferenceClock3D
             target={target}
@@ -195,8 +196,8 @@ export function CountdownClock({
           />
         </div>
 
-        {/* Flip countdown: above the clock on phones, beside it on desktop */}
-        <div className="relative z-[2] order-1 w-full min-w-0 flex-1 sm:order-2">
+        {/* Flip countdown: above the clock on phones, to its left on desktop */}
+        <div className="relative z-[2] order-1 w-full min-w-0 flex-1">
           <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
             <FlipUnit value={days} label="Days" unit="days" />
             <FlipUnit value={hours} label="Hours" unit="hours" />

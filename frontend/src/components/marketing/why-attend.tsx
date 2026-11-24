@@ -296,6 +296,13 @@ export function WhyAttend() {
     >
       <style dangerouslySetInnerHTML={{ __html: WA_CSS }} />
 
+      {/* Open desktop space where the themed plane comes to rest. */}
+      <div
+        data-theme-plane-landing
+        aria-hidden
+        className="pointer-events-none absolute right-[5%] top-[104px] hidden h-[160px] w-[300px] xl:right-[9%] xl:top-[120px] lg:block"
+      />
+
       {/* ---------- Layer 1: living background ---------- */}
       <div aria-hidden className="wa-bg">
         <div className="wa-blob wa-blob-a" />

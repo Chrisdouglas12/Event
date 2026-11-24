@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -7,6 +8,11 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { LogoutButton } from "@/components/ui/logout-button";
 import { requireRole } from "@/lib/auth/session";
 import { SITE_CONFIG } from "@/config/site";
+
+// The install manifest is only advertised inside the authenticated console.
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+};
 
 export default async function AdminLayout({
   children,
@@ -61,7 +67,10 @@ export default async function AdminLayout({
           <div className="flex min-w-0 items-center gap-2.5">
             <AdminMobileNav user={{ fullName: user.fullName, role: user.role }} />
             <div className="min-w-0">
-              <div className="truncate text-[11px] font-black uppercase tracking-wider text-[#0E1020] sm:text-xs">
+              <div
+                title={SITE_CONFIG.eventTitle}
+                className="truncate text-[11px] font-black uppercase tracking-wider text-[#0E1020] sm:text-xs"
+              >
                 {SITE_CONFIG.eventTitle}
               </div>
               <div className="hidden text-[11px] font-semibold text-gray-500 sm:block">
