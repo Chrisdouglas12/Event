@@ -173,9 +173,21 @@ const STYLES = `
 .r-page{ position:relative; z-index:1; flex:1 1 auto; width:100%; padding:16px 12px 36px; }
 .r-layout{ display:grid; grid-template-columns:minmax(0,1fr); gap:24px; width:100%; max-width:760px; margin:0 auto; }
 @media (min-width:640px){ .r-page{ padding:24px 20px 52px; } }
+@media (min-width:768px){
+  .r-layout{
+    max-width:100%;
+    grid-template-columns:minmax(220px,.85fr) minmax(0,1fr);
+    gap:20px;
+    align-items:start;
+  }
+}
 @media (min-width:1280px){
   .r-page{ padding:32px 28px 60px; }
-  .r-layout{ max-width:1240px; grid-template-columns:minmax(0,1fr) minmax(0,720px); align-items:start; }
+  .r-layout{
+    max-width:1240px;
+    grid-template-columns:minmax(0,1fr) minmax(0,720px);
+    gap:24px;
+  }
 }
 
 /* Conference intro panel: compact above the form on mobile, sticky beside it on desktop */
@@ -206,12 +218,20 @@ const STYLES = `
   .r-side-lead{ font-size:14px; }
   .r-side-steps{ display:inline-block; margin-top:20px; padding:0; list-style:none; text-align:left; }
 }
-@media (min-width:1280px){
+@media (min-width:768px){
   .r-side{
-    position:sticky; top:calc(var(--r-header-h) + 28px);
-    height:calc(100vh - var(--r-header-h) - 56px); min-height:480px; overflow-y:auto; scrollbar-width:none;
+    position:sticky; top:calc(var(--r-header-h) + 20px);
+    height:calc(100vh - var(--r-header-h) - 40px); min-height:420px; overflow-y:auto; scrollbar-width:none;
   }
   .r-side::-webkit-scrollbar{ display:none; }
+  .r-side-inner{ padding:28px 22px; }
+}
+@media (min-width:1280px){
+  .r-side{
+    top:calc(var(--r-header-h) + 28px);
+    height:calc(100vh - var(--r-header-h) - 56px);
+    min-height:480px;
+  }
   .r-side-inner{ margin:auto; max-width:400px; padding:40px 32px; }
   .r-side-steps{ margin-top:30px; }
 }
