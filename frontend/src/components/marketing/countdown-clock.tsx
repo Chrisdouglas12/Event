@@ -184,7 +184,7 @@ export function CountdownClock({
 
       <div className="cc-body gap-4 sm:flex-row sm:gap-6">
         {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
-        <div className="relative z-[2] order-2 shrink-0 sm:order-1">
+        <div data-clock-3d className="relative z-[2] order-2 shrink-0 sm:order-1">
           <span aria-hidden className="cc-clock-glow" />
           <ConferenceClock3D
             target={target}

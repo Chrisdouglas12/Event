@@ -286,6 +286,7 @@ export function HeroBackground({
       let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
       let sp = 0;
+      let coinSpin = 0;
 
       const frame = (timestamp?: number) => {
         raf = 0;
@@ -314,55 +315,70 @@ export function HeroBackground({
         worldScroll.rotation.z = scrollT * 0.18;
         stars.position.y = -scrollT * 1.5;
 
-        // --- COIN ANIMATION - LOCKED UP, BUT FULLY VISIBLE, NOT CUT ---
-        // Before: lockY 2.9 - coins cut for top edge, only half show (your screenshot)
-        // Now: lockY 2.0 mobile / 1.8 desktop - just below header, full coin shows
-        // Still up + locked, but with safe margin from top edge
-        const isMobile = window.innerWidth < 1024;
-        const lockZ = 2.0;
-        const lockSpread = isMobile ? 1.05 : 1.3;
-        // 👇 LOWERED: 2.9 -> 2.0 (mobile), 2.6 -> 1.8 (desktop)
-        // Coin radius 0.4, so 2.0 leaves full coin + margin inside view
-        const lockY = isMobile ? 2.0 : 1.8;
-        const lockX = 0;
-
-        const endPosMan = new THREE.Vector3(lockX - lockSpread, lockY, lockZ);
-        const endPosAnd = new THREE.Vector3(lockX, lockY + 0.15, lockZ);
-        const endPosSatan = new THREE.Vector3(lockX + lockSpread, lockY, lockZ);
-
+        // --- COIN ANIMATION: globe -> 3D clock -> back with scroll ---
+        // Progress is 0 at the top of the hero and 1 once the hero has scrolled
+        // past. The same damped value drives both directions, so scrolling up
+        // sends the coins back to the globe like a parallax layer.
         const heroEl = document.querySelector('[data-track="hero"]');
         let heroScroll = 0;
         if (heroEl) {
           const rect = heroEl.getBoundingClientRect();
-          heroScroll = clamp01((window.innerHeight * 0.6 - rect.top) / (window.innerHeight * 0.8));
+          heroScroll = clamp01(-rect.top / Math.max(1, rect.height * 0.8));
         }
 
         sp += (heroScroll - sp) * (1 - Math.exp(-dt * 8));
-        let ease = easeInOutCubic(sp);
-        if (ease > 0.95) ease = 1;
+        const ease = easeInOutCubic(sp);
 
-        // Start: around globe, lower (so dem go UP to header)
+        // Home positions around the globe. They inherit the globe's scroll
+        // shrink/offset so the return trip still feels attached to it.
         const orbitR = 3.0;
-        const startPosMan = new THREE.Vector3(-orbitR, 0.4, 0);
-        const startPosAnd = new THREE.Vector3(0, 0.9, orbitR);
-        const startPosSatan = new THREE.Vector3(orbitR, 0.4, 0);
+        const globeDrift = worldScroll.position.clone();
+        const startMan = new THREE.Vector3(-orbitR, 0.4, 0).multiplyScalar(worldScroll.scale.x).add(globeDrift);
+        const startAnd = new THREE.Vector3(0, 0.9, orbitR).multiplyScalar(worldScroll.scale.x).add(globeDrift);
+        const startSatan = new THREE.Vector3(orbitR, 0.4, 0).multiplyScalar(worldScroll.scale.x).add(globeDrift);
 
-        coinMan.position.lerpVectors(startPosMan, endPosMan, ease);
-        coinAnd.position.lerpVectors(startPosAnd, endPosAnd, ease);
-        coinSatan.position.lerpVectors(startPosSatan, endPosSatan, ease);
+        // Convert a point near the real 3D clock from screen space into the
+        // hero scene, then into this group's local space. This keeps the coins
+        // gathered around the clock even while the clock scrolls upward.
+        const clockEl = document.querySelector<HTMLElement>("[data-clock-3d]");
+        let endMan = startMan;
+        let endAnd = startAnd;
+        let endSatan = startSatan;
 
-        const spinSpeed = Math.PI * 3;
-        const spin = ease >= 1 ? 0 : ease * spinSpeed + t;
-        coinMan.rotation.set(0, spin, Math.sin(t) * 0.05);
-        coinSatan.rotation.set(0, spin, Math.cos(t) * 0.05);
-        coinAnd.rotation.set(0, spin, 0);
+        if (clockEl) {
+          const clockRect = clockEl.getBoundingClientRect();
+          const canvasRect = renderer.domElement.getBoundingClientRect();
+          if (clockRect.width > 0 && canvasRect.width > 0) {
+            scene.updateMatrixWorld(true);
+            const raycaster = new THREE.Raycaster();
+            const coinPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -1.2);
+            const ndc = new THREE.Vector2();
+            const hit = new THREE.Vector3();
+            const screenToLocal = (dx: number, dy: number) => {
+              const px = clockRect.left + clockRect.width / 2 + dx - canvasRect.left;
+              const py = clockRect.top + clockRect.height / 2 + dy - canvasRect.top;
+              ndc.set((px / canvasRect.width) * 2 - 1, -((py / canvasRect.height) * 2 - 1));
+              raycaster.setFromCamera(ndc, camera);
+              if (!raycaster.ray.intersectPlane(coinPlane, hit)) return new THREE.Vector3();
+              return world.worldToLocal(hit.clone());
+            };
 
-        if (ease >= 1) {
-          const floatY = Math.sin(t * 1.2) * 0.05; // smaller float, no go cut again
-          coinMan.position.y += floatY;
-          coinAnd.position.y += floatY + 0.02;
-          coinSatan.position.y += floatY;
+            const spread = clockRect.width * 0.62;
+            endMan = screenToLocal(-spread, clockRect.height * 0.04);
+            endAnd = screenToLocal(0, -clockRect.height * 0.26);
+            endSatan = screenToLocal(spread, clockRect.height * 0.04);
+          }
         }
+
+        coinMan.position.lerpVectors(startMan, endMan, ease);
+        coinAnd.position.lerpVectors(startAnd, endAnd, ease);
+        coinSatan.position.lerpVectors(startSatan, endSatan, ease);
+
+        // Travel spin eases out as the coins reach the clock, then they rest.
+        coinSpin += dt * Math.PI * 3 * (1 - ease);
+        coinMan.rotation.set(0, coinSpin, Math.sin(t) * 0.05 * (1 - ease));
+        coinSatan.rotation.set(0, coinSpin, Math.cos(t) * 0.05 * (1 - ease));
+        coinAnd.rotation.set(0, coinSpin, 0);
 
         const s = 1 - ease * 0.1;
         coinMan.scale.setScalar(s); coinAnd.scale.setScalar(s); coinSatan.scale.setScalar(s);
