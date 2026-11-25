@@ -42,6 +42,7 @@ const INITIAL_PHONE = "+234 ";
 const MIN_NGN_PER_PASS_MINOR = 200_000;
 const LEGACY_DRAFT_KEY = "ihgc_draft_registration";
 const TOTAL_STEPS = 6;
+const HISTORY_KEY = "registrationStep";
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string;
@@ -750,6 +751,27 @@ export default function RegisterPage() {
   const groupAttendanceTotal =
     groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
 
+  // Country/state belong to the group-details step for groups, but to the
+  // contact step for individuals, matching the original working form.
+  const fieldStep = (key: FieldKey): number =>
+    key === "country" || key === "state" ? (isGroup ? 2 : 3) : FIELD_STEP[key];
+
+  const writeStepToHistory = useCallback((next: number, replace = false) => {
+    if (typeof window === "undefined") return;
+    const state = { ...(window.history.state || {}), [HISTORY_KEY]: next };
+    if (replace) window.history.replaceState(state, "");
+    else window.history.pushState(state, "");
+  }, []);
+
+  const goToStep = useCallback(
+    (target: number, replace = false) => {
+      const next = Math.min(TOTAL_STEPS, Math.max(1, target));
+      setStep(next);
+      writeStepToHistory(next, replace);
+    },
+    [writeStepToHistory]
+  );
+
   /* ---------- Reset helpers ---------- */
 
   const resetTurnstile = useCallback(() => {
@@ -763,7 +785,7 @@ export default function RegisterPage() {
   }, []);
 
   const resetForm = useCallback(() => {
-    setStep(1);
+    goToStep(1, true);
     setIsGroup(false);
     setCurrency("NGN");
     setPayerName("");
@@ -792,7 +814,7 @@ export default function RegisterPage() {
     setLoading(false);
     checkoutAttempt.current = null;
     resetTurnstile();
-  }, [resetTurnstile]);
+  }, [resetTurnstile, goToStep]);
 
   const switchMode = (group: boolean) => {
     if (group === isGroup) return;
@@ -846,6 +868,22 @@ export default function RegisterPage() {
       localStorage.removeItem(LEGACY_DRAFT_KEY);
     } catch (_) {}
   }, []);
+
+  // Keep the wizard in the browser history so the device/Android back button
+  // moves to the previous step instead of leaving the registration flow.
+  useEffect(() => {
+    writeStepToHistory(1, true);
+
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as Record<string, unknown> | null;
+      const next = state?.[HISTORY_KEY];
+      setStep(typeof next === "number" ? Math.min(TOTAL_STEPS, Math.max(1, next)) : 1);
+      setError(null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [writeStepToHistory]);
 
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
@@ -1016,13 +1054,21 @@ export default function RegisterPage() {
   const stepKeys = (current: number): FieldKey[] => {
     if (current === 2) {
       return isGroup
-        ? ["groupName", "seats", "inviteeCount", "hasChildren", "childCount", "genderCounts"]
+        ? [
+            "groupName",
+            "seats",
+            "country",
+            "state",
+            "inviteeCount",
+            "hasChildren",
+            "childCount",
+            "genderCounts",
+          ]
         : ["gender", "firstTime"];
     }
     if (current === 3) {
       return [
-        "country",
-        "state",
+        ...(!isGroup ? (["country", "state"] as FieldKey[]) : []),
         "payerName",
         "payerPhone",
         "payerEmail",
@@ -1063,17 +1109,21 @@ export default function RegisterPage() {
 
   const nextStep = () => {
     if (!validateStep(step)) return;
-    setStep((current) => Math.min(TOTAL_STEPS, current + 1));
+    goToStep(step + 1);
   };
 
   const prevStep = () => {
     setError(null);
-    setStep((current) => Math.max(1, current - 1));
+    if (step > 1) {
+      window.history.back();
+      return;
+    }
+    goToStep(1, true);
   };
 
   const jumpToStep = (target: number) => {
     setError(null);
-    setStep(Math.min(TOTAL_STEPS, Math.max(1, target)));
+    goToStep(target);
   };
 
   /* ---------- Submit ---------- */
@@ -1087,7 +1137,7 @@ export default function RegisterPage() {
     setFieldErrors(errs);
     const firstInvalid = FIELD_ORDER.find((key) => errs[key]);
     if (firstInvalid) {
-      setStep(FIELD_STEP[firstInvalid]);
+      goToStep(fieldStep(firstInvalid));
       focusField(firstInvalid);
       return;
     }
@@ -1413,6 +1463,8 @@ export default function RegisterPage() {
                       }}
                     />
                   </Field>
+
+                  {locationFields}
                 </div>
 
                 <div className="space-y-3">
@@ -1591,12 +1643,14 @@ export default function RegisterPage() {
                 {isGroup ? "Group leader details" : "Your contact details"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Your digital pass and check-in barcode will be sent here.
+                {isGroup
+                  ? "The person registering and paying for the group."
+                  : "Your digital pass and check-in barcode will be sent here."}
               </p>
             </div>
 
             <div className="grid gap-5 pt-2 sm:grid-cols-2">
-              {locationFields}
+              {!isGroup && locationFields}
 
               <div className="sm:col-span-2">
                 <Field htmlFor="field-payerName" label="Full name" error={fieldErrors.payerName}>
@@ -1808,7 +1862,7 @@ export default function RegisterPage() {
             <div>
               <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Choose your currency and registration amount.
+                Choose the currency you want to pay in. Standard prices are per participant.
               </p>
             </div>
 
@@ -1964,6 +2018,12 @@ export default function RegisterPage() {
                 <span className="text-[#6B7280]">Participants</span>
                 <span className="font-bold text-[#111C18]">{effectiveSeats}</span>
               </div>
+              {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
+                <div className="flex items-center justify-between py-3.5 text-[15px]">
+                  <span className="text-[#6B7280]">Standard price per participant</span>
+                  <span className="font-bold text-[#111C18]">{formatMoneyMinor(unitMinor, currency)}</span>
+                </div>
+              )}
               {!isGroup && (
                 <>
                   <div className="flex items-center justify-between py-3.5 text-[15px]">
@@ -2072,7 +2132,7 @@ export default function RegisterPage() {
                         type="button"
                         onClick={() => {
                           const key = firstInvalidField()!;
-                          setStep(FIELD_STEP[key]);
+                          goToStep(fieldStep(key));
                           focusField(key);
                         }}
                         className="font-semibold underline"
