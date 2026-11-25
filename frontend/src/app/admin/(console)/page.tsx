@@ -422,7 +422,7 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2 sm:gap-4">
         <RankedList
           title="Attendance By State"
-          subtitle="States and regions of paid seats, highest first."
+          subtitle="States and regions of paid participants, highest first."
           rows={stats.byState}
           icon={MapPin}
         />

@@ -195,7 +195,7 @@ export function useScannerSession() {
       });
       if (res.ok) {
         const data = await res.json();
-        setSyncMessage(`Roster synced: ${data.participants?.length || 0} paid seats ready.`);
+        setSyncMessage(`Roster synced: ${data.participants?.length || 0} paid participants ready.`);
       } else {
         setSyncMessage("Sync failed.");
       }

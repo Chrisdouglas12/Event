@@ -88,7 +88,7 @@ export function Header() {
                 style={{ width: "auto" }}
                 priority
               />
-              <span className="font-heading text-[26px] sm:text-[32px] font-black leading-none tracking-tight text-[#0E1020]">
+              <span className="font-heading text-xl sm:text-2xl font-semibold leading-none tracking-normal text-[#0E1020]">
                 IHC<span className="text-[#0E7A6E]">26</span>
               </span>
             </Link>

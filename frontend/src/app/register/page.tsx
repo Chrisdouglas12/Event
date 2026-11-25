@@ -8,6 +8,7 @@ import { Footer } from "@/components/marketing/footer";
 import { Countdown } from "@/components/ui/countdown";
 import {
   AlertCircle,
+  CalendarDays,
   Check,
   ChevronDown,
   Lock,
@@ -650,35 +651,33 @@ function RegistrationLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F4F2]">
+    <div className="register-premium-bg flex min-h-screen flex-col">
       <Header />
-
-      <div className="flex h-[80px] w-full items-center border-b border-[#E5E7EB] bg-white px-4 sm:h-[96px] sm:px-8 lg:px-12">
-        <div className="mx-auto flex w-full max-w-[1360px] items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F6E56] text-sm font-bold text-white">
-              IH
-            </span>
-            <span className="text-[17px] font-semibold tracking-tight text-[#111C18] sm:text-[18px]">
-              IHGC 2026
-            </span>
-          </Link>
-          <div className="flex items-center gap-3 text-[13px] sm:gap-4 sm:text-[14px]">
-            <span className="hidden items-center gap-2 text-[#6B7280] sm:inline-flex">
-              Begins in <Countdown compact />
-            </span>
-            <Link href="/programme" className="font-medium text-[#0F6E56] hover:underline">
-              View schedule
-            </Link>
-          </div>
-        </div>
-      </div>
 
       <main className="flex flex-1 flex-col items-center justify-start px-4 py-10 sm:py-14">
         <div className="flex w-full max-w-[700px] flex-col items-center">
           <StepProgress step={step} />
-          <div className="w-full rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-12">
-            {children}
+          <div className="register-premium-card w-full rounded-[24px] bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-6 py-4 sm:px-12">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-[#0F6E56]">
+                  IHGC 2026
+                </span>
+                <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
+                <div className="flex items-center gap-2 text-[12px] font-medium text-[#6B7280] sm:text-[13px]">
+                  <span>Begins in</span>
+                  <Countdown compact onLight />
+                </div>
+              </div>
+              <Link
+                href="/programme"
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0F6E56] hover:underline"
+              >
+                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                View schedule
+              </Link>
+            </div>
+            <div className="p-6 sm:p-12">{children}</div>
           </div>
           {hintBelowCard && (
             <div className="mt-6 text-center text-[13px] text-[#6B7280] sm:text-[14px]">

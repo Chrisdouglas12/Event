@@ -939,7 +939,7 @@ router.post('/tickets/lookup', async (req: Request, res: Response) => {
           kind: 'group',
           name: bundle.order.groupName || `${bundle.order.reference} Group`,
           reference: bundle.order.reference,
-          identifier: `${bundle.group.totalSeats} paid seats`,
+          identifier: `${bundle.group.totalSeats} paid participants`,
           note: 'One scan checks in the whole group',
           qrToken: bundle.group.qrToken,
           bundle: safeBundle,
