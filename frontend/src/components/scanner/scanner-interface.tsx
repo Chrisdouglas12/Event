@@ -263,7 +263,7 @@ export function ScannerInterface() {
 
               <p className="scan-win__meta">
                 {session.scanResult.refCode} · {session.scanResult.seats}{" "}
-                {session.scanResult.seats === 1 ? "participant" : "participants"}
+                {session.scanResult.seats === 1 ? "paid seat" : "paid seats"}
               </p>
 
               <button type="button" autoFocus className="scan-win__next" onClick={session.dismissResult}>
