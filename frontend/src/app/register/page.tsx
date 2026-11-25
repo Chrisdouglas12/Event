@@ -751,6 +751,15 @@ export default function RegisterPage() {
   const groupAttendanceTotal =
     groupAttendance.physically + groupAttendance.online + groupAttendance.not_sure;
 
+  const [stateOptions, setStateOptions] = useState<readonly string[]>(NIGERIAN_STATES);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const stateCache = useRef<Record<string, readonly string[]>>({ [NIGERIA]: NIGERIAN_STATES });
+
+  // First-time attendees coming from outside Nigeria must tell us where they
+  // are coming from. Groups count as first-time when they have invitees.
+  const isFirstTimeAttendee = isGroup ? inviteeNumber > 0 : firstTime === "yes";
+  const requiresForeignState = !isNigeria && isFirstTimeAttendee;
+
   // Country/state belong to the group-details step for groups, but to the
   // contact step for individuals, matching the original working form.
   const fieldStep = (key: FieldKey): number =>
@@ -925,6 +934,54 @@ export default function RegisterPage() {
     };
   }, []);
 
+  // Load states/regions for the selected country. Nigeria is local; every
+  // other country comes from the open CountriesNow dataset.
+  useEffect(() => {
+    const selected = findCountry(country) ?? country;
+    if (!selected || selected === NIGERIA) {
+      setStateOptions(NIGERIAN_STATES);
+      setStatesLoading(false);
+      return;
+    }
+
+    const cached = stateCache.current[selected];
+    if (cached) {
+      setStateOptions(cached);
+      setStatesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setStatesLoading(true);
+    fetch("https://countriesnow.space/api/v0.1/countries/states", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: selected }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (cancelled) return;
+        const names = Array.isArray(data?.data?.states)
+          ? data.data.states
+              .map((entry: { name?: string }) => String(entry?.name || "").trim())
+              .filter(Boolean)
+              .sort((a: string, b: string) => a.localeCompare(b))
+          : [];
+        stateCache.current[selected] = names;
+        setStateOptions(names);
+      })
+      .catch(() => {
+        if (!cancelled) setStateOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setStatesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country]);
+
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY || step !== TOTAL_STEPS) return;
     let cancelled = false;
@@ -1030,7 +1087,11 @@ export default function RegisterPage() {
       errs.payerEmail = "Enter a valid email address, e.g. name@example.com.";
     }
     if (!matchedCountry) errs.country = "Select a country from the list.";
-    if (isNigeria && !matchedState) errs.state = "Select a state from the list.";
+    if (isNigeria && !matchedState) {
+      errs.state = "Select a state from the list.";
+    } else if (requiresForeignState && !state.trim()) {
+      errs.state = "Select the state or region you are coming from.";
+    }
 
     if (!isGroup && isMinor) {
       if (!guardianName.trim()) errs.guardianName = "Enter a parent or guardian name.";
@@ -1171,7 +1232,7 @@ export default function RegisterPage() {
           email: payerEmail.trim().toLowerCase(),
         },
         country: matchedCountry || country.trim(),
-        state: isNigeria && matchedState ? matchedState : undefined,
+        state: state.trim() || undefined,
         attendanceMode,
         gender: isGroup ? undefined : gender,
         firstTime: isGroup ? undefined : firstTime === "yes",
@@ -1248,7 +1309,7 @@ export default function RegisterPage() {
     clearErr("country");
     clearErr("state");
     clearErr("payerPhone");
-    if (findCountry(next) !== NIGERIA) setState("");
+    setState("");
   };
 
   const locationFields = (
@@ -1288,24 +1349,45 @@ export default function RegisterPage() {
 
       <Field
         htmlFor="field-state"
-        label={isGroup ? "Group state" : "State of residence"}
+        label={
+          isNigeria
+            ? isGroup
+              ? "Group state"
+              : "State of residence"
+            : requiresForeignState
+              ? "State / region you're coming from"
+              : "State / region (optional)"
+        }
         error={fieldErrors.state}
-        hint={isNigeria ? undefined : "Enabled when your country is Nigeria."}
+        hint={
+          statesLoading
+            ? "Loading states and regions..."
+            : isNigeria
+              ? undefined
+              : requiresForeignState
+                ? "Required because you're a first-time attendee."
+                : "Optional for returning attendees. Type your state or region if it is not listed."
+        }
       >
         <SearchableSelect
           id="field-state"
           value={state}
-          options={NIGERIAN_STATES}
-          placeholder={isNigeria ? "Search Nigerian states..." : "Select Nigeria first"}
-          emptyMessage="No states match your search"
-          disabled={!isNigeria}
+          options={stateOptions}
+          placeholder={
+            statesLoading
+              ? "Loading states and regions..."
+              : isNigeria
+                ? "Search Nigerian states..."
+                : `Search states in ${selectedCountry || "your country"}...`
+          }
+          emptyMessage="No matches — type your state or region"
           inputProps={fp("state", false)}
           onTyping={() => clearErr("state")}
           onChange={(next) => {
             setState(next);
             clearErr("state");
           }}
-          renderLeading={() => (isNigeria ? <Search className="h-4 w-4" /> : <Lock className="h-4 w-4" />)}
+          renderLeading={() => <Search className="h-4 w-4" />}
         />
       </Field>
     </>

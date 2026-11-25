@@ -115,7 +115,7 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
     },
     state: {
       type: String,
-      maxlength: 64,
+      maxlength: 128,
       trim: true,
       default: null,
     },

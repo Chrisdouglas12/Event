@@ -191,10 +191,27 @@ router.get(
             $facet: {
               states: [
                 { $match: { state: { $ne: null } } },
-                { $group: { _id: '$state', total: { $sum: '$seats' } } },
-                { $sort: { total: -1, _id: 1 } },
+                {
+                  $group: {
+                    _id: { nation: '$nation', state: '$state' },
+                    total: { $sum: '$seats' },
+                  },
+                },
+                { $sort: { total: -1, '_id.state': 1 } },
                 { $limit: 12 },
-                { $project: { name: '$_id', total: 1, _id: 0 } },
+                {
+                  $project: {
+                    name: {
+                      $cond: [
+                        { $eq: ['$_id.nation', 'Nigeria'] },
+                        '$_id.state',
+                        { $concat: ['$_id.state', ' · ', '$_id.nation'] },
+                      ],
+                    },
+                    total: 1,
+                    _id: 0,
+                  },
+                },
               ],
               nations: [
                 { $group: { _id: '$nation', total: { $sum: '$seats' } } },
