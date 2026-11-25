@@ -874,6 +874,9 @@ export default function RegisterPage() {
   useEffect(() => {
     writeStepToHistory(1, true);
 
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+
     const onPopState = (event: PopStateEvent) => {
       const state = event.state as Record<string, unknown> | null;
       const next = state?.[HISTORY_KEY];
@@ -882,8 +885,16 @@ export default function RegisterPage() {
     };
 
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
   }, [writeStepToHistory]);
+
+  // Always open a new step from the top of the form, including hardware back.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [step]);
 
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
