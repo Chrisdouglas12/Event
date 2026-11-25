@@ -164,14 +164,14 @@ export function Hero() {
             speed={0.1}
             className="w-full md:col-start-2 md:row-start-1 md:w-auto md:justify-self-end"
           >
-            <div className="hero-fade flex justify-center pt-0 pb-0 md:justify-end min-[1032px]:mt-[10px]" style={{ animationDelay: "0.8s" }}>
+            <div className="hero-fade flex justify-center pb-0 pt-0 md:-ml-[10px] md:mt-[10px] md:justify-end" style={{ animationDelay: "0.8s" }}>
               <CountdownClock
                 startsAt={startsAt}
                 endsAt={endsAt}
                 theme=""
                 showFlip={false}
                 className="cc-wrap w-auto"
-                clockClassName="h-[168px] w-[168px] sm:h-[200px] sm:w-[200px] md:h-[156px] md:w-[156px] lg:h-[180px] lg:w-[180px]"
+                clockClassName="h-[168px] w-[168px] sm:h-[200px] sm:w-[200px] md:h-[172px] md:w-[172px] lg:h-[196px] lg:w-[196px]"
               />
             </div>
           </ParallaxLayer>

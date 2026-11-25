@@ -11,10 +11,18 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  CircleQuestionMark,
   Lock,
+  MapPin,
   Minus,
+  Monitor,
   Plus,
   Search,
+  UserCheck,
+  UserPlus,
+  UserRound,
+  UsersRound,
+  type LucideIcon,
 } from "lucide-react";
 import {
   COUNTRIES,
@@ -124,6 +132,12 @@ const ATTENDANCE_OPTIONS = [
   ["not_sure", "Not sure"],
 ] as const;
 
+const ATTENDANCE_ICONS: Record<(typeof ATTENDANCE_OPTIONS)[number][0], LucideIcon> = {
+  physically: MapPin,
+  online: Monitor,
+  not_sure: CircleQuestionMark,
+};
+
 function toE164Phone(phone: string): string | null {
   let digits = phone.replace(/\D/g, "");
   if (!digits) return null;
@@ -159,35 +173,61 @@ const toInt = (value: string) => Number.parseInt(value, 10) || 0;
 
 /* ---------- Small UI primitives ---------- */
 
-function SummaryChip({
-  text,
-  onEdit,
-}: {
-  text: string;
+type CompletedItem = {
+  label: string;
+  value: string;
   onEdit: () => void;
-}) {
+};
+
+function CompletedDetails({ items }: { items: CompletedItem[] }) {
+  if (items.length === 0) return null;
+
   return (
-    <div className="flex items-center justify-between rounded-[12px] bg-[#EEF4F1] px-4 py-3.5">
-      <div className="flex min-w-0 items-center gap-2.5 pr-2">
-        <Check className="h-4 w-4 shrink-0 stroke-[2.5] text-[#0F6E56]" />
-        <span className="truncate text-[14px] font-medium text-[#111C18]">
-          {text}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[#E5E7EB] pb-3 text-[12px] leading-5 text-[#6B7280]">
+      <span className="font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
+        Completed
+      </span>
+      {items.map((item, index) => (
+        <span key={item.label} className="inline-flex min-w-0 items-center gap-1.5">
+          {index > 0 && (
+            <span aria-hidden="true" className="mr-1.5 hidden h-3 w-px bg-[#E5E7EB] sm:block" />
+          )}
+          <Check className="h-3.5 w-3.5 shrink-0 text-[#0F6E56]" strokeWidth={2.5} aria-hidden="true" />
+          <span className="shrink-0">{item.label}:</span>
+          <span
+            className="min-w-0 max-w-[220px] truncate font-medium text-[#111C18]"
+            title={item.value}
+          >
+            {item.value}
+          </span>
+          <button
+            type="button"
+            onClick={item.onEdit}
+            className="shrink-0 font-semibold text-[#0F6E56] transition-colors hover:underline"
+            aria-label={`Edit ${item.label.toLowerCase()}`}
+          >
+            Edit
+          </button>
         </span>
-      </div>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="shrink-0 text-[14px] font-semibold text-[#0F6E56] transition-colors hover:underline"
-      >
-        Edit
-      </button>
+      ))}
+    </div>
+  );
+}
+
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3.5 text-[14px] sm:text-[15px]">
+      <span className="shrink-0 text-[#6B7280]">{label}</span>
+      <span className="min-w-0 break-words text-right font-bold text-[#111C18] sm:max-w-[70%]">
+        {children}
+      </span>
     </div>
   );
 }
 
 function StepProgress({ step }: { step: number }) {
   return (
-    <div className="mb-6 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
+    <div className="mb-4 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
       <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[14px] font-semibold text-[#0F6E56]">
           Step {step} of {TOTAL_STEPS}
@@ -250,23 +290,26 @@ function Field({
 function ChoiceButton({
   active,
   onClick,
+  icon: Icon,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  icon?: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`h-[60px] rounded-[12px] border text-[15px] font-semibold transition-all ${
+      className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] font-medium transition-all sm:min-h-[40px] sm:px-4 sm:text-[14px] ${
         active
           ? "border-[#0F6E56] bg-[#0F6E56] text-white shadow-sm"
-          : "border-[#D1D5DB] bg-white text-[#111C18] hover:border-gray-400"
+          : "border-[#E5E7EB] bg-white text-[#111C18] hover:border-[#0F6E56]/40 hover:bg-[#F7FAF9]"
       }`}
     >
-      {children}
+      {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      <span className="whitespace-nowrap">{children}</span>
     </button>
   );
 }
@@ -654,27 +697,32 @@ function RegistrationLayout({
     <div className="register-premium-bg flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex flex-1 flex-col items-center justify-start px-4 py-10 sm:py-14">
+      <main className="flex flex-1 flex-col items-center justify-start px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
         <div className="flex w-full max-w-[700px] flex-col items-center">
           <StepProgress step={step} />
           <div className="register-premium-card w-full rounded-[24px] bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-6 py-4 sm:px-12">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-[#0F6E56]">
+            <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-3 py-3 sm:gap-3 sm:px-12 sm:py-4">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.06em] text-[#0F6E56] sm:text-[13px] sm:tracking-[0.12em]">
                   IHGC 2026
                 </span>
                 <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
-                <div className="flex items-center gap-2 text-[12px] font-medium text-[#6B7280] sm:text-[13px]">
-                  <span>Begins in</span>
-                  <Countdown compact onLight />
+                <div className="flex min-w-0 items-center gap-1 text-[12px] font-medium text-[#6B7280] sm:gap-2 sm:text-[13px]">
+                  <span className="whitespace-nowrap sm:hidden">In</span>
+                  <span className="hidden whitespace-nowrap sm:inline">Begins in</span>
+                  <span className="min-w-0 [&>div]:gap-1 sm:[&>div]:gap-1.5">
+                    <Countdown compact onLight />
+                  </span>
                 </div>
               </div>
               <Link
                 href="/programme"
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0F6E56] hover:underline"
+                aria-label="View schedule"
+                title="View schedule"
+                className="inline-flex shrink-0 items-center whitespace-nowrap text-[13px] font-semibold text-[#0F6E56] hover:underline"
               >
-                <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                View schedule
+                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+                <span className="hidden sm:ml-1.5 sm:inline">View schedule</span>
               </Link>
             </div>
             <div className="p-6 sm:p-12">{children}</div>
@@ -1400,38 +1448,63 @@ export default function RegisterPage() {
       : [];
 
   const categorySummary = isGroup
-    ? `Group delegation · ${groupName.trim() || "Chapter"} · ${seatsCount} participants`
-    : `Individual · ${gender === "male" ? "Brother" : "Sister"} · ${
+    ? `Group participants · ${groupName.trim() || "Chapter"} · ${seatsCount} participants`
+    : `Individual participant · ${gender === "male" ? "Brother" : "Sister"} · ${
         firstTime === "yes" ? "First-time" : "Returning"
       } attendee`;
-  const contactSummary = payerName.trim() ? `${payerName.trim()} · ${payerEmail.trim() || selectedDial}` : "Your contact details";
+  const attendeeSummary = isGroup
+    ? `${groupName.trim() || "Chapter"} · ${seatsCount} participants`
+    : `${gender === "male" ? "Brother" : "Sister"} · ${
+        firstTime === "yes" ? "First-time" : "Returning"
+      }`;
+  const contactSummary = payerName.trim()
+    ? `${payerName.trim()} · ${payerEmail.trim() || selectedDial}`
+    : "";
   const attendanceSummary = isGroup
     ? `Group attendance · ${groupAttendanceTotal}/${seatsCount} assigned`
     : attendanceMode === "physically"
       ? "Physically · Kwali Campground"
       : attendanceMode === "online"
-        ? "Online livestream"
+        ? "Online · Livestream"
         : "Not sure yet";
 
+  const attendeeHistory: CompletedItem = {
+    label: isGroup ? "Group" : "Attendee",
+    value: attendeeSummary,
+    onEdit: () => jumpToStep(2),
+  };
+  const contactHistory: CompletedItem | null = payerName.trim()
+    ? {
+        label: "Contact",
+        value: contactSummary,
+        onEdit: () => jumpToStep(3),
+      }
+    : null;
+  const attendanceHistory: CompletedItem = {
+    label: "Attendance",
+    value: attendanceSummary,
+    onEdit: () => jumpToStep(4),
+  };
+
   const footerButtons = (back = true, nextLabel = "Continue") => (
-    <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-6">
+    <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-5">
       {back ? (
         <button
           type="button"
           onClick={prevStep}
-          className="py-3 pl-1 pr-2 text-[14px] font-semibold text-[#111C18] transition hover:text-black"
+          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
         >
           Back
         </button>
       ) : (
-        <Link href="/" className="py-3 pl-1 pr-2 text-[14px] font-semibold text-[#111C18] hover:text-black">
+        <Link href="/" className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] hover:text-black">
           Back to Home
         </Link>
       )}
       <button
         type="button"
         onClick={nextStep}
-        className="h-[60px] rounded-[12px] bg-[#0F6E56] px-8 text-[16px] font-bold text-white transition-colors hover:bg-[#0D5E49]"
+        className="h-[44px] rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0D5E49]"
       >
         {nextLabel}
       </button>
@@ -1445,7 +1518,7 @@ export default function RegisterPage() {
         step === TOTAL_STEPS ? (
           <div className="flex items-center justify-center gap-1.5 text-[12px] text-[#6B7280] sm:text-[13px]">
             <Lock className="h-3.5 w-3.5" />
-            <span>Secure Paystack checkout · Registration fees are non-refundable</span>
+            <span>Secure checkout · Registration fees are non-refundable</span>
           </div>
         ) : undefined
       }
@@ -1455,7 +1528,7 @@ export default function RegisterPage() {
         {step === 1 && (
           <>
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
                 Registration category
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1465,23 +1538,39 @@ export default function RegisterPage() {
 
             <div className="grid gap-3.5 pt-2 sm:grid-cols-2">
               {[
-                { group: false, title: "Individual pass", desc: "Registering for myself as a single attendee." },
-                { group: true, title: "Group delegation", desc: "Registering a church branch, zone or delegation." },
-              ].map((option) => (
-                <button
-                  key={option.title}
-                  type="button"
-                  onClick={() => switchMode(option.group)}
-                  className={`rounded-[12px] border p-5 text-left transition-all ${
-                    isGroup === option.group
-                      ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
-                      : "border-[#D1D5DB] bg-white hover:border-gray-400"
-                  }`}
-                >
-                  <div className="text-[16px] font-semibold text-[#111C18]">{option.title}</div>
-                  <div className="mt-0.5 text-[13px] text-[#6B7280]">{option.desc}</div>
-                </button>
-              ))}
+                {
+                  group: false,
+                  title: "Individual participant",
+                  desc: "Register yourself as an individual participant.",
+                  icon: UserRound,
+                },
+                {
+                  group: true,
+                  title: "Group participants",
+                  desc: "Register your chapter, unit, zone and others as a group.",
+                  icon: UsersRound,
+                },
+              ].map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.title}
+                    type="button"
+                    onClick={() => switchMode(option.group)}
+                    className={`rounded-[12px] border p-5 text-left transition-all ${
+                      isGroup === option.group
+                        ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
+                        : "border-[#D1D5DB] bg-white hover:border-gray-400"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-[18px] w-[18px] shrink-0 text-[#0F6E56]" aria-hidden="true" />
+                      <div className="text-[16px] font-semibold text-[#111C18]">{option.title}</div>
+                    </div>
+                    <div className="mt-1 text-[13px] text-[#6B7280]">{option.desc}</div>
+                  </button>
+                );
+              })}
             </div>
 
             {footerButtons(false)}
@@ -1491,18 +1580,26 @@ export default function RegisterPage() {
         {/* Step 2: attendee / group details */}
         {step === 2 && (
           <>
-            <SummaryChip text={categorySummary} onEdit={() => jumpToStep(1)} />
-
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
                 {isGroup ? "Group details" : "About you"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
                 {isGroup
                   ? "Tell us about your chapter or zone and the people attending."
-                  : "These answers are part of the paid registration record."}
+                  : "Tell us your gender and whether you’re attending as an invitee or a first-timer."}
               </p>
             </div>
+
+            <CompletedDetails
+              items={[
+                {
+                  label: "Category",
+                  value: categorySummary,
+                  onEdit: () => jumpToStep(1),
+                },
+              ]}
+            />
 
             {isGroup ? (
               <div className="space-y-5 pt-2">
@@ -1686,7 +1783,7 @@ export default function RegisterPage() {
             ) : (
               <div className="grid gap-6 pt-2 sm:grid-cols-2">
                 <Field htmlFor="field-gender" label="Title / Gender" error={fieldErrors.gender}>
-                  <div id="field-gender" role="group" aria-label="Gender" className="grid grid-cols-2 gap-3">
+                  <div id="field-gender" role="group" aria-label="Gender" className="flex flex-wrap gap-2">
                     {(["male", "female"] as const).map((value) => (
                       <ChoiceButton
                         key={value}
@@ -1703,7 +1800,7 @@ export default function RegisterPage() {
                 </Field>
 
                 <Field htmlFor="field-firstTime" label="Attendance history" error={fieldErrors.firstTime}>
-                  <div id="field-firstTime" role="group" aria-label="First timer or invitee" className="grid grid-cols-2 gap-3">
+                  <div id="field-firstTime" role="group" aria-label="First timer or invitee" className="flex flex-wrap gap-2">
                     {(["no", "yes"] as const).map((value) => (
                       <ChoiceButton
                         key={value}
@@ -1712,6 +1809,7 @@ export default function RegisterPage() {
                           setFirstTime(value);
                           clearErr("firstTime");
                         }}
+                        icon={value === "yes" ? UserPlus : UserCheck}
                       >
                         {value === "yes" ? "First-time" : "Returning"}
                       </ChoiceButton>
@@ -1728,10 +1826,8 @@ export default function RegisterPage() {
         {/* Step 3: contact */}
         {step === 3 && (
           <>
-            <SummaryChip text={contactSummary} onEdit={() => jumpToStep(2)} />
-
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
                 {isGroup ? "Group leader details" : "Your contact details"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1740,6 +1836,8 @@ export default function RegisterPage() {
                   : "Your digital pass and check-in barcode will be sent here."}
               </p>
             </div>
+
+            <CompletedDetails items={[attendeeHistory]} />
 
             <div className="grid gap-5 pt-2 sm:grid-cols-2">
               {!isGroup && locationFields}
@@ -1875,10 +1973,8 @@ export default function RegisterPage() {
         {/* Step 4: attendance */}
         {step === 4 && (
           <>
-            <SummaryChip text={attendanceSummary} onEdit={() => jumpToStep(2)} />
-
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
                 {isGroup ? "How will the group attend?" : "How will you attend?"}
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
@@ -1889,6 +1985,10 @@ export default function RegisterPage() {
                   : "Select your attendance mode."}
               </p>
             </div>
+
+            <CompletedDetails
+              items={contactHistory ? [attendeeHistory, contactHistory] : [attendeeHistory]}
+            />
 
             {isGroup ? (
               <div className="space-y-4 pt-2">
@@ -1926,12 +2026,13 @@ export default function RegisterPage() {
                 />
               </div>
             ) : (
-              <div className="grid gap-3 pt-2 sm:grid-cols-3">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {ATTENDANCE_OPTIONS.map(([value, label]) => (
                   <ChoiceButton
                     key={value}
                     active={attendanceMode === value}
                     onClick={() => setAttendanceMode(value)}
+                    icon={ATTENDANCE_ICONS[value]}
                   >
                     {label}
                   </ChoiceButton>
@@ -1946,17 +2047,20 @@ export default function RegisterPage() {
         {/* Step 5: payment */}
         {step === 5 && (
           <>
-            <div className="space-y-3">
-              <SummaryChip text={categorySummary} onEdit={() => jumpToStep(2)} />
-              <SummaryChip text={attendanceSummary} onEdit={() => jumpToStep(4)} />
-            </div>
-
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
                 Choose the currency you want to pay in. Standard prices are per participant.
               </p>
             </div>
+
+            <CompletedDetails
+              items={[
+                attendeeHistory,
+                ...(contactHistory ? [contactHistory] : []),
+                attendanceHistory,
+              ]}
+            />
 
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
@@ -2087,74 +2191,62 @@ export default function RegisterPage() {
         {step === TOTAL_STEPS && (
           <>
             <div>
-              <h1 className="text-[30px] font-bold tracking-tight text-[#111C18] sm:text-[34px]">
+              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
                 Review and confirm
               </h1>
               <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Check your details before the secure Paystack checkout.
+                Check your details before the secure checkout.
               </p>
             </div>
 
             <div className="divide-y divide-[#E5E7EB] pt-2">
-              <div className="flex items-center justify-between py-3.5 text-[15px]">
-                <span className="text-[#6B7280]">Category</span>
-                <span className="font-bold text-[#111C18]">{isGroup ? "Group delegation" : "Individual pass"}</span>
-              </div>
+              <SummaryRow label="Category">
+                {isGroup ? "Group participants" : "Individual participant"}
+              </SummaryRow>
               {isGroup && groupName.trim() && (
-                <div className="flex items-center justify-between py-3.5 text-[15px]">
-                  <span className="text-[#6B7280]">Chapter / zone</span>
-                  <span className="font-bold text-[#111C18]">{groupName.trim()}</span>
-                </div>
+                <SummaryRow label="Chapter / zone">{groupName.trim()}</SummaryRow>
               )}
-              <div className="flex items-center justify-between py-3.5 text-[15px]">
-                <span className="text-[#6B7280]">Participants</span>
-                <span className="font-bold text-[#111C18]">{effectiveSeats}</span>
-              </div>
+              <SummaryRow label="Participants">{effectiveSeats}</SummaryRow>
               {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
-                <div className="flex items-center justify-between py-3.5 text-[15px]">
-                  <span className="text-[#6B7280]">Standard price per participant</span>
-                  <span className="font-bold text-[#111C18]">{formatMoneyMinor(unitMinor, currency)}</span>
-                </div>
+                <SummaryRow label="Standard price per participant">
+                  {formatMoneyMinor(unitMinor, currency)}
+                </SummaryRow>
               )}
               {!isGroup && (
                 <>
-                  <div className="flex items-center justify-between py-3.5 text-[15px]">
-                    <span className="text-[#6B7280]">Title</span>
-                    <span className="font-bold text-[#111C18]">{gender === "male" ? "Brother" : "Sister"}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-3.5 text-[15px]">
-                    <span className="text-[#6B7280]">Attendance history</span>
-                    <span className="font-bold text-[#111C18]">{firstTime === "yes" ? "First-time" : "Returning"}</span>
-                  </div>
+                  <SummaryRow label="Title">
+                    {gender === "male" ? "Brother" : "Sister"}
+                  </SummaryRow>
+                  <SummaryRow label="Attendance history">
+                    {firstTime === "yes" ? "First-time" : "Returning"}
+                  </SummaryRow>
                 </>
               )}
-              <div className="flex items-center justify-between py-3.5 text-[15px]">
-                <span className="text-[#6B7280]">Attendance</span>
-                <span className="font-bold text-[#111C18]">{attendanceSummary}</span>
-              </div>
-              <div className="flex items-center justify-between py-3.5 text-[15px]">
-                <span className="text-[#6B7280]">Location</span>
-                <span className="font-bold text-[#111C18]">
-                  {country}
-                  {state ? `, ${state}` : ""}
-                </span>
-              </div>
-              {payerEmail.trim() && (
-                <div className="flex items-center justify-between py-3.5 text-[15px]">
-                  <span className="text-[#6B7280]">Email</span>
-                  <span className="max-w-[260px] truncate font-bold text-[#111C18] sm:max-w-[340px]">
-                    {payerEmail.trim()}
+              <SummaryRow label="Attendance">
+                {attendanceSummary.split(" · ").map((part, index) => (
+                  <span key={`${part}-${index}`}>
+                    {index > 0 && (
+                      <>
+                        <span className="hidden sm:inline"> · </span>
+                        <br className="sm:hidden" />
+                      </>
+                    )}
+                    {part}
                   </span>
-                </div>
+                ))}
+              </SummaryRow>
+              <SummaryRow label="Location">
+                {country}
+                {state ? `, ${state}` : ""}
+              </SummaryRow>
+              {payerEmail.trim() && (
+                <SummaryRow label="Email">{payerEmail.trim()}</SummaryRow>
               )}
               {!isGroup && isMinor && guardianName.trim() && (
-                <div className="flex items-center justify-between py-3.5 text-[15px]">
-                  <span className="text-[#6B7280]">Guardian</span>
-                  <span className="max-w-[260px] truncate font-bold text-[#111C18] sm:max-w-[340px]">
-                    {guardianName.trim()}
-                    {guardianPhone.trim() ? ` (${guardianPhone.trim()})` : ""}
-                  </span>
-                </div>
+                <SummaryRow label="Guardian">
+                  {guardianName.trim()}
+                  {guardianPhone.trim() ? ` (${guardianPhone.trim()})` : ""}
+                </SummaryRow>
               )}
             </div>
 
@@ -2258,18 +2350,18 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-6">
+            <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-5">
               <button
                 type="button"
                 onClick={prevStep}
-                className="py-3 pl-1 pr-2 text-[14px] font-semibold text-[#111C18] transition hover:text-black"
+                className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
               >
                 Back
               </button>
               <button
                 type="submit"
                 disabled={submitDisabled}
-                className="inline-flex h-[60px] items-center justify-center gap-2 rounded-[12px] bg-[#0F6E56] px-8 text-[16px] font-bold text-white shadow-sm transition-colors hover:bg-[#0D5E49] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0D5E49] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Lock className="h-4 w-4" />
                 {loading
@@ -2278,7 +2370,7 @@ export default function RegisterPage() {
                     ? "Registration closed"
                     : totalMinor === null
                       ? "Loading price..."
-                      : `Pay ${formattedTotal} with Paystack`}
+                      : `Pay ${formattedTotal} securely`}
               </button>
             </div>
           </>
