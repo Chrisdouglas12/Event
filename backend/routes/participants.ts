@@ -9,6 +9,7 @@ import {
   ATTENDANCE_MODES,
   CURRENCIES,
   GENDERS,
+  providerForCurrency,
   type Currency,
   type PaymentProvider,
 } from '../constants/enums.ts';
@@ -175,11 +176,10 @@ function attendanceModeOrFallback(value: unknown): AttendanceMode {
 }
 
 /**
- * NGN → Paystack. USD/EUR/GBP → Flutterwave.
+ * Route using the shared currency → provider map (USD → Paystack).
  */
 function providerFor(currency: string): PaymentProvider {
-  if (currency === 'NGN') return 'paystack';
-  return 'flutterwave';
+  return providerForCurrency(currency);
 }
 
 function providerConfigured(provider: PaymentProvider): boolean {

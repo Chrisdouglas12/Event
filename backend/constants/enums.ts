@@ -64,8 +64,8 @@ export type Currency = (typeof CURRENCIES)[number];
 // CURRENCY → PROVIDER ROUTING
 //
 // Single source of truth for which payment provider handles which currency.
-//   - NGN            → Paystack
-//   - USD / EUR / GBP → Flutterwave (all "other" currencies)
+//   - NGN, USD       → Paystack
+//   - EUR / GBP      → Flutterwave
 //
 // Using `satisfies Record<Currency, PaymentProvider>` means adding a new
 // currency to CURRENCIES will fail type-checking until a mapping is added.
@@ -73,7 +73,7 @@ export type Currency = (typeof CURRENCIES)[number];
 
 export const CURRENCY_PROVIDER_MAP = {
   NGN: 'paystack',
-  USD: 'flutterwave',
+  USD: 'paystack',
   EUR: 'flutterwave',
   GBP: 'flutterwave',
 } as const satisfies Record<Currency, PaymentProvider>;
