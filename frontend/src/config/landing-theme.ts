@@ -20,18 +20,18 @@ export const LANDING_THEME = {
     paper: "#F7FBFA",
   },
   motion: {
-    /** Total intro lifetime before the landing page is interactive. */
-    introTotal: 3900,
-    /** Slow, cinematic pass from deep space into the hero globe. */
-    introFlyIn: 2800,
+    /** Hard ceiling only; the intro normally exits when its animation ends. */
+    introTotal: 2600,
+    /** Cinematic pass from deep space into the hero globe. */
+    introFlyIn: 1700,
     /** Final gentle dolly after the globe arrives. */
-    introSettle: 1100,
-    /** Welcome brand lockup still fades in immediately; WebGL never gates it. */
-    introWelcomeAt: 180,
-    /** Overlay starts dissolving only after the globe has passed. */
-    introFadeAt: 3200,
-    /** Dissolve length, matched to introTotal - introFadeAt. */
-    introDissolve: 700,
+    introSettle: 500,
+    /** Welcome brand lockup fades in immediately; WebGL never gates it. */
+    introWelcomeAt: 140,
+    /** Start dissolving as the globe arrives, not after a fixed delay. */
+    introFadeAt: 1700,
+    /** Dissolve length; the page is released before this finishes. */
+    introDissolve: 520,
     /** Shared render ceiling for the heavier WebGL layers. */
     webglFps: 30,
   },
@@ -47,7 +47,6 @@ export const LANDING_THEME = {
   copy: {
     welcome: "Welcome to IHGC 2026",
     welcomeSub: "International Holiness General Conference",
-    introEyebrow: "PREPARING YOUR EXPERIENCE",
     traceLabel: "THE JOURNEY",
   },
 } as const;

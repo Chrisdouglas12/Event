@@ -17,11 +17,13 @@
 
   --font-heading: var(--font-montserrat), sans-serif;
   --font-body: var(--font-inter), sans-serif;
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
 }
 
 :root {
   --font-montserrat: 'Montserrat', sans-serif;
   --font-inter: 'Inter', sans-serif;
+  --font-fraunces: 'Fraunces', 'Iowan Old Style', Georgia, serif;
 }
 
 body {
@@ -72,7 +74,6 @@ html.lenis body {
   transform: translateY(-4px);
 }
 
-/* ============ LANDING TRAVEL DEPTH ============ */
 /* The landing surface is navy end to end. Depth comes from the starfield, the
    orbital geometry and the scroll-synced WebGL layer — no photo backdrop. */
 .landing-navy {
@@ -137,7 +138,7 @@ html.lenis body {
 .landing-card {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(14, 16, 32, 0.08);
-  border-radius: 4px;
+  border-radius: 0;
   box-shadow:
     0 24px 70px rgba(2, 8, 18, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -164,11 +165,10 @@ html.lenis body {
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Skip layout/paint work for long sections until they are near the viewport.
-   `auto` remembers the measured size after the first visit, avoiding jumps. */
+/* Keep every section painted. Skipping offscreen paint left visible empty
+   gaps during fast scrolls, especially on low-end devices. */
 .cv-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 900px;
+  content-visibility: visible;
 }
 
 /* CSS poster shown when WebGL is disabled or unavailable. It occupies the
@@ -246,10 +246,7 @@ html.lenis body {
   background-color: #0b0f1a;
 }
 
-/* ---------- Low-end / reduced-motion landing tier ----------
-   Keeps every section and the flat journey trace, but removes full-screen
-   compositing work: backdrop blur, large blur filters, idle animations and
-   fixed-layer will-change hints. */
+/* Lite tier keeps sections painted but drops blur/filter compositing. */
 html.perf-lite *,
 html.perf-static * {
   -webkit-backdrop-filter: none !important;
@@ -275,23 +272,33 @@ html.perf-lite .hb-medal-ring,
 html.perf-lite .hb-medal-orbit,
 html.perf-lite .hb-medal-glow,
 html.perf-lite .ap-chip-body,
+html.perf-lite .dc-chip,
 html.perf-lite .dc-chip-body,
 html.perf-lite .dc-pin::after,
 html.perf-lite .mc-chip-body,
 html.perf-lite .mc-pin::after,
 html.perf-lite .mc-orbit,
+html.perf-lite .ms-stars,
+html.perf-lite .ms-orbit,
 html.perf-lite .wa-point .wa-icon,
+html.perf-lite .cc-clock-glow,
+html.perf-lite .hero-shimmer,
 html.perf-static .hb-sweep,
 html.perf-static .hb-medal-ring,
 html.perf-static .hb-medal-orbit,
 html.perf-static .hb-medal-glow,
 html.perf-static .ap-chip-body,
+html.perf-static .dc-chip,
 html.perf-static .dc-chip-body,
 html.perf-static .dc-pin::after,
 html.perf-static .mc-chip-body,
 html.perf-static .mc-pin::after,
 html.perf-static .mc-orbit,
-html.perf-static .wa-point .wa-icon {
+html.perf-static .ms-stars,
+html.perf-static .ms-orbit,
+html.perf-static .wa-point .wa-icon,
+html.perf-static .cc-clock-glow,
+html.perf-static .hero-shimmer {
   animation: none !important;
   transition: none !important;
 }
@@ -480,13 +487,11 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* Graphite frame shared by every image card on the landing page. */
+/* Clean rounded frame shared by every photo on the landing page. */
 .image-frame {
-  border: 1px solid #3a404b;
-  border-radius: 6px;
-  box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(3, 12, 24, 0.24);
 }
 
 /* 3D conference gallery: a centred front card with angled neighbours. Every
@@ -699,7 +704,6 @@ html.perf-full .image-frame:hover .photo-veil {
   background: #94A3B8;
 }
 
-/* ============ GLOBE ORBIT INTRO ============ */
 .intro-root {
   color: #ffffff;
   font-family: var(--font-heading);
@@ -744,7 +748,7 @@ html.perf-full .image-frame:hover .photo-veil {
 }
 
 .intro-leaving {
-  animation: intro-dissolve var(--intro-dissolve, 620ms) ease-in forwards;
+  animation: intro-dissolve var(--intro-dissolve, 520ms) ease-in forwards;
 }
 
 @keyframes intro-grid-drift {
@@ -773,184 +777,134 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* ============ SCROLL TRACE ============ */
 .joined-flow {
   position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(14, 16, 32, 0.1);
+  border-radius: 0;
+  /* One shared white canvas: every section sits on this sheet, so the joined
+     flow reads as a single card instead of a stack of separate panels. */
+  background-color: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 30px 90px rgba(2, 8, 18, 0.26);
 }
 
-.joined-flow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    rgba(14, 122, 110, 0.09),
-    transparent 16%,
-    transparent 84%,
-    rgba(14, 122, 110, 0.09)
-  );
+/* One flat, continuous surface from Why Attend through the Flyer. Every section
+   shares this canvas and sits flush against the next — no colored bands or
+   vertical gaps that make the journey feel chopped up. Hairlines only mark the
+   row boundaries inside the single card. */
+.joined-flow > section {
+  padding-block: 0;
+  border-top: 1px solid rgba(14, 16, 32, 0.08);
 }
 
-.trace-trail {
-  background: linear-gradient(
-    180deg,
-    rgba(142, 227, 214, 0.05),
-    rgba(142, 227, 214, 0.9) 12%,
-    rgba(142, 227, 214, 0.9) 88%,
-    rgba(142, 227, 214, 0.05)
-  );
-  box-shadow: 0 0 14px rgba(142, 227, 214, 0.75);
-  transition: height 120ms linear, width 120ms linear;
+.joined-flow > section:first-of-type {
+  border-top: 0;
 }
 
-.trace-connector {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 22px;
-  height: 1px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, rgba(142, 227, 214, 0.5), rgba(142, 227, 214, 0.08));
-  pointer-events: none;
+.joined-flow > .wa-root {
+  margin-top: 0;
+  padding-top: 0;
+  clip-path: none;
 }
 
-.trace-connector::after {
-  content: "";
-  position: absolute;
-  right: -3px;
-  top: 0;
-  width: 20px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(142, 227, 214, 0.9));
-  box-shadow: 0 0 12px rgba(142, 227, 214, 0.7);
-  animation: trace-connector-flow 3.2s ease-in-out infinite;
+/* Ambient section paintings are removed inside the joined flow: Why Attend,
+   Ministers and every card below now sit on the same flat canvas. */
+.joined-flow .wa-bg,
+.joined-flow .wa-dots,
+.joined-flow .wa-spot,
+.joined-flow .wa-blob,
+.joined-flow .ms-root::before,
+.joined-flow .ms-bg,
+.joined-flow .ms-stars,
+.joined-flow .ms-orbit,
+.joined-flow .ms-glow,
+.joined-flow .mc-bg,
+.joined-flow .mc-dots,
+.joined-flow .mc-spot,
+.joined-flow .mc-blob,
+.joined-flow .mc-orbit {
+  display: none;
 }
 
-.trace-node-dot {
-  position: relative;
-  transition: box-shadow 260ms ease, transform 260ms ease, background 260ms ease;
+.joined-flow .ms-root {
+  background: transparent;
+  perspective: none;
 }
 
-.trace-node.is-active .trace-node-dot {
-  background: #8ee3d6;
-  transform: scale(1.35);
-  box-shadow: 0 0 20px rgba(142, 227, 214, 0.95);
+/* Header + both ministers sit on the same continuous sheet as the sections
+   below — no separate corners, borders or shadows inside the joined card. */
+.joined-flow .ms-joined {
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
 }
 
-.trace-node-label {
-  position: absolute;
-  left: 24px;
-  top: 50%;
-  padding: 3px 7px;
-  border: 1px solid rgba(142, 227, 214, 0.22);
-  border-radius: 3px;
-  background: rgba(7, 16, 30, 0.9);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  white-space: nowrap;
+.joined-flow .ms-root .ms-joined:hover {
+  box-shadow: none;
+}
+
+.joined-flow .landing-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* No gaps, no separate corners or shadows inside the minister sheet. */
+.joined-flow .ms-group {
+  gap: 0;
+}
+
+.joined-flow .ms-group .mc-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  padding-top: 0;
+}
+
+.joined-flow .ms-group .mc-card + .mc-card {
+  border-top: 1px solid rgba(14, 122, 110, 0.14);
+}
+
+/* Keep the joined minister sheet readable even if a scroll-reveal observer
+   never fires (embedded webviews, reduced motion, or fast anchor jumps). */
+.joined-flow .ms-joined .mc-reveal,
+.joined-flow .ms-joined .rt-word-inner {
+  opacity: 1 !important;
+  transform: none !important;
+  clip-path: none !important;
+  transition: none !important;
+}
+
+@media (min-width: 1024px) {
+  .joined-flow .ms-group .mc-card + .mc-card {
+    border-top: 0;
+    border-left: 1px solid rgba(14, 122, 110, 0.14);
+  }
+}
+
+.joined-flow .wa-root [data-wa-band] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Waypoints stay in the DOM for landing scene tracking, but the visible divider
+   lines are removed so the joined sections read as one continuous sheet. */
+/* Only the decorative waypoint dividers are invisible. The ministers section
+   also carries data-trace-node for scene tracking and must stay visible. */
+.joined-flow > div[data-trace-node] {
   opacity: 0;
-  transform: translate(-4px, -50%);
-  transition: opacity 220ms ease, transform 220ms ease;
 }
 
-.trace-node.is-active .trace-node-label {
-  opacity: 1;
-  transform: translate(0, -50%);
-  color: #ffffff;
-  border-color: rgba(142, 227, 214, 0.55);
-}
-
-.trace-car {
-  transition: top 120ms linear;
-  filter: drop-shadow(0 0 10px rgba(142, 227, 214, 0.45));
-}
-
-.trace-car-mobile {
-  transition: left 120ms linear;
-  filter: drop-shadow(0 0 10px rgba(142, 227, 214, 0.45));
-}
-
-.trace-car-glow {
-  background: radial-gradient(circle, rgba(142, 227, 214, 0.24), transparent 68%);
-  animation: trace-pulse 2.2s ease-in-out infinite;
-}
-
-.trace-mobile-node {
-  position: absolute;
-  top: -3px;
-  height: 7px;
-  width: 1px;
-  transform: translateX(-50%);
-  background: rgba(142, 227, 214, 0.45);
-  transition: height 220ms ease, top 220ms ease, background 220ms ease;
-}
-
-.trace-mobile-node.is-active {
-  top: -5px;
-  height: 11px;
-  background: #ffffff;
-  box-shadow: 0 0 10px rgba(142, 227, 214, 0.9);
-}
-
-.trace-mobile-label {
-  color: #ffffff;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 3px 7px;
-  border: 1px solid rgba(142, 227, 214, 0.42);
-  border-radius: 9999px;
-  background: rgba(7, 16, 30, 0.9);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Tracker typing stays legible on dark photos, pale sections, or gradients. */
-.trace-type {
-  padding: 3px 7px;
-  border: 1px solid rgba(142, 227, 214, 0.42);
-  border-radius: 9999px;
-  background: rgba(7, 16, 30, 0.9);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-@keyframes trace-pulse {
-  0%, 100% { opacity: 0.45; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-
-@keyframes trace-connector-flow {
-  0%, 100% { opacity: 0.25; transform: translateX(-6px); }
-  50% { opacity: 1; transform: translateX(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .trace-car-glow,
-  .trace-connector::after {
-    animation: none;
-  }
-  .trace-trail,
-  .trace-car,
-  .trace-car-mobile,
-  .trace-node-dot,
-  .trace-node-label,
-  .trace-mobile-node {
-    transition: none;
-  }
-}
-
-/* ============ JOURNEY FILAMENT CONTROL ============ */
 /* The grip is deliberately small and edge-mounted: it gives the visitor direct
    control over the WebGL filament without covering any landing content. */
 .journey-handle {
@@ -1116,7 +1070,6 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* ============ ORBITAL COUNTDOWN ============ */
 .countdown-shell {
   position: relative;
   overflow: hidden;
@@ -1168,7 +1121,6 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* ============ HERO ANIMATIONS ============ */
 
 @keyframes hero-word-in {
   from {
@@ -1243,7 +1195,6 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* ============ FEATURED MINISTERS — NAVY + ORBITAL DEPTH ============ */
 /* This surface replaces the old campground photo. It tucks straight under the
    dark "Why Attend" band, keeps the section rhythm tight, and gives the cards
    real 3D depth on touch screens as well as desktop (never hover-only). */
@@ -1398,7 +1349,7 @@ html.perf-full .image-frame:hover .photo-veil {
   );
 }
 
-/* Header + cards are one joined surface with a cut on the lower-right side. */
+/* Header + cards are one flat joined surface. */
 .ms-joined {
   position: relative;
   z-index: 2;
@@ -1406,8 +1357,8 @@ html.perf-full .image-frame:hover .photo-veil {
   overflow: hidden;
   background: linear-gradient(180deg, #f8fafc 0%, #edf5f3 58%, #e4efec 100%);
   border: 1px solid rgba(14, 16, 32, 0.08);
-  border-radius: 4px;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 44px), calc(100% - 44px) 100%, 0 100%);
+  border-radius: 0;
+  clip-path: none;
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.46),
     0 0 0 1px rgba(142, 227, 214, 0.14),
@@ -1435,25 +1386,204 @@ html.perf-full .image-frame:hover .photo-veil {
   }
 }
 
-/* ============ REGISTRATION — PREMIUM WHITE PAPER SURFACE ============ */
 .register-premium-bg {
-  background-color: #ffffff;
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.035) 1px, transparent 1.4px),
-    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.012) 0 1px, transparent 1px 46px);
-  background-size: 24px 24px, 46px 100%;
-  background-position: 0 0, 0 0;
-  background-attachment: fixed, fixed;
+  background-color: #f8fbfa;
 }
 
 .register-premium-card {
   position: relative;
   isolation: isolate;
-  border: 1px solid rgba(15, 110, 86, 0.14);
+  border-radius: 4px;
+  border: 1px solid rgba(14, 16, 32, 0.1);
   background: #ffffff;
-  box-shadow:
-    inset 0 2px 0 rgba(15, 110, 86, 0.72),
-    0 8px 24px -18px rgba(15, 23, 42, 0.2),
-    0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+/* Registration shares the landing page's navy/mint language, typography and
+   chamfered plates while keeping the same white canvas as the main header. */
+.register-shell {
+  --ink: #0e1020;
+  --mint: #8ee3d6;
+  --mint-hover: #7bd4c7;
+  --deep: #0e7a6e;
+  /* Keep the latin webfont first, then system symbol fonts so ₦/GH₵/E£ and
+     other currency glyphs still render on Windows desktop. */
+  --font-body: var(--font-inter), "Segoe UI Symbol", "Apple Symbols",
+    "Noto Sans Symbols 2", "Noto Sans Symbols", sans-serif;
+  font-family: var(--font-body);
+}
+
+/* Emoji flags are not rendered by Windows desktop font stacks. The form uses
+   real flag images, with a small ISO badge if the image cannot load. */
+.register-shell .flag-image {
+  display: inline-block;
+  height: 16px;
+  width: 24px;
+  flex: none;
+  object-fit: cover;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.register-shell .flag-fallback {
+  display: inline-flex;
+  height: 16px;
+  min-width: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 2px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* Currency glyphs such as ₦, GH₵ and E£ are absent from the latin-only webfont
+   subset, so they need a system symbol font fallback on desktop. */
+.register-shell .currency-symbol {
+  font-family: var(--font-inter), "Segoe UI Symbol", "Apple Symbols",
+    "Noto Sans Symbols 2", "Noto Sans Symbols", system-ui, sans-serif;
+}
+
+.register-shell .register-title {
+  font-family: var(--font-heading);
+}
+
+.register-shell .register-total {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.register-shell .register-eyebrow {
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--deep);
+}
+
+.register-shell .register-top-plate {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid rgba(14, 16, 32, 0.1);
+  background-color: #ffffff;
+  background-image: linear-gradient(
+    90deg,
+    rgba(14, 16, 32, 0.035) 1px,
+    transparent 1px
+  );
+  background-size: 26px 26px;
+}
+
+.register-shell input:not([type="checkbox"]):focus {
+  border-color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+.register-shell .register-primary {
+  border-color: var(--mint) !important;
+  background-color: var(--mint) !important;
+  color: var(--ink) !important;
+}
+
+@media (hover: hover) {
+  .register-shell .register-primary:hover:not(:disabled) {
+    border-color: var(--mint-hover) !important;
+    background-color: var(--mint-hover) !important;
+    color: var(--ink) !important;
+  }
+}
+
+.register-design-root {
+  --register-accent: #0e7a6e;
+  --register-accent-hover: #0a5e54;
+  --register-accent-soft: #eaf5f3;
+  --register-fg: #111827;
+  --register-muted: #4b5563;
+  --register-hair: #e5e7eb;
+  --register-line: #d1d5db;
+}
+
+.register-design-root .container-site {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.register-design-root .bg-ticks {
+  background-color: #f9fafb;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='159'%3E%3Cpath d='M48 79.5h96' stroke='%236b7280' stroke-opacity='.12'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='159' height='192'%3E%3Cpath d='M79.5 48v96' stroke='%236b7280' stroke-opacity='.12'/%3E%3C/svg%3E");
+  background-position: top center;
+}
+
+.register-design-root .glow {
+  --glow-strength: 0.2;
+  background: radial-gradient(
+    closest-side,
+    rgb(156 163 175 / var(--glow-strength)),
+    rgb(156 163 175 / calc(var(--glow-strength) * 0.68)) 32%,
+    rgb(156 163 175 / calc(var(--glow-strength) * 0.28)) 60%,
+    transparent 85%
+  );
+  pointer-events: none;
+}
+
+.register-design-root .h-card {
+  font-size: clamp(1.3rem, 1.2rem + 0.35vw, 1.5rem);
+  line-height: 1.22;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.register-design-root .card {
+  border: 1px solid var(--register-hair);
+  border-radius: 16px;
+  background-color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .register-design-root .card {
+    border-radius: 24px;
+  }
+}
+
+.register-design-root .btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 14px 24px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.register-design-root .btn-primary {
+  border-color: var(--register-accent);
+  background-color: var(--register-accent);
+  color: #ffffff;
+}
+
+@media (hover: hover) {
+  .register-design-root .btn-primary:hover:not(:disabled) {
+    border-color: var(--register-accent-hover);
+    background-color: var(--register-accent-hover);
+    color: #ffffff;
+  }
 }
 

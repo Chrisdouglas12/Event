@@ -66,7 +66,6 @@ export function ScannerInterface() {
   return (
     <main className="fixed inset-0 z-[100] flex bg-[#0A0D18] font-body text-white selection:bg-[#8EE3D6] selection:text-[#0E1020]">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0E1020] shadow-[0_0_80px_rgba(0,0,0,0.5)] sm:mx-auto sm:h-[100dvh] sm:max-w-[480px] sm:border-x sm:border-white/10">
-        {/* Viewfinder */}
         <section className="relative min-h-0 flex-1 overflow-hidden bg-[#0A0D18]">
           <video
             ref={session.videoRef}
@@ -173,7 +172,6 @@ export function ScannerInterface() {
           )}
         </section>
 
-        {/* Only the ticket reference input and Verify action live here. */}
         <section className="relative z-20 shrink-0 rounded-t-[32px] bg-white px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-3.5 text-[#111320] shadow-[0_-16px_45px_rgba(0,0,0,0.25)]">
           <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" aria-hidden="true" />
 
@@ -213,7 +211,7 @@ export function ScannerInterface() {
           </form>
         </section>
 
-        {/* Result of the last scan. The camera stays paused until Next Scan. */}
+        {/* Scan result; camera stays paused until Next Scan. */}
         {session.scanResult.type === "valid" && (
           <div
             className="scan-win"

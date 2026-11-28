@@ -32,8 +32,8 @@ function easeOutBack(t: number) {
  * The HOREMOW logo is carried on its own orbit and also appears as a crisp
  * HTML lockup with the welcome message.
  *
- * FIX: Brand text + initializing text now show together from 0s.
- * Animation plays behind them, then everything fades into landing.
+ * The brand lockup is visible from 0s; the WebGL animation plays behind it
+ * and the overlay dissolves as soon as the globe arrives.
  */
 export function SplashScreen() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
@@ -51,6 +51,9 @@ export function SplashScreen() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const perf = getLandingPerformance();
+    // Loading time counts toward the intro so slow devices do not sit through
+    // the full animation *after* the scene finally becomes ready.
+    const introStarted = performance.now();
     previousOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -59,8 +62,10 @@ export function SplashScreen() {
     if (!perf.splashWebgl || params.has("skipIntro")) {
       const skipTimer = window.setTimeout(() => {
         document.documentElement.dataset.intro = "done";
+        document.body.style.overflow = previousOverflowRef.current;
         setStage("hidden");
-      }, 160);
+        window.dispatchEvent(new Event("ihgc:intro-complete"));
+      }, 120);
       return () => {
         window.clearTimeout(skipTimer);
         document.body.style.overflow = previousOverflowRef.current;
@@ -69,31 +74,58 @@ export function SplashScreen() {
 
     let disposed = false;
     let cleanup = () => {};
+    let exiting = false;
+    let finished = false;
+    let exitTimer = 0;
+
+    // The landing UI already renders behind the overlay. Release scroll and
+    // notify the other WebGL layers as soon as the dissolve starts so they can
+    // warm up instead of waiting for the overlay to unmount.
+    const releasePage = () => {
+      document.documentElement.dataset.intro = "done";
+      document.body.style.overflow = previousOverflowRef.current;
+      window.dispatchEvent(new Event("ihgc:intro-complete"));
+    };
+    const completeIntro = () => {
+      if (finished) return;
+      finished = true;
+      setStage("hidden");
+    };
+    const startExit = () => {
+      if (exiting || finished || disposed) return;
+      exiting = true;
+      releasePage();
+      setStage("leaving");
+      exitTimer = window.setTimeout(
+        completeIntro,
+        LANDING_THEME.motion.introDissolve
+      );
+    };
 
     const welcomeTimer = window.setTimeout(
       () => setStage("welcome"),
       LANDING_THEME.motion.introWelcomeAt
     );
     const leaveTimer = window.setTimeout(
-      () => setStage("leaving"),
+      startExit,
       LANDING_THEME.motion.introFadeAt
     );
-    const hideTimer = window.setTimeout(() => {
-      document.documentElement.dataset.intro = "done";
-      setStage("hidden");
-      window.dispatchEvent(new Event("ihgc:intro-complete"));
-    }, LANDING_THEME.motion.introTotal);
+    // Safety net only: a stalled WebGL import must never hold the main UI.
+    const safetyTimer = window.setTimeout(
+      startExit,
+      LANDING_THEME.motion.introTotal
+    );
 
     void (async () => {
       const host = canvasHostRef.current;
       if (!host) return;
 
       const THREE = await import("three");
-      if (disposed) return;
+      if (disposed || exiting) return;
 
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
-        antialias: false,
+        antialias: true,
         powerPreference: "high-performance",
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
@@ -123,16 +155,20 @@ export function SplashScreen() {
 
       const textures: InstanceType<typeof THREE.Texture>[] = [];
 
-      // ---------- Earth ----------
       const earthMat = new THREE.MeshStandardMaterial({
         map: makeFallbackEarth(THREE),
         roughness: 0.82,
         metalness: 0.02,
       });
       textures.push(earthMat.map!);
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 64, 64), earthMat);
+      const earthSegments = 64;
+      const earth = new THREE.Mesh(
+        new THREE.SphereGeometry(2, earthSegments, earthSegments),
+        earthMat
+      );
       world.add(earth);
 
+      const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
       new THREE.TextureLoader().load(
         "/textures/earth.jpg",
         (tex) => {
@@ -141,7 +177,7 @@ export function SplashScreen() {
             return;
           }
           tex.colorSpace = THREE.SRGBColorSpace;
-          tex.anisotropy = 8;
+          tex.anisotropy = maxAnisotropy;
           earthMat.map = tex;
           earthMat.needsUpdate = true;
           textures.push(tex);
@@ -184,7 +220,6 @@ export function SplashScreen() {
       );
       world.add(atmosphere);
 
-      // ---------- Two flag orbits ----------
       const orbitDefs = [
         { radius: 2.34, rotation: [0, 0.45, Math.PI / 2 + 0.12], count: 16 },
         { radius: 2.6, rotation: [0, 0, 0.3], count: 20 },
@@ -271,7 +306,6 @@ export function SplashScreen() {
         }
       });
 
-      // ---------- Drifting stars ----------
       const starCount = 220;
       const positions = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i += 1) {
@@ -297,7 +331,6 @@ export function SplashScreen() {
       );
       scene.add(stars);
 
-      // ---------- Logo riding its own orbit ----------
       // The globe animation never waits on the logo download; the marker is
       // added as soon as the texture is ready.
       const logoOrbit = new THREE.Group();
@@ -336,7 +369,6 @@ export function SplashScreen() {
         () => {}
       );
 
-      // ---------- Layout ----------
       const layout = () => {
         const width = host.clientWidth || 1;
         const height = host.clientHeight || 1;
@@ -348,8 +380,9 @@ export function SplashScreen() {
       const resizeObserver = new ResizeObserver(layout);
       resizeObserver.observe(host);
 
-      // ---------- Loop ----------
-      const started = performance.now();
+      const introDuration =
+        (LANDING_THEME.motion.introFlyIn + LANDING_THEME.motion.introSettle) /
+        1000;
       let lastRender = 0;
       let raf = 0;
       const frameInterval = 1000 / LANDING_THEME.motion.webglFps;
@@ -362,7 +395,8 @@ export function SplashScreen() {
         if (now - lastRender < frameInterval) return;
         lastRender = now;
 
-        const elapsed = (now - started) / 1000;
+        const elapsed = (now - introStarted) / 1000;
+        if (!exiting && elapsed >= introDuration) startExit();
         const fly = clamp01(elapsed / (LANDING_THEME.motion.introFlyIn / 1000));
         const thrown = easeOutBack(fly);
 
@@ -402,13 +436,14 @@ export function SplashScreen() {
         renderer.dispose();
         renderer.domElement.remove();
       };
-    })();
+    })().catch(startExit);
 
     return () => {
       disposed = true;
       window.clearTimeout(welcomeTimer);
       window.clearTimeout(leaveTimer);
-      window.clearTimeout(hideTimer);
+      window.clearTimeout(safetyTimer);
+      window.clearTimeout(exitTimer);
       document.body.style.overflow = previousOverflowRef.current;
       cleanup();
     };
@@ -418,7 +453,7 @@ export function SplashScreen() {
 
   return (
     <div
-      className={`intro-root fixed inset-0 z-[9999] overflow-hidden bg-[#050B16] ${
+      className={`intro-root pointer-events-none fixed inset-0 z-[9999] overflow-hidden bg-[#050B16] ${
         stage === "leaving" ? "intro-leaving" : ""
       }`}
     >
@@ -427,13 +462,8 @@ export function SplashScreen() {
       <div className="intro-vignette pointer-events-none absolute inset-0" />
       <div className="intro-grid pointer-events-none absolute inset-0" />
 
-      {/* Brand + loading copy share the exact centre of the viewport. */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
         <div className="intro-brand intro-brand-visible flex w-full flex-col items-center">
-          <span className="mb-5 text-[10px] font-bold uppercase tracking-[0.42em] text-[#8EE3D6]/70">
-            {LANDING_THEME.copy.introEyebrow}
-          </span>
-
           <div className="intro-logo-tile flex h-[76px] w-[220px] items-center justify-center sm:h-[88px] sm:w-[260px]">
             <Image
               src={SITE_CONFIG.logo.src}
@@ -455,13 +485,13 @@ export function SplashScreen() {
           </p>
         </div>
 
-        <div className="mt-8 flex w-full flex-col items-center">
+        <div className="mt-6 flex w-full flex-col items-center">
           <div className="intro-progress h-px w-40 overflow-hidden bg-white/10 sm:w-56">
-            <span className="intro-progress-fill block h-full w-full bg-[#8EE3D6]" />
+            <span
+              className="intro-progress-fill block h-full w-full bg-[#8EE3D6]"
+              style={{ animationDuration: `${LANDING_THEME.motion.introFlyIn}ms` }}
+            />
           </div>
-          <p className="mt-4 text-[9px] font-bold uppercase tracking-[0.35em] text-white/35">
-            Initialising the experience
-          </p>
         </div>
       </div>
     </div>

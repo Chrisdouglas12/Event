@@ -59,7 +59,6 @@ export default function GroupDashboardPage() {
 
           {data && (
             <>
-              {/* Header Card */}
               <div className="bg-[#0E1020] text-white rounded-[24px] p-8 space-y-3">
                 <div className="flex items-center gap-3">
                   <Users className="w-6 h-6 text-[#8EE3D6]" />
@@ -90,7 +89,6 @@ export default function GroupDashboardPage() {
                 )}
               </div>
 
-              {/* Participants Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {data.seats.map((seat, idx) => (
                   <div

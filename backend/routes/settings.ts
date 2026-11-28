@@ -1,9 +1,7 @@
-// routes/settings.ts
 import express from 'express';
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 
-// Point these to your exact schema files (based on your project structure)
 import { EventSettings, ProviderRoute, Minister, ProgrammeItem } from '../schema/settings.ts';
 import { TicketType } from '../schema/participants.ts';
 import { CURRENCIES, PAYMENT_PROVIDERS, FEE_POLICIES } from '../constants/enums.ts'; 
@@ -12,9 +10,6 @@ import { authenticateStaff, requireRole } from './auth.ts';
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface AuthRequest extends Request {
   staff?: mongoose.Document & {
@@ -23,9 +18,6 @@ interface AuthRequest extends Request {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Load the singleton settings doc, creating it with defaults if missing.
@@ -96,9 +88,12 @@ function eventPatchError(patch: Record<string, unknown>): string | null {
       return 'startsAt must be before endsAt';
     }
   }
-  if (patch.registrationDeadline && patch.startsAt) {
-    if (new Date(String(patch.registrationDeadline)) > new Date(String(patch.startsAt))) {
-      return 'registrationDeadline must not be after startsAt';
+  // Registration stays open through the final conference day. Keep the legacy
+  // deadline field consistent with that window instead of forcing it to close
+  // before the conference starts.
+  if (patch.registrationDeadline && patch.endsAt) {
+    if (new Date(String(patch.registrationDeadline)) > new Date(String(patch.endsAt))) {
+      return 'registrationDeadline must not be after endsAt';
     }
   }
   return null;
@@ -129,7 +124,6 @@ async function getStandardTicketType() {
   );
 }
 
-/** Upsert the payment routes submitted by the aggregate admin settings form. */
 async function saveProviderRoutes(routes: any[]) {
   for (const r of routes) {
     if (!r || !CURRENCIES.includes(r.currency)) continue;
@@ -152,7 +146,6 @@ async function saveProviderRoutes(routes: any[]) {
   }
 }
 
-/** Replace the prices on the standard ticket type with the submitted values. */
 async function saveTicketPrices(prices: any[]) {
   const clean = (prices || [])
     .filter(
@@ -194,9 +187,6 @@ async function saveTicketPrices(prices: any[]) {
   await ticketType.save();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC — GET /api/settings/public
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.get('/settings/public', async (_req: Request, res: Response) => {
   try {
@@ -269,9 +259,6 @@ router.get('/settings/public', async (_req: Request, res: Response) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF — GET /api/settings
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.get(
   '/settings',
@@ -303,11 +290,8 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN — GET /api/admin/settings
 // Aggregate payload used by the admin settings screen (event + routes + prices
 // + programme) so the whole form can be loaded in a single request.
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.get(
   '/admin/settings',
@@ -359,12 +343,9 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN — PUT /api/admin/settings
 // Persist the whole settings form. Each section is optional so partial saves
 // are safe; validation errors are returned before anything is written where
 // possible.
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.put(
   '/admin/settings',
@@ -410,9 +391,6 @@ router.put(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF — PUT /api/settings/event
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.put(
   '/settings/event',
@@ -451,9 +429,6 @@ router.put(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF — PUT /api/settings/provider-routes/:currency
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.put(
   '/settings/provider-routes/:currency',
@@ -508,9 +483,6 @@ router.put(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF — MINISTERS  (POST / PUT / DELETE)
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post(
   '/settings/ministers',
@@ -607,9 +579,6 @@ router.delete(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF — PROGRAMME ITEMS  (POST / PUT / DELETE)
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post(
   '/settings/programme',

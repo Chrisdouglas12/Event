@@ -1,161 +1,174 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { Expand, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-import type { InlineStyle } from "@/components/marketing/inline-style";
 import { RevealText } from "@/components/ui/reveal-text";
 
-const GALLERY_IMAGES = [
-  { src: "/gallery/pastor-paul-rika-on-pulpit.jpg", alt: "Pastor Paul Rika preaching at the pulpit" },
-  { src: "/gallery/pastor-paul-rika-sitting.jpg", alt: "Pastor Paul Rika seated at the conference" },
-  { src: "/gallery/crowed-sitted.jpg", alt: "Conference congregation seated together" },
-  { src: "/gallery/water-baptism.jpg", alt: "Water baptism during the conference" },
-  { src: "/gallery/altar-call-scene.jpg", alt: "Altar call scene at the conference" },
-  { src: "/gallery/mummy-linda-standing-on-pulpit.jpg", alt: "Evangelist Linda Paul Rika standing at the pulpit" },
-  { src: "/gallery/book-review-during-conference.jpg", alt: "Book review during the conference" },
-  { src: "/gallery/pastor-paul-rika-praying.jpg", alt: "Pastor Paul Rika praying" },
+const GALLERY_PHOTOS = [
+  {
+    src: "/gallery/pastor-paul-rika-on-pulpit.jpg",
+    alt: "Pastor Paul Rika preaching at the pulpit",
+    caption: "Pastor Paul Rika ministering the Word of holiness at the pulpit",
+    tag: "Ministration",
+  },
+  {
+    src: "/gallery/crowed-sitted.jpg",
+    alt: "Conference congregation seated together",
+    caption: "Believers gathered in expectation at Holiness Campground, Kwali",
+    tag: "Congregation",
+  },
+  {
+    src: "/gallery/water-baptism.jpg",
+    alt: "Water baptism during the conference",
+    caption: "Water baptism service during the General Conference",
+    tag: "Ordinance",
+  },
+  {
+    src: "/gallery/altar-call-scene.jpg",
+    alt: "Altar call scene at the conference",
+    caption: "Souls responding at the altar call in repentance and consecration",
+    tag: "Altar Call",
+  },
+  {
+    src: "/gallery/mummy-linda-standing-on-pulpit.jpg",
+    alt: "Evang. Linda Paul Rika standing at the pulpit",
+    caption: "Evang. Linda Paul Rika exhorting the church to inward and outward holiness",
+    tag: "Ministration",
+  },
+  {
+    src: "/gallery/book-review-during-conference.jpg",
+    alt: "Book review during the conference",
+    caption: "Interactive holiness literature and book review session",
+    tag: "Literature",
+  },
+  {
+    src: "/gallery/pastor-paul-rika-praying.jpg",
+    alt: "Pastor Paul Rika praying",
+    caption: "Fervent intercession and warfare prayer for the nations",
+    tag: "Intercession",
+  },
+  {
+    src: "/gallery/pastor-paul-rika-sitting.jpg",
+    alt: "Pastor Paul Rika seated at the conference",
+    caption: "Pastor Paul Rika during a conference teaching session",
+    tag: "Conference",
+  },
 ] as const;
-
-// Scattered placement inside the photo stage. Values are percentages of the
-// stage so the collage keeps its relaxed feel at every screen size.
-const COLLAGE_LAYOUT = [
-  { top: "2%", left: "3%", width: "30%", rotate: "-6deg", z: 2 },
-  { top: "0%", left: "35%", width: "26%", rotate: "4deg", z: 3 },
-  { top: "5%", left: "66%", width: "30%", rotate: "-3deg", z: 1 },
-  { top: "38%", left: "1%", width: "28%", rotate: "5deg", z: 3 },
-  { top: "34%", left: "30%", width: "36%", rotate: "-2deg", z: 5 },
-  { top: "39%", left: "68%", width: "29%", rotate: "6deg", z: 2 },
-  { top: "68%", left: "8%", width: "31%", rotate: "-5deg", z: 4 },
-  { top: "66%", left: "55%", width: "33%", rotate: "3deg", z: 3 },
-] as const;
-
-const COUNT = GALLERY_IMAGES.length;
 
 const GC_CSS = `
-.gc-stage{position:relative;width:100%;height:min(86vw,420px);
-  touch-action:pan-y;cursor:grab;outline:none}
-.gc-stage.is-dragging{cursor:grabbing}
-.gc-stage:focus-visible{outline:2px solid #0E7A6E;outline-offset:6px;border-radius:8px}
-@media (min-width:640px){.gc-stage{height:min(62vw,500px)}}
-@media (min-width:1024px){.gc-stage{height:400px}}
-
-.gc-photo{position:absolute;display:block;overflow:hidden;border-radius:6px;
-  border:3px solid rgba(255,255,255,.92);background:#0E1020;
-  box-shadow:0 18px 44px rgba(7,16,30,.22);
-  transform:rotate(var(--r));
-  transition:top .55s cubic-bezier(.2,.8,.2,1),left .55s cubic-bezier(.2,.8,.2,1),
-    width .55s cubic-bezier(.2,.8,.2,1),transform .35s cubic-bezier(.2,.8,.2,1),
-    box-shadow .35s ease}
-.gc-stage.is-dragging .gc-photo{transition:none}
-.gc-photo::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(120deg,rgba(255,255,255,.18),transparent 45%);
-  opacity:0;transition:opacity .3s ease}
-.gc-photo:hover,.gc-photo:focus-visible{transform:translateY(-8px) rotate(var(--r)) scale(1.04);
-  box-shadow:0 28px 60px rgba(7,16,30,.34);z-index:20!important;outline:none}
-.gc-photo:hover::after,.gc-photo:focus-visible::after{opacity:1}
-.gc-photo:focus-visible{box-shadow:0 0 0 3px #0E7A6E,0 28px 60px rgba(7,16,30,.34)}
-
-.gc-hint{display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(14,122,110,.25);
-  border-radius:999px;background:rgba(142,227,214,.16);padding:6px 13px;
-  color:#0E7A6E;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
-.gc-hint::before{content:"";width:6px;height:6px;border-radius:999px;background:#0E7A6E;
-  box-shadow:0 0 0 3px rgba(14,122,110,.12)}
-
-@media (prefers-reduced-motion:reduce){.gc-photo{transition:none}}
+.gc-viewport{overflow:hidden;scrollbar-width:none;-ms-overflow-style:none}
+.gc-viewport::-webkit-scrollbar{display:none}
+.gc-marquee{display:flex;width:max-content;animation:gc-roll 60s linear infinite;will-change:transform}
+.gc-viewport:hover .gc-marquee,.gc-viewport:focus-within .gc-marquee{animation-play-state:paused}
+.gc-photo-image-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(3,10,20,.06) 0%,rgba(3,10,20,.48) 55%,rgba(3,10,20,.96) 100%)}
+.gc-expand{opacity:0;transform:translateY(4px);transition:opacity .25s ease,transform .25s ease}
+.gc-photo:hover .gc-expand,.gc-photo:focus-visible .gc-expand{opacity:1;transform:none}
+@keyframes gc-roll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+@media (prefers-reduced-motion:reduce){
+  .gc-viewport{overflow-x:auto}
+  .gc-marquee{animation:none}
+  .gc-photo-image{transition:none}
+  .gc-expand{transition:none}
+}
 `;
 
 export function GalleryCollage() {
-  const [spin, setSpin] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{ startX: number; startSpin: number } | null>(null);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
-  // ---------- Drag to spin the collage ----------
-  const onStageDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    dragRef.current = { startX: event.clientX, startSpin: spin };
-    setDragging(true);
-  };
+  useEffect(() => {
+    if (lightboxIdx === null) return;
 
-  const onStageMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag) return;
-    const delta = event.clientX - drag.startX;
-    const stepWidth = Math.max(48, event.currentTarget.clientWidth / 10);
-    setSpin(drag.startSpin + Math.round(delta / stepWidth));
-  };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxIdx(null);
+    };
 
-  const endDrag = () => {
-    dragRef.current = null;
-    setDragging(false);
-  };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [lightboxIdx]);
+
+  const lightbox =
+    lightboxIdx !== null && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={GALLERY_PHOTOS[lightboxIdx].caption}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md sm:p-8"
+            onClick={() => setLightboxIdx(null)}
+          >
+            <div
+              className="relative w-full max-w-5xl overflow-hidden border border-[#E5E7EB] bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-[#E5E7EB] px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0E7A6E]">
+                    {GALLERY_PHOTOS[lightboxIdx].tag}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium text-[#111827] sm:text-base">
+                    {GALLERY_PHOTOS[lightboxIdx].caption}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close gallery viewer"
+                  onClick={() => setLightboxIdx(null)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] text-[#111827] transition hover:bg-[#F3F4F6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
+
+              <div className="relative h-[46vh] max-h-[72vh] min-h-[280px] w-full bg-[#111827] sm:h-[62vh]">
+                <Image
+                  src={GALLERY_PHOTOS[lightboxIdx].src}
+                  alt={GALLERY_PHOTOS[lightboxIdx].alt}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 90vw"
+                  className="object-contain"
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
-    <section data-scene="sea" data-depth className="cv-auto relative overflow-hidden py-12 lg:py-10">
+    <section
+      id="gallery"
+      data-scene="sea"
+      data-depth
+      role="region"
+      aria-label="Moments from previous conferences"
+      className="cv-auto relative py-12 lg:py-10"
+    >
       <style dangerouslySetInnerHTML={{ __html: GC_CSS }} />
 
       <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
-        <div className="relative overflow-hidden">
-          {/* Ambient glow — same treatment as the other two-column cards */}
+        <div className="landing-card relative overflow-hidden">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#8EE3D6] opacity-[0.10] blur-3xl"
           />
 
-          <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
-            {/* Left: scattered, interactive photo collage */}
-            <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-4 sm:p-8 lg:col-span-7 lg:border-r lg:border-[#E5E7EB] lg:p-8">
-              <div
-                className={`gc-stage${dragging ? " is-dragging" : ""}`}
-                role="group"
-                aria-label="Conference photo collage — drag to spin"
-                onPointerDown={onStageDown}
-                onPointerMove={onStageMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onPointerLeave={endDrag}
-              >
-                {GALLERY_IMAGES.map((image, index) => {
-                  const slot = ((index + spin) % COUNT + COUNT) % COUNT;
-                  const spot = COLLAGE_LAYOUT[slot];
-                  return (
-                    <div
-                      key={image.src}
-                      className="gc-photo aspect-[4/3]"
-                      style={{
-                        top: spot.top,
-                        left: spot.left,
-                        width: spot.width,
-                        zIndex: spot.z,
-                        "--r": spot.rotate,
-                      } as InlineStyle}
-                    >
-                      <Image
-                        src={image.src}
-                        alt={image.alt}
-                        fill
-                        sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 240px"
-                        className="object-cover"
-                        draggable={false}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right: copy */}
-            <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-5 lg:p-10 xl:p-12">
+          <div className="relative flex flex-col gap-6 px-6 py-8 sm:px-10 sm:py-10 lg:flex-row lg:items-end lg:justify-between lg:px-12 lg:py-9">
+            <div className="min-w-0 max-w-[650px]">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
                 <RevealText
                   as="span"
-                  text="Gallery"
+                  text="Conference Gallery"
                   className="text-xs font-bold uppercase tracking-[0.2em] text-[#0E7A6E]"
                   speed={18}
                 />
@@ -164,43 +177,80 @@ export function GalleryCollage() {
               <RevealText
                 as="h2"
                 text="Moments From Previous Conferences"
-                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
+                className="mt-5 font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-[44px]"
                 speed={14}
               />
 
               <RevealText
                 as="p"
-                text="A scattered collection of worship, baptism and fellowship from past conferences. Drag to spin it and revisit the moments."
-                className="mt-6 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
+                text="Worship, expository teaching, water baptism, altar calls and fervent intercession captured at Holiness Campground, Kwali, Abuja."
+                className="mt-4 max-w-2xl text-sm leading-relaxed text-[#4B5563] lg:text-base lg:leading-7"
                 speed={9}
               />
+            </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSpin((value) => value - 1)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
-                  aria-label="Spin collage left"
+          </div>
+
+          <div
+            role="group"
+            aria-label="Conference photographs"
+            className="gc-viewport flex pb-8 pl-4 pr-4 sm:pl-8 sm:pr-8 lg:pl-12 lg:pr-12"
+          >
+            <div className="gc-marquee">
+              {[0, 1].map((copy) => (
+                <div
+                  key={copy}
+                  className="flex"
+                  aria-hidden={copy === 1 ? true : undefined}
                 >
-                  <ChevronLeft className="h-5 w-5" aria-hidden />
-                </button>
+                  {GALLERY_PHOTOS.map((photo, index) => (
+                    <div
+                      key={`${copy}-${photo.src}`}
+                      className="mr-5 w-[84vw] max-w-[600px] shrink-0 sm:mr-6 sm:w-[62vw] lg:w-[600px]"
+                    >
+                      <button
+                        type="button"
+                        tabIndex={copy === 1 ? -1 : undefined}
+                        onClick={() => setLightboxIdx(index)}
+                        className="image-frame gc-photo group relative block w-full overflow-hidden bg-[#0E1020] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
+                      >
+                        <span aria-hidden className="gc-photo-image-wrap relative block aspect-[4/3] w-full overflow-hidden">
+                          <Image
+                            src={photo.src}
+                            alt={photo.alt}
+                            fill
+                            loading="lazy"
+                            sizes="(max-width: 640px) 84vw, (max-width: 1024px) 62vw, 600px"
+                            className="gc-photo-image object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                          />
+                        </span>
 
-                <span className="gc-hint">Drag to spin</span>
+                        <span
+                          aria-hidden
+                          className="gc-expand absolute right-3.5 top-3.5 grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-black/55 text-white backdrop-blur-sm"
+                        >
+                          <Expand className="h-4 w-4" />
+                        </span>
 
-                <button
-                  type="button"
-                  onClick={() => setSpin((value) => value + 1)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#D1D5DB] bg-white text-[#4B5563] transition hover:-translate-y-0.5 hover:border-[#0E7A6E] hover:bg-[#0E7A6E] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E7A6E]"
-                  aria-label="Spin collage right"
-                >
-                  <ChevronRight className="h-5 w-5" aria-hidden />
-                </button>
-              </div>
+                        <span className="absolute inset-x-0 bottom-0 block p-5 sm:p-6">
+                          <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#8EE3D6]">
+                            {photo.tag}
+                          </span>
+                          <span className="mt-1 block text-base font-medium leading-snug text-white sm:text-lg">
+                            {photo.caption}
+                          </span>
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
+      {lightbox}
     </section>
   );
 }

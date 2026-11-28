@@ -45,7 +45,7 @@ export function JourneyHandle() {
 
   useEffect(() => {
     // The grip only controls the WebGL filament. On low-power tiers CSS hides
-    // it and the flat trace handles progress instead.
+    // it and the static backdrop carries the scene instead.
     if (!getLandingPerformance().journeyWebgl) return;
 
     const apply = (snapshot: LandingProgressSnapshot) => {

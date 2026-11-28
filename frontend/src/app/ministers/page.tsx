@@ -13,7 +13,6 @@ export default function MinistersPage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* Hero Header */}
       <section className="bg-[#0E1020] text-white py-16 sm:py-20 text-center space-y-4">
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
           <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">
@@ -28,7 +27,6 @@ export default function MinistersPage() {
         </div>
       </section>
 
-      {/* Ministers List */}
       <section className="py-16 sm:py-24 bg-[#FAFAFA] flex-1">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-8 space-y-10">
           {SITE_CONFIG.ministersInitial.map((minister) => (

@@ -53,6 +53,20 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
 
   const remaining = target !== null && now !== null ? Math.max(0, target - now) : 0;
 
+  // Inclusive conference day, counted from the start date in UTC day buckets.
+  const reference = now ?? (Number.isNaN(start) ? Date.now() : start);
+  const totalDays =
+    !Number.isNaN(start) && !Number.isNaN(end)
+      ? Math.max(1, Math.floor(end / 86400000) - Math.floor(start / 86400000) + 1)
+      : 1;
+  const eventDay =
+    Number.isNaN(start) || Number.isNaN(end)
+      ? 1
+      : Math.min(
+          totalDays,
+          Math.max(1, Math.floor(reference / 86400000) - Math.floor(start / 86400000) + 1)
+        );
+
   return {
     phase,
     target,
@@ -60,19 +74,25 @@ function useConferenceCountdown(startsAt: DateLike, endsAt: DateLike) {
     hours: Math.floor(remaining / 3600000) % 24,
     minutes: Math.floor(remaining / 60000) % 60,
     seconds: Math.floor(remaining / 1000) % 60,
+    eventDay,
+    totalDays,
   };
 }
 
 const FC_CSS = `
-/* ---------- timer above the clock on phones, beside it on desktop ---------- */
 .cc-wrap{position:relative;width:100%}
 .cc-body{position:relative;display:flex;flex-direction:column;align-items:center}
 @media (min-width:640px){.cc-body{flex-direction:row;align-items:center}}
+.cc-day-badge{display:inline-flex;align-items:center;gap:8px;margin:0 auto 10px;padding:6px 12px;
+  border-radius:9999px;border:1px solid rgba(142,227,214,.38);background:rgba(142,227,214,.12);
+  color:#8EE3D6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.cc-day-dot{width:7px;height:7px;border-radius:9999px;background:#8EE3D6;
+  box-shadow:0 0 8px rgba(142,227,214,.8)}
+@media (min-width:640px){.cc-day-badge{margin-left:0;margin-right:0}}
 .cc-clock-glow{position:absolute;inset:6%;border-radius:9999px;pointer-events:none;
   background:radial-gradient(closest-side,rgba(142,227,214,.30),transparent 72%);filter:blur(14px);animation:cc-breathe 5s ease-in-out infinite}
 @keyframes cc-breathe{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.06);opacity:1}}
 
-/* ---------- flip tiles ---------- */
 .fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,104px));gap:8px}
 @media (min-width:640px){.fc-grid{gap:12px}}
 
@@ -184,7 +204,8 @@ export function CountdownClock({
   className?: string;
   clockClassName?: string;
 }) {
-  const { target, days, hours, minutes, seconds } = useConferenceCountdown(startsAt, endsAt);
+  const { phase, target, days, hours, minutes, seconds, eventDay, totalDays } =
+    useConferenceCountdown(startsAt, endsAt);
 
   const dialTitle =
     title ?? (SITE_CONFIG as { eventTitle?: string }).eventTitle ?? "International Holiness General Conference 2026";
@@ -194,7 +215,6 @@ export function CountdownClock({
       <style dangerouslySetInnerHTML={{ __html: FC_CSS }} />
 
       <div data-countdown className="cc-body gap-4 sm:flex-row sm:gap-6">
-        {/* 3D clock: your logo in the middle, conference name + theme around the dial */}
         {show3DClock && (
           <div data-clock-3d className="relative z-[2] order-2 shrink-0">
             <span aria-hidden className="cc-clock-glow" />
@@ -208,9 +228,14 @@ export function CountdownClock({
           </div>
         )}
 
-        {/* Flip countdown: above the clock on phones, to its left on desktop */}
         {showFlip && (
           <div className="relative z-[2] order-1 w-full min-w-0 flex-1">
+            {phase === "live" && (
+              <div className="cc-day-badge" role="status">
+                <span aria-hidden className="cc-day-dot" />
+                Day {eventDay} of {totalDays} · Live now
+              </div>
+            )}
             <div className="fc-grid mx-auto sm:mx-0" aria-hidden>
               <FlipUnit value={days} label="Days" unit="days" />
               <FlipUnit value={hours} label="Hours" unit="hours" />
@@ -219,6 +244,7 @@ export function CountdownClock({
             </div>
 
             <span className="sr-only" role="timer">
+              {phase === "live" ? `Day ${eventDay} of ${totalDays}, ` : ""}
               {days} days, {hours} hours, {minutes} minutes and {seconds} seconds
             </span>
           </div>

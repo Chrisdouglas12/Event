@@ -59,28 +59,38 @@ export function RevealText({
 
     setMode("armed");
     let timer = 0;
+    let safetyTimer = 0;
 
     if (typeof IntersectionObserver === "undefined") {
       setMode("visible");
       return;
     }
 
+    // Arm before the element enters the viewport, and reveal ourselves if the
+    // observer is delayed on a busy device. Text must never sit invisible
+    // while the user scrolls.
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
         observer.disconnect();
+        window.clearTimeout(safetyTimer);
         const reveal = () => setMode("visible");
         if (delay > 0) timer = window.setTimeout(reveal, delay * 1000);
         else reveal();
       },
-      { rootMargin: "0px 0px -6% 0px", threshold: 0.08 }
+      { rootMargin: "0px 0px 18% 0px", threshold: 0.01 }
     );
 
     observer.observe(el);
+    safetyTimer = window.setTimeout(() => {
+      observer.disconnect();
+      setMode("visible");
+    }, 1200);
 
     return () => {
       observer.disconnect();
       if (timer) window.clearTimeout(timer);
+      if (safetyTimer) window.clearTimeout(safetyTimer);
     };
   }, [delay, text]);
 

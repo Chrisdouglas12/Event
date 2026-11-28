@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 
 import { ATTENDANCE_MODES, CURRENCIES, GENDERS, PARTICIPANT_STATUSES } from '../constants/enums.ts';
 
-// TICKET TYPE
 
 const ticketTypeSchema = new mongoose.Schema(
   {
@@ -62,7 +61,6 @@ ticketTypeSchema.pre('save', function () {
   }
 });
 
-// GROUP
 
 const groupSchema = new mongoose.Schema(
   {
@@ -161,7 +159,6 @@ groupSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// PARTICIPANT
 
 const participantSchema = new mongoose.Schema(
   {
@@ -282,7 +279,6 @@ participantSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// GROUP SEAT
 
 const groupSeatSchema = new mongoose.Schema(
   {
@@ -314,7 +310,6 @@ const groupSeatSchema = new mongoose.Schema(
   { collection: 'group_seats' }
 );
 
-// INDEXES
 
 ticketTypeSchema.index({ isActive: 1 });
 ticketTypeSchema.index({ 'prices.currency': 1 });
@@ -334,7 +329,6 @@ participantSchema.index(
 groupSeatSchema.index({ groupId: 1 });
 groupSeatSchema.index({ participantId: 1 });
 
-// EXPORTS
 
 export const TicketType = (mongoose.models.TicketType || mongoose.model('TicketType', ticketTypeSchema)) as mongoose.Model<any>;
 export const Group = (mongoose.models.Group || mongoose.model('Group', groupSchema)) as mongoose.Model<any>;

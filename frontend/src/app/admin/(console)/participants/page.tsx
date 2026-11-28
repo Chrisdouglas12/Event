@@ -40,7 +40,6 @@ export default async function AdminParticipantsPage() {
         </div>
       </div>
 
-      {/* Participants Table */}
       <div className="bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gray-600">

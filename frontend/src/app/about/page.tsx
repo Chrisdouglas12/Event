@@ -14,7 +14,6 @@ export default function AboutPage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* Hero Section */}
       <section className="relative bg-[#0E1020] text-white py-20 sm:py-28 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
@@ -40,11 +39,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Main Content */}
       <main className="flex-1 py-16 sm:py-24">
         <div className="max-w-[1100px] mx-auto px-6 sm:px-8 space-y-20">
 
-          {/* Section 1: Overview and Origins */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             <div className="lg:col-span-6 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF9F7] text-[#0E7A6E] text-xs font-semibold">
@@ -93,7 +90,6 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Section 2: Core Mission & Guiding Authority */}
           <section className="rounded-[24px] bg-[#0E1020] text-white p-8 sm:p-14 relative overflow-hidden">
             <div className="relative z-10 max-w-3xl space-y-8">
               <div className="space-y-4">
@@ -132,7 +128,6 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Section 3: Activities and Global Presence */}
           <section className="space-y-10">
             <div className="text-center max-w-2xl mx-auto space-y-3">
               <span className="text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
@@ -178,7 +173,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Collage Showcase */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
               <div className="relative aspect-[4/3] rounded-[18px] overflow-hidden shadow-md">
                 <Image
@@ -210,7 +204,6 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Section 4: Venue & Interactive Map */}
           <section className="rounded-[24px] border border-gray-200 bg-[#F8FAFC] p-8 sm:p-12 space-y-8">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0E7A6E]">
@@ -254,7 +247,6 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* CTA Banner */}
           <section className="text-center space-y-6 pt-4">
             <h2 className="text-2xl sm:text-3xl font-bold text-[#111320]">
               Join Us at IHGC 2026

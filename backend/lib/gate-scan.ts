@@ -150,7 +150,7 @@ async function alreadyRecorded(idempotencyKey: string): Promise<GateScanResponse
   } as GateScanResponse;
 }
 
-/** Records one gate scan. A group QR checks in every paid participant on the order. */
+/** A group QR checks in every paid participant on the order. */
 export async function recordGateScan(input: GateScanInput): Promise<GateScanResponse> {
   let token = String(input.qrToken || '').trim();
   const standId = String(input.standId || '').trim();
@@ -358,7 +358,6 @@ export async function recordGateScan(input: GateScanInput): Promise<GateScanResp
   };
 }
 
-/** Returns paid orders with their provider for the admin Payments page. */
 export async function listPaidPayments(limit = 100): Promise<any[]> {
   const orders: any[] = await Order.find({ status: 'paid' })
     .sort({ createdAt: -1 })

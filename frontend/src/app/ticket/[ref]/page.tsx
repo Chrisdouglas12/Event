@@ -67,7 +67,6 @@ export default async function TicketPage({
       <main className="flex-1 py-12 px-4 sm:px-6">
         <div className="max-w-[800px] mx-auto space-y-8">
           
-          {/* Top Banner Alert */}
           <div className="bg-[#EAF9F7] border border-[#CDEFEA] rounded-[18px] p-4 sm:p-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-[#8EE3D6] text-[#0E1020] flex items-center justify-center shrink-0">
@@ -79,16 +78,13 @@ export default async function TicketPage({
             </div>
           </div>
 
-          {/* Group pass — one scan checks in every paid participant, with PDF download. */}
           {group?.qrToken && <GroupTicketCard group={group} order={order} />}
 
-          {/* Render individual tickets only when there is no group capability. */}
           {!group?.qrToken && participants.map((ticket: any, index: number) => (
             <div
               key={ticket.id}
               className="bg-white rounded-[24px] shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-gray-200/80 overflow-hidden print:shadow-none print:border-black"
             >
-              {/* Ticket Top Dark Header */}
               <div className="bg-[#0E1020] text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8EE3D6]">
@@ -110,9 +106,7 @@ export default async function TicketPage({
                 </div>
               </div>
 
-              {/* Ticket Center: QR & Details */}
               <div className="p-6 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-                {/* QR Section */}
                 <div className="md:col-span-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-6 md:pb-0 md:pr-6">
                   <QrView
                     value={ticket.qrToken}
@@ -127,7 +121,6 @@ export default async function TicketPage({
                   </div>
                 </div>
 
-                {/* Participant & Event Metadata */}
                 <div className="md:col-span-6 space-y-5 text-sm">
                   <div>
                     <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
@@ -161,14 +154,12 @@ export default async function TicketPage({
                     </div>
                   </div>
 
-                  {/* Stand instructions */}
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] text-gray-600 leading-relaxed">
                     <strong>Check-in Procedure:</strong> Present this QR code at the Kwali Campground gate on arrival. Keep your screen brightness up so the scanner can read it quickly.
                   </div>
                 </div>
               </div>
 
-              {/* Ticket Footer Bar */}
               <div className="bg-[#F8FAFC] border-t border-gray-100 px-6 py-3 flex items-center justify-between text-xs text-gray-500">
                 <div>Order Ref: <span className="font-mono text-black font-semibold">{order.reference}</span></div>
                 <div className="text-[#0E7A6E] font-semibold">Status: Confirmed</div>
@@ -176,7 +167,6 @@ export default async function TicketPage({
             </div>
           ))}
 
-          {/* Programme booklet is available for every paid order. */}
           <div className="bg-white rounded-[20px] border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
             <div>
               <div className="text-sm font-bold text-[#111320]">Programme Booklet</div>
@@ -189,7 +179,6 @@ export default async function TicketPage({
             </div>
           </div>
 
-          {/* Group leader dashboard link */}
           {group && (
             <div className="bg-white rounded-[20px] border border-gray-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>

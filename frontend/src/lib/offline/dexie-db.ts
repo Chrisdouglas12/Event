@@ -1,4 +1,3 @@
-// frontend/src/lib/offline/dexie-db.ts
 export interface CachedParticipant {
   participantId: string;
   name: string;

@@ -1,4 +1,3 @@
-// routes/participants.ts
 import express from 'express';
 import type { Request, Response } from 'express';
 import crypto from 'crypto';
@@ -14,14 +13,13 @@ import {
   type PaymentProvider,
 } from '../constants/enums.ts';
 import { TicketType, Participant, Group, GroupSeat } from '../schema/participants.ts';
+import { EventSettings } from '../schema/settings.ts';
+import { defaultPriceMinor, toMinor } from '../constants/currency-rates.ts';
 import { toE164 } from '../lib/phone.ts';
 import { markViolation } from '../lib/security.ts';
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -175,17 +173,17 @@ function attendanceModeOrFallback(value: unknown): AttendanceMode {
     : 'not_sure';
 }
 
-/**
- * Route using the shared currency → provider map (USD → Paystack).
- */
-function providerFor(currency: string): PaymentProvider {
-  return providerForCurrency(currency);
-}
-
 function providerConfigured(provider: PaymentProvider): boolean {
   if (provider === 'paystack') return !!process.env.PAYSTACK_SECRET_KEY;
   if (provider === 'flutterwave') return !!process.env.FLW_SECRET_KEY;
   return false;
+}
+
+function paystackKeyMode(): 'live' | 'test' | 'unknown' {
+  const key = process.env.PAYSTACK_SECRET_KEY || '';
+  if (key.startsWith('sk_live_')) return 'live';
+  if (key.startsWith('sk_test_')) return 'test';
+  return 'unknown';
 }
 
 function frontendUrl(): string {
@@ -198,15 +196,77 @@ const MAX_TICKETS = (() => {
 })();
 
 function envTicketPrices(): { currency: string; amountMinor: number }[] {
-  const out: { currency: string; amountMinor: number }[] = [];
-  for (const currency of CURRENCIES as readonly string[]) {
+  return CURRENCIES.map((currency) => {
     const raw = process.env[`TICKET_PRICE_${currency}`];
-    if (!raw) continue;
-    const major = Number(raw);
-    if (!Number.isFinite(major) || major <= 0) continue;
-    out.push({ currency, amountMinor: Math.round(major * 100) });
+    const major = raw ? Number(raw) : NaN;
+    const configured = Number.isFinite(major) && major > 0 ? toMinor(currency, major) : 0;
+    return {
+      currency,
+      // Static $20-equivalent prices (NGN 5,000) are the out-of-the-box
+      // defaults; an env/admin price always wins.
+      amountMinor: configured || defaultPriceMinor(currency),
+    };
+  });
+}
+
+/** Configured price wins; static price fills currencies added later. */
+function ticketPriceMinor(ticketType: any, currency: string): number {
+  const entry = ticketType?.prices?.find((row: any) => row.currency === currency);
+  const configured = Number(entry?.amountMinor);
+  if (Number.isInteger(configured) && configured > 0) return configured;
+  return defaultPriceMinor(currency);
+}
+
+type EventWindow = {
+  /** Registration is open until the end of the last conference day. */
+  registrationEndsAt: number | null;
+  /** Before this instant the standard fee is the minimum; after it, any amount. */
+  customAmountCutoffAt: number | null;
+};
+
+/**
+ * Day 2 closes at 00:00 in the event's own timezone (the start of Day 3).
+ * The ISO offset on startsAt is honoured so "+01:00" events close at local
+ * midnight, while admin-saved UTC dates use their UTC calendar day.
+ */
+function dayTwoCloseMs(startsAt: unknown): number | null {
+  const raw = String(startsAt ?? '');
+  const startMs = Date.parse(raw);
+  if (!Number.isFinite(startMs)) return null;
+
+  const offsetMatch = raw.match(/(Z|[+-]\d{2}:\d{2})$/);
+  let offsetMinutes = 0;
+  if (offsetMatch && offsetMatch[1] !== 'Z') {
+    const sign = offsetMatch[1][0] === '-' ? -1 : 1;
+    offsetMinutes =
+      sign * (Number(offsetMatch[1].slice(1, 3)) * 60 + Number(offsetMatch[1].slice(4, 6)));
   }
-  return out;
+
+  const localStart = new Date(startMs + offsetMinutes * 60_000);
+  const cutoffAsUtc = Date.UTC(
+    localStart.getUTCFullYear(),
+    localStart.getUTCMonth(),
+    localStart.getUTCDate() + 2,
+    0,
+    0,
+    0
+  );
+  return cutoffAsUtc - offsetMinutes * 60_000;
+}
+
+async function eventWindow(): Promise<EventWindow> {
+  const settings: any = await EventSettings.findOne({ singleton: 'event' })
+    .select('startsAt endsAt')
+    .lean();
+  const endsAt = settings?.endsAt ? Date.parse(String(settings.endsAt)) : NaN;
+  return {
+    registrationEndsAt: Number.isFinite(endsAt) ? endsAt : null,
+    customAmountCutoffAt: dayTwoCloseMs(settings?.startsAt),
+  };
+}
+
+function registrationOpenFor(window: EventWindow): boolean {
+  return window.registrationEndsAt === null || Date.now() <= window.registrationEndsAt;
 }
 
 let ensuringTicketType: Promise<any | null> | null = null;
@@ -306,9 +366,6 @@ async function loadTickets(order: any) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYMENT PROVIDERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function initPaystack(data: CheckoutData) {
   const callbackToken = signCheckout({
@@ -332,8 +389,23 @@ async function initPaystack(data: CheckoutData) {
       metadata: { orderId: data.reference, isGroup: data.isGroup },
     }),
   });
-  const result: any = await response.json().catch(() => ({}));
-  if (!response.ok || !result.status || !result.data?.authorization_url) {
+  const rawResponse = await response.text();
+  let result: any = {};
+  try {
+    result = rawResponse ? JSON.parse(rawResponse) : {};
+  } catch {
+    result = { raw: rawResponse };
+  }
+
+  if (!response.ok || result.status !== true || !result.data?.authorization_url) {
+    console.error('[Paystack init] failed', {
+      reference: data.reference,
+      currency: data.currency,
+      amountMinor: data.totalMinor,
+      keyMode: paystackKeyMode(),
+      httpStatus: response.status,
+      response: result,
+    });
     throw new Error(`Paystack initialize failed: ${result.message || response.status}`);
   }
   return {
@@ -372,7 +444,6 @@ async function verifyPaystack(data: CheckoutData): Promise<'paid' | 'pending' | 
   return 'pending';
 }
 
-// ─── FLUTTERWAVE V3 (HOSTED CHECKOUT) ───────────────────────────────────────
 
 async function initFlutterwave(data: CheckoutData) {
   const callbackToken = signCheckout({
@@ -455,9 +526,6 @@ async function verifyFlutterwave(data: CheckoutData): Promise<'paid' | 'pending'
   return 'pending';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAID FULFILLMENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function fulfillPaidOrder(data: CheckoutData): Promise<any> {
   const session = await mongoose.startSession();
@@ -585,9 +653,6 @@ async function fulfillPaidOrder(data: CheckoutData): Promise<any> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ROUTES
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.get('/register', async (_req: Request, res: Response) => {
   try {
@@ -597,17 +662,20 @@ router.get('/register', async (_req: Request, res: Response) => {
     const providerByCurrency: Record<string, PaymentProvider> = {};
 
     for (const currency of CURRENCIES as readonly string[]) {
-      const price = ticketType?.prices?.find((entry: any) => entry.currency === currency);
-      const provider = providerFor(currency);
-      if (price) pricesMinor[currency] = price.amountMinor;
+      const price = ticketPriceMinor(ticketType, currency);
+      const provider = providerForCurrency(currency);
+      pricesMinor[currency] = price;
       providerByCurrency[currency] = provider;
-      currencyAvailable[currency] = !!price && providerConfigured(provider);
+      currencyAvailable[currency] = price > 0 && providerConfigured(provider);
     }
 
+    const window = await eventWindow();
+    const withinWindow = registrationOpenFor(window);
     const taken = ticketType ? await countTicketsTaken(ticketType._id) : 0;
     const remaining = Math.max(0, MAX_TICKETS - taken);
     const soldOut = !!ticketType && remaining === 0;
-    const registrationOpen = !!ticketType && !soldOut && process.env.REGISTRATION_OPEN !== 'false';
+    const registrationOpen =
+      !!ticketType && !soldOut && withinWindow && process.env.REGISTRATION_OPEN !== 'false';
 
     const payload: any = {
       pricesMinor,
@@ -615,16 +683,22 @@ router.get('/register', async (_req: Request, res: Response) => {
       providerByCurrency,
       registrationOpen,
       ticketsRemaining: ticketType ? remaining : null,
+      registrationEndsAt: window.registrationEndsAt
+        ? new Date(window.registrationEndsAt).toISOString()
+        : null,
+      customAmountCutoffAt: window.customAmountCutoffAt
+        ? new Date(window.customAmountCutoffAt).toISOString()
+        : null,
     };
 
     if (!registrationOpen) {
       payload.closedReason = !ticketType
-        ? envTicketPrices().length === 0
-          ? 'no_ticket_price_configured'
-          : 'no_active_ticket_type'
+        ? 'no_active_ticket_type'
         : soldOut
           ? 'sold_out'
-          : 'closed_by_REGISTRATION_OPEN_env';
+          : !withinWindow
+            ? 'past_registration_deadline'
+            : 'closed_by_REGISTRATION_OPEN_env';
     }
 
     res.set('Cache-Control', 'no-store');
@@ -668,7 +742,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Consent is required' });
     }
 
-    const provider = providerFor(currency);
+    const provider = providerForCurrency(currency);
     if (!providerConfigured(provider)) {
       return res.status(503).json({ error: `Checkout is unavailable for ${currency} right now.` });
     }
@@ -762,7 +836,7 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
           throw new Error(`Group attendance counts must add up to ${seats} participants.`);
         }
         if (male + female !== seats) {
-          throw new Error(`Brothers and Sisters counts must add up to ${seats} participants (children included).`);
+          throw new Error(`Male and female counts must add up to ${seats} participants (children included).`);
         }
         if (hasChildren && childCount < 1) {
           throw new Error('Children count must be at least 1 when children are attending.');
@@ -784,19 +858,35 @@ router.post('/checkout/initialize', async (req: Request, res: Response) => {
     }
 
     const ticketType = await getStandardTicketType();
-    if (!ticketType || process.env.REGISTRATION_OPEN === 'false') {
+    const window = await eventWindow();
+    if (
+      !ticketType ||
+      !registrationOpenFor(window) ||
+      process.env.REGISTRATION_OPEN === 'false'
+    ) {
       return res.status(403).json({ error: 'Online registration is closed.' });
     }
-    const price = ticketType.prices?.find((entry: any) => entry.currency === currency);
-    if (!price || !Number.isInteger(price.amountMinor)) {
+    const unitMinor = ticketPriceMinor(ticketType, currency);
+    if (!Number.isInteger(unitMinor) || unitMinor <= 0) {
       return res.status(400).json({ error: `No price is set for ${currency}` });
     }
-    let totalMinor = price.amountMinor * seats;
-    if (!isGroup && currency === 'NGN' && body.customAmountMinor !== undefined) {
+    const standardTotalMinor = unitMinor * seats;
+    let totalMinor = standardTotalMinor;
+
+    // Until Day 2 closes the standard fee is the floor. After that, any
+    // positive amount is accepted (higher or lower than standard). Giving
+    // above the standard fee is allowed throughout the registration window.
+    if (body.customAmountMinor !== undefined) {
       const customAmountMinor = Number(body.customAmountMinor);
-      const minimumContributionMinor = seats * 200_000;
-      if (!Number.isInteger(customAmountMinor) || customAmountMinor < minimumContributionMinor) {
-        return res.status(400).json({ error: 'Please enter a valid payment amount.' });
+      const standardApplies =
+        window.customAmountCutoffAt === null || Date.now() < window.customAmountCutoffAt;
+      const minimumMinor = standardApplies ? standardTotalMinor : 1;
+      if (!Number.isInteger(customAmountMinor) || customAmountMinor < minimumMinor) {
+        return res.status(400).json({
+          error: standardApplies
+            ? 'Please pay at least the standard registration fee.'
+            : 'Please enter a valid payment amount.',
+        });
       }
       totalMinor = customAmountMinor;
     }
@@ -1039,9 +1129,6 @@ router.post('/checkout/verify', async (req: Request, res: Response) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FLUTTERWAVE V3 WEBHOOK
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post('/webhooks/flutterwave', async (req: Request, res: Response) => {
   try {

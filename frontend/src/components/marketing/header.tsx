@@ -18,7 +18,7 @@ export function Header() {
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "About", href: "/about" },
-    { label: "IHC26", href: "/conference" },
+    { label: "IHGC 2026", href: "/conference" },
     { label: "Programme", href: "/programme" },
     { label: "Ministers", href: "/ministers" },
     { label: "Camp Info", href: "/camp-info" },
@@ -73,12 +73,15 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-[60px]">
-        <div className="max-w-[1440px] mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-15">
+        <div className="max-w-[1440px] mx-auto h-full px-3 sm:px-6 grid grid-cols-[auto_1fr_auto] items-center gap-4">
           
-          {/* Left: Logo + desktop navigation */}
-          <div className="flex items-center gap-6 xl:gap-10">
-            <Link href="/" className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center">
+            <Link
+              href="/"
+              aria-label="HOREMOW International Holiness General Conference 2026 Home"
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap"
+            >
               <Image
                 src={SITE_CONFIG.logo.src}
                 alt={SITE_CONFIG.logo.alt}
@@ -88,61 +91,34 @@ export function Header() {
                 style={{ width: "auto" }}
                 priority
               />
-              <span className="font-heading text-xl sm:text-2xl font-semibold leading-none tracking-normal text-[#0E1020]">
-                IHC<span className="text-[#0E7A6E]">26</span>
+              <span className="font-heading text-[15px] sm:text-base font-semibold leading-none tracking-tight text-[#0E1020]">
+                HOREMOW · IHGC 2026
               </span>
             </Link>
-
-            <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-3 xl:gap-5">
-              {navLinks.map((link) => {
-                const active = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`relative whitespace-nowrap text-[11px] xl:text-xs font-semibold transition-colors ${
-                      active ? "text-[#0E1020]" : "text-gray-600 hover:text-[#0E1020]"
-                    }`}
-                  >
-                    {link.label}
-                    {active && (
-                      <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-[#8EE3D6]" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
           </div>
 
-          {/* Right: Desktop socials, Phone, Register, Mobile Menu */}
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* Desktop: social bar lives in the header, right beside the phone icon.
-                Hidden on the registration page to keep the form distraction-free. */}
-            {!isRegisterPage && (
-              <div className="hidden lg:flex items-center gap-1.5">
-                {socials.map((social) => (
-                  <a
-                    key={`header-${social.label}`}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.label}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-                <button
-                  onClick={handleShare}
-                  aria-label="Share"
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#CDEFEA] hover:text-[#0E1020] text-gray-600 flex items-center justify-center transition-colors"
+          <nav aria-label="Main navigation" className="hidden lg:flex items-center justify-center gap-3 xl:gap-5">
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative whitespace-nowrap text-[11px] xl:text-xs font-semibold transition-colors ${
+                    active ? "text-[#0E1020]" : "text-gray-600 hover:text-[#0E1020]"
+                  }`}
                 >
-                  <Share2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-                </button>
-              </div>
-            )}
+                  {link.label}
+                  {active && (
+                    <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-[#8EE3D6]" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
+          <div className="-mr-1 flex shrink-0 items-center justify-self-end gap-2 sm:mr-0 sm:gap-3">
             <a
               href={SITE_CONFIG.contact.phoneTel}
               aria-label={`Call ${SITE_CONFIG.contact.phone}`}
@@ -159,7 +135,6 @@ export function Header() {
               Register Now
             </Link>
 
-            {/* Mobile menu trigger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle navigation menu"
@@ -170,9 +145,8 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div data-lenis-prevent className="md:hidden fixed inset-x-0 top-[60px] bottom-0 bg-white z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+          <div data-lenis-prevent className="md:hidden fixed inset-x-0 top-15 bottom-0 bg-white z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col space-y-4">
               {navLinks.map((link) => (
                 <Link
@@ -202,8 +176,7 @@ export function Header() {
         )}
       </header>
 
-      {/* Bottom Floating Social Bar (hidden on /register, while the menu drawer
-          is open, and on scroll down; reveals on scroll up) */}
+      {/* Social bar: hidden on /register, while the drawer is open, and over the hero. */}
       {!isRegisterPage && !mobileMenuOpen && (
       <div
         className={`lg:hidden fixed bottom-2 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ${

@@ -12,18 +12,15 @@ import { useLandingSettings } from "@/components/marketing/landing-settings";
 import { getLandingPerformance } from "@/lib/landing-performance";
 
 /**
- * Edge-to-edge "Why Attend" section, sized to sit in a single viewport on
- * desktop.
+ * "Why Attend" section on the joined landing canvas.
  *
- * Layers, back to front:
- *  1. Light surface with a slanted top edge and a soft dot/spot backdrop.
- *  2. Copy on the left; the conference flyer becomes a full-height background
- *     panel on the right instead of a floating, tilting card.
- *  3. A compact dark band with three "point" columns. A progress rail fills as
- *     you scroll, and each column lights up when it reaches the middle of the
- *     screen or when you hover / touch it.
+ * The header, intro and CTA share one left rail; the three point rows sit in a
+ * matching panel on the right. Both columns use the same container padding and
+ * start at the same top edge on desktop and mobile, with the ghost numerals
+ * hidden on small screens so the copy never gets squeezed.
  *
- * The old sideways ticker and all typing/tilt motion have been removed.
+ * A progress rail fills the point panel as you scroll, and each row lights up
+ * when it reaches the middle of the screen or when you hover / touch it.
  */
 
 const WA_CSS = `
@@ -37,24 +34,14 @@ const WA_CSS = `
 @media (min-width:640px){.wa-root{margin-top:-3.25rem}}
 @media (min-width:1024px){.wa-root{--wa-slant:56px;margin-top:0;padding-top:calc(var(--wa-slant) + 1.5rem)}}
 
-/* ---------- background ---------- */
-.wa-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
-.wa-dots{position:absolute;inset:0;background-image:radial-gradient(rgba(14,122,110,.6) 1.1px,transparent 1.7px);background-size:22px 22px;
-  -webkit-mask-image:radial-gradient(380px circle at var(--mx) var(--my),#000 0%,transparent 70%);
-  mask-image:radial-gradient(380px circle at var(--mx) var(--my),#000 0%,transparent 70%)}
-.wa-spot{position:absolute;inset:0;background:radial-gradient(520px circle at var(--mx) var(--my),rgba(142,227,214,.4),transparent 65%)}
-.wa-blob{position:absolute;border-radius:9999px;filter:blur(70px);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
-.wa-blob-a{width:420px;height:420px;right:-120px;top:-100px;background:rgba(142,227,214,.55);
-  transform:translate3d(calc(var(--px) * -40px),calc(var(--p) * -140px + var(--py) * -24px),0)}
-.wa-blob-b{width:360px;height:360px;left:-140px;bottom:10%;background:rgba(14,122,110,.22);
-  transform:translate3d(calc(var(--px) * 34px),calc(var(--p) * 120px + var(--py) * 20px),0)}
+/* The joined landing canvas is flat; ambient layers stay hidden inside it. */
+.wa-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;background:transparent}
+.wa-dots,.wa-spot,.wa-blob{display:none}
 
-/* ---------- reveal on scroll ---------- */
 .wa-js .wa-reveal{opacity:0;transform:translate3d(0,24px,0);
   transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .wa-js .wa-reveal.wa-in{opacity:1;transform:none}
 
-/* ---------- CTA ---------- */
 .wa-cta{position:relative;overflow:hidden;
   transform:translate3d(var(--tx,0px),var(--ty,0px),0);
   transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease}
@@ -62,27 +49,52 @@ const WA_CSS = `
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transition:transform .7s ease}
 .wa-cta:hover::after{transform:translateX(120%) skewX(-20deg)}
 
-/* ---------- dark points band ---------- */
 .wa-rail-fill{transform:scaleX(var(--rail,0));transition:transform .15s linear}
-.wa-point{position:relative;overflow:hidden}
+.wa-point{
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  column-gap:10px;
+  align-items:start;
+  padding:16px;
+}
 .wa-point::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s ease;
-  background:radial-gradient(340px circle at var(--cx,50%) var(--cy,30%),rgba(142,227,214,.2),transparent 62%)}
+  background:radial-gradient(340px circle at var(--cx,50%) var(--cy,30%),rgba(14,122,110,.08),transparent 62%)}
 .wa-point:hover::before,.wa-point[data-on="true"]::before{opacity:1}
-.wa-ghost{position:absolute;right:1.25rem;top:.25rem;pointer-events:none;user-select:none;
-  font-size:clamp(88px,10vw,148px);font-weight:900;line-height:1;color:transparent;
-  -webkit-text-stroke:1px rgba(255,255,255,.08);
-  transform:translateY(calc((var(--rail,0) - .5) * -28px));
-  transition:-webkit-text-stroke-color .35s ease}
-.wa-point:hover .wa-ghost,.wa-point[data-on="true"] .wa-ghost{-webkit-text-stroke-color:rgba(142,227,214,.4)}
-.wa-icon{display:flex;height:44px;width:44px;flex:none;align-items:center;justify-content:center;border-radius:9999px;
-  border:1px solid rgba(142,227,214,.3);background:rgba(142,227,214,.08);color:#8EE3D6;
+.wa-point > *{position:relative;z-index:1}
+.wa-ghost{
+  display:none;
+  justify-self:end;
+  align-self:center;
+  user-select:none;
+  font-size:clamp(40px,5vw,64px);
+  font-weight:900;
+  line-height:.9;
+  letter-spacing:-0.06em;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(14,122,110,.12);
+  transform:translateY(calc((var(--rail,0) - .5) * -12px));
+  transition:-webkit-text-stroke-color .35s ease;
+}
+.wa-point:hover .wa-ghost,.wa-point[data-on="true"] .wa-ghost{-webkit-text-stroke-color:rgba(14,122,110,.38)}
+.wa-icon{display:flex;height:36px;width:36px;flex:none;align-items:center;justify-content:center;border-radius:9999px;
+  border:1px solid rgba(14,122,110,.18);background:rgba(14,122,110,.06);color:#0E7A6E;
   transition:transform .4s cubic-bezier(.2,.8,.2,1),background .3s ease}
-.wa-point:hover .wa-icon{transform:rotate(-8deg) scale(1.1);background:rgba(142,227,214,.18)}
+.wa-point:hover .wa-icon{transform:rotate(-8deg) scale(1.1);background:rgba(14,122,110,.12)}
 .wa-point[data-on="true"] .wa-icon{animation:wa-pulse 2.4s ease-out infinite}
-@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(142,227,214,.45)}70%,100%{box-shadow:0 0 0 14px rgba(142,227,214,0)}}
-.wa-underline{display:block;height:2px;width:28px;margin-top:18px;border-radius:2px;background:#8EE3D6;
+@keyframes wa-pulse{0%{box-shadow:0 0 0 0 rgba(14,122,110,.28)}70%,100%{box-shadow:0 0 0 14px rgba(14,122,110,0)}}
+.wa-underline{display:block;height:2px;width:28px;margin-top:14px;border-radius:2px;background:#0E7A6E;
   transition:width .5s cubic-bezier(.2,.8,.2,1)}
-.wa-point:hover .wa-underline,.wa-point[data-on="true"] .wa-underline{width:84px}
+.wa-point:hover .wa-underline,.wa-point[data-on="true"] .wa-underline{width:72px}
+@media (min-width:640px){
+  .wa-point{grid-template-columns:44px minmax(0,1fr) 64px;column-gap:18px;padding:24px 26px}
+  .wa-icon{height:44px;width:44px}
+  .wa-ghost{display:block}
+}
+@media (min-width:1024px){
+  .wa-point{align-items:center;padding-block:28px}
+}
 
 @media (prefers-reduced-motion:reduce){
   .wa-point .wa-icon{animation:none!important}
@@ -97,7 +109,6 @@ export function WhyAttend() {
     useLandingSettings();
   const sectionRef = useRef<HTMLElement>(null);
 
-  // ---------- Scroll + pointer + reveal wiring ----------
   useEffect(() => {
     const root = sectionRef.current;
     if (!root) return;
@@ -230,7 +241,6 @@ export function WhyAttend() {
     };
   }, []);
 
-  // ---------- Small pointer helpers ----------
   // Magnetic CTA: the button leans toward the pointer
   const onCtaMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "touch") return;
@@ -296,14 +306,6 @@ export function WhyAttend() {
     >
       <style dangerouslySetInnerHTML={{ __html: WA_CSS }} />
 
-      {/* Open desktop space where the themed plane comes to rest. */}
-      <div
-        data-theme-plane-landing
-        aria-hidden
-        className="pointer-events-none absolute right-[5%] top-[104px] hidden h-[160px] w-[300px] xl:right-[9%] xl:top-[120px] lg:block"
-      />
-
-      {/* ---------- Layer 1: living background ---------- */}
       <div aria-hidden className="wa-bg">
         <div className="wa-blob wa-blob-a" />
         <div className="wa-blob wa-blob-b" />
@@ -311,92 +313,79 @@ export function WhyAttend() {
         <div className="wa-spot" />
       </div>
 
-      {/* ---------- Layer 2: copy + flyer background ---------- */}
-      <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-10 px-5 pb-8 sm:px-8 lg:min-h-[380px] lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pb-6 xl:gap-16">
-        {/* Copy */}
-        <div className="flex flex-col items-start lg:col-span-12">
-          <div className="flex items-center gap-3">
-            <span aria-hidden className="h-px w-8" style={{ background: "var(--wa-accent)" }} />
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--wa-accent)]">
-              Why Attend
-            </span>
-          </div>
-
-          <h2 className="mt-4 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[var(--wa-text)] sm:text-4xl lg:text-[44px] xl:text-5xl">
-            Why Attend This Conference?
-          </h2>
-
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--wa-muted)] lg:text-[17px]">
-            {whyAttendIntro}
-          </p>
-
-          <div className="mt-7">
-            <div
-              data-wa-reveal
-              className="wa-reveal -m-4 inline-block p-4"
-              style={{ "--d": "250ms" } as InlineStyle}
-              onPointerMove={onCtaMove}
-              onPointerLeave={onCtaLeave}
-            >
-              <Link
-                href="/register"
-                className="wa-cta group inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-br from-[#0E7A6E] to-[#0A5F56] px-8 py-3.5 text-sm font-semibold tracking-wide text-white shadow-[0_12px_34px_rgba(14,122,110,0.35)] hover:shadow-[0_16px_44px_rgba(14,122,110,0.45)] active:scale-95"
-              >
-                Register For Conference
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M5 12h14" />
-                  <path d="M13 6l6 6-6 6" />
-                </svg>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ---------- Layer 3: full-width dark points band ---------- */}
-      <div data-wa-band className="relative bg-[#0E1020] text-white">
-        {/* Progress rail: fills as you scroll through the band */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 hidden h-px bg-white/10 md:block">
-          <div className="wa-rail-fill h-full origin-left bg-gradient-to-r from-[#8EE3D6] to-[#4FD1C0]" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3">
-          {points.map(({ title, description, Icon }, idx) => (
-            <div
-              key={title}
-              data-wa-point
-              data-on="false"
-              data-wa-reveal
-              onPointerMove={onPointMove}
-              className="wa-point wa-reveal border-t border-white/10 px-5 py-8 first:border-t-0 sm:px-8 md:border-l md:border-t-0 md:py-5 md:first:border-l-0 lg:px-8"
-              style={{ "--d": `${idx * 140}ms` } as InlineStyle}
-            >
-              <span aria-hidden className="wa-ghost">
-                {String(idx + 1).padStart(2, "0")}
+      <div className="relative mx-auto w-full max-w-[1320px] px-5 pb-8 pt-8 sm:px-8 sm:pt-10 lg:px-12 lg:pb-6 lg:pt-10">
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-12 xl:gap-16">
+          <div className="flex flex-col items-start lg:col-span-5">
+            <div className="flex items-center gap-2.5">
+              <span aria-hidden className="h-px w-7 bg-[#8EE3D6]" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#0E7A6E]">
+                Why Attend
               </span>
+            </div>
 
-              <div className="relative flex items-start gap-5">
-                <span className="wa-icon">
-                  <Icon className="h-5 w-5" strokeWidth={1.7} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-lg font-semibold text-white lg:text-xl">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#B9C4D4]">{description}</p>
-                  <span aria-hidden className="wa-underline" />
-                </div>
+            <h2 className="mt-3 max-w-xl font-display text-[28px] font-semibold leading-[1.12] tracking-[-0.02em] text-[var(--wa-text)] sm:text-4xl lg:text-[42px] xl:text-[46px]">
+              Why Attend This Conference?
+            </h2>
+            <span aria-hidden className="mt-4 h-px w-14 bg-[#0E7A6E]/40" />
+
+            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--wa-muted)] sm:text-base lg:text-[17px]">
+              {whyAttendIntro}
+            </p>
+
+            <div className="mt-7">
+              <div
+                data-wa-reveal
+                className="wa-reveal -m-1 inline-block p-1"
+                style={{ "--d": "250ms" } as InlineStyle}
+                onPointerMove={onCtaMove}
+                onPointerLeave={onCtaLeave}
+              >
+                <Link
+                  href="/register"
+                  className="wa-cta inline-flex items-center justify-center rounded-full bg-gradient-to-br from-[#0E7A6E] to-[#0A5F56] px-6 py-3 text-[13px] font-semibold tracking-wide text-white shadow-[0_12px_34px_rgba(14,122,110,0.35)] transition-shadow hover:shadow-[0_16px_44px_rgba(14,122,110,0.45)] active:scale-95 sm:px-8 sm:py-3.5 sm:text-sm"
+                >
+                  Register For Conference
+                </Link>
               </div>
             </div>
-          ))}
+          </div>
+
+          <div
+            data-wa-band
+            className="relative w-full overflow-hidden text-[#0E1020] lg:col-span-7"
+          >
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 hidden h-px bg-[#0E7A6E]/15 lg:block">
+              <div className="wa-rail-fill h-full origin-left bg-gradient-to-r from-[#0E7A6E] to-[#0A5F56]" />
+            </div>
+
+            <div className="divide-y divide-[#0E1020]/10">
+              {points.map(({ title, description, Icon }, idx) => (
+                <div
+                  key={title}
+                  data-wa-point
+                  data-on="false"
+                  data-wa-reveal
+                  onPointerMove={onPointMove}
+                  className="wa-point wa-reveal"
+                  style={{ "--d": `${idx * 140}ms` } as InlineStyle}
+                >
+                  <span className="wa-icon">
+                    <Icon className="h-5 w-5" strokeWidth={1.7} />
+                  </span>
+
+                  <div className="min-w-0">
+                    <h3 className="text-base font-semibold text-[#0E1020] sm:text-lg lg:text-xl">{title}</h3>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-[#4B5563] sm:text-sm">{description}</p>
+                    <span aria-hidden className="wa-underline" />
+                  </div>
+
+                  <span aria-hidden className="wa-ghost">
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

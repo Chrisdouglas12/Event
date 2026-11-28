@@ -9,9 +9,6 @@ import {
   PAYMENT_STATUSES,
 } from '../constants/enums.ts';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ORDER
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface OrderDoc extends mongoose.Document {
   reference: string;
@@ -141,7 +138,6 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
       required: true,
       default: 'not_sure',
     },
-    // Individual KPI data.
     gender: {
       type: String,
       enum: GENDERS,
@@ -155,7 +151,7 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
       type: Boolean,
       default: false,
     },
-    // Group KPI data. Counts cover every paid participant, including children.
+    // Group counts include every paid participant, including children.
     genderCounts: {
       male: { type: Number, min: 0, default: 0 },
       female: { type: Number, min: 0, default: 0 },
@@ -202,9 +198,6 @@ const orderSchema = new mongoose.Schema<OrderDoc>(
   { collection: 'orders', timestamps: true },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYMENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface PaymentDoc extends mongoose.Document {
   orderId: mongoose.Types.ObjectId;
@@ -292,9 +285,6 @@ const paymentSchema = new mongoose.Schema<PaymentDoc>(
   { collection: 'payments', timestamps: true },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INDEXES
-// ─────────────────────────────────────────────────────────────────────────────
 
 orderSchema.index({ status: 1, paidAt: -1 });
 orderSchema.index({ status: 1, expiresAt: 1 });
@@ -309,9 +299,6 @@ paymentSchema.index({ provider: 1, providerRef: 1 }, { unique: true, sparse: tru
 paymentSchema.index({ provider: 1, webhookEventId: 1 }, { unique: true, sparse: true });
 paymentSchema.index({ provider: 1, status: 1 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EXPORTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const Order =
   (mongoose.models.Order as mongoose.Model<OrderDoc>) ||

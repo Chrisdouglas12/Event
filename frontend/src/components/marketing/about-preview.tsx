@@ -101,7 +101,6 @@ export function AboutPreview() {
     };
   }, []);
 
-  // ---------- Magnetic CTA ----------
   const onCtaMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "touch") return;
     const btn = e.currentTarget.firstElementChild as HTMLElement | null;
@@ -129,46 +128,28 @@ export function AboutPreview() {
 
       <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <div className="relative overflow-hidden">
-          {/* Ambient glow — same treatment as the flyer section */}
           <div
             aria-hidden
             className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#8EE3D6] opacity-[0.10] blur-3xl"
           />
 
           <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
-            {/* Left: framed photo stage */}
             <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-8">
-              <div className="relative w-full max-w-[380px]">
-                {/* Mint accent frame, top-right */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 rounded-[4px] border"
-                  style={{
-                    borderColor: "rgba(142,227,214,0.35)",
-                    transform: "translate(14px, -14px)",
-                  }}
-                />
-                {/* Graphite frame, bottom-left */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 rounded-[4px] border-2 border-[#3A404B]"
-                  style={{ transform: "translate(-14px, 14px)" }}
-                />
-
-                <div className="image-frame relative z-10 aspect-[4/5] w-full max-w-[320px] overflow-hidden bg-[#0E1020] lg:max-w-[260px]">
+              <div className="relative w-full">
+                <div className="image-frame relative z-10 aspect-[4/3] w-full overflow-hidden bg-[#0E1020]">
                   <Parallax speed={0.14} className="absolute inset-0">
                     <Image
                       src="/images/about_us_1.jpg"
                       alt="Horemow ministry and fellowship"
                       fill
                       className="object-cover"
-                      sizes="(max-width: 1024px) 80vw, 380px"
+                      sizes="(max-width: 1024px) 92vw, 560px"
                     />
                   </Parallax>
                   <div className="photo-veil pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/70 via-transparent to-transparent" />
 
                   <div className="ap-chip">
-                    <div className="flex max-w-[230px] items-center gap-2.5 rounded-xl border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
+                    <div className="flex max-w-[230px] items-center gap-2.5 border border-white/70 bg-white/90 px-3 py-2 shadow-[0_10px_30px_rgba(14,16,32,0.22)] backdrop-blur-md">
                       <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#8EE3D6]/40 text-[#0E7A6E]">
                         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
@@ -189,7 +170,6 @@ export function AboutPreview() {
               </div>
             </div>
 
-            {/* Right: copy */}
             <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-7 lg:p-10 xl:p-12">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
@@ -204,7 +184,7 @@ export function AboutPreview() {
               <RevealText
                 as="h2"
                 text="Holiness Revival Movement Worldwide"
-                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
+                className="mt-5 max-w-xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
                 speed={14}
               />
 

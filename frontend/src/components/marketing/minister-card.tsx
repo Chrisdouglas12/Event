@@ -29,7 +29,7 @@ export interface MinisterProps {
  *  - Slanted card surface (clip-path) on the light mint background.
  *  - Living background inside the card: mint blobs, dot grid + spotlight
  *    that track the pointer; on touch they drift with the scroll.
- *  - Portrait uses the same offset double frame as About The Movement.
+ *  - Portrait is a clean, rounded crop that keeps the minister in close view.
  *  - Inside `.ms-group`, the two cards become one joined surface on desktop:
  *    one row, one slant, one shadow, with a hairline divider between them.
  *  - Reveal-on-scroll via IntersectionObserver (same pattern), type-in
@@ -60,7 +60,6 @@ const MC_CSS = `
   .ms-group .mc-content{flex:1}
 }
 
-/* ---------- living background inside the card ---------- */
 .mc-bg{position:absolute;inset:0;z-index:0;overflow:hidden;
   background:linear-gradient(180deg,#F7FBFA 0%,#EDF5F3 60%,#E4EFEC 100%)}
 .mc-dots{position:absolute;inset:0;
@@ -87,7 +86,6 @@ const MC_CSS = `
   animation:mc-orbit-spin 60s linear infinite reverse}
 @keyframes mc-orbit-spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
 
-/* ---------- reveal ---------- */
 .mc-js .mc-reveal{opacity:0;transform:translate3d(0,26px,0) scale(.98);
   transition:opacity .8s ease,transform .9s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0ms)}
 .mc-js .mc-reveal.mc-in{opacity:1;transform:none}
@@ -95,20 +93,19 @@ const MC_CSS = `
   background:linear-gradient(90deg,#0E7A6E,#8EE3D6);transition:width .9s cubic-bezier(.2,.8,.2,1) .5s}
 .mc-in .mc-underline,.mc-card:not(.mc-js) .mc-underline{width:64px}
 
-/* ---------- portrait (same framed stage as About The Movement) ---------- */
 .mc-photo{position:relative;display:flex;align-items:center;justify-content:center;
   overflow:hidden;padding:28px 22px 36px;background:rgba(248,250,252,.7)}
-.mc-frame{position:relative;width:max-content;max-width:100%;margin-inline:auto}
-@media (min-width:1024px){.mc-frame{max-width:100%}}
-.mc-par{position:relative;
+.mc-frame{position:relative;width:100%;max-width:100%;margin-inline:auto}
+.mc-card .image-frame{position:relative;width:100%;aspect-ratio:4/3;border:0;
+  border-radius:16px;box-shadow:0 18px 42px rgba(3,12,24,.24)}
+.mc-par{position:absolute;inset:0;
   transform:translate3d(calc(var(--px) * -8px),calc(var(--py) * -6px),0)
     scale(calc(1 + var(--p) * .035));
   transition:transform .8s cubic-bezier(.2,.8,.2,1)}
 html.perf-full .mc-card:hover .mc-par{
   transform:translate3d(calc(var(--px) * -10px),calc(var(--py) * -8px),0) scale(1.055)}
-.mc-photo-img{display:block;width:auto;height:auto;max-width:100%}
+.mc-photo-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 18%}
 
-/* ---------- socials (magnetic pill from the CTAs) ---------- */
 .mc-social{position:relative;overflow:hidden;
   transform:translate3d(var(--tx,0px),var(--ty,0px),0);
   transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease,background-color .2s ease}
@@ -176,7 +173,6 @@ function SocialLink({
 export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // ---------- Scroll, pointer, reveal (same system as AboutPreview/DetailsCard) ----------
   useEffect(() => {
     const root = cardRef.current;
     if (!root) return;
@@ -186,7 +182,7 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
 
     root.classList.add("mc-js");
 
-    if (!perf.ambientMotion) {
+    if (!perf.ambientMotion || typeof IntersectionObserver === "undefined") {
       reveals.forEach((el) => el.classList.add("mc-in"));
       return () => root.classList.remove("mc-js");
     }
@@ -282,7 +278,6 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
     };
   }, []);
 
-  // ---------- Magnetic socials ----------
   const onSocMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (e.pointerType === "touch") return;
     const r = e.currentTarget.getBoundingClientRect();
@@ -300,7 +295,6 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
     <div ref={cardRef} className="mc-card landing-card depth-stage">
       <style dangerouslySetInnerHTML={{ __html: MC_CSS }} />
 
-      {/* Living background inside the card (same system as the sections) */}
       <div aria-hidden className="mc-bg">
         <span className="mc-orbit mc-orbit-a" />
         <span className="mc-orbit mc-orbit-b" />
@@ -311,25 +305,8 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
       </div>
 
       <div className="relative z-10 grid grid-cols-1">
-        {/* Portrait uses the same framed stage as About The Movement */}
         <div className="mc-photo">
           <div className="mc-frame">
-            {/* Mint accent frame, top-right */}
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-[4px] border"
-              style={{
-                borderColor: "rgba(142,227,214,0.35)",
-                transform: "translate(14px, -14px)",
-              }}
-            />
-            {/* Graphite frame, bottom-left */}
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-[4px] border-2 border-[#3A404B]"
-              style={{ transform: "translate(-14px, 14px)" }}
-            />
-
             <div
               className={`image-frame relative z-10 mx-auto max-w-full overflow-hidden bg-[#0E1020] ${image ? "" : "min-h-[360px]"}`}
             >
@@ -340,7 +317,6 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
                 ) : null}
               </div>
 
-              {/* Graphite placeholder if no image */}
               {!image && (
                 <div
                   className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
@@ -376,7 +352,6 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
           </div>
         </div>
 
-        {/* Content */}
         <div className="mc-content flex flex-col px-5 py-6 sm:px-7 lg:px-8 lg:py-6">
           <div className="space-y-4">
             <div
@@ -407,7 +382,6 @@ export function MinisterCard({ name, bio, image, socials }: MinisterProps) {
             </div>
           </div>
 
-          {/* Socials — magnetic pill + shine, matching the CTAs */}
           <div
             data-mc-reveal
             className="mc-reveal mt-7 flex items-center justify-between gap-4 border-t border-[#D5E3E0] pt-5 md:mt-auto md:pt-6"

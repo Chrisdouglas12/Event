@@ -34,6 +34,7 @@ export const DESIGN_TOKENS = {
   typography: {
     fontHeading: "var(--font-montserrat)",
     fontBody: "var(--font-inter)",
+    fontDisplay: "var(--font-fraunces)",
     lineHeightHeading: "1.1",
     trackingTight: "-0.02em",
     trackingLabel: "0.1em",

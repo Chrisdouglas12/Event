@@ -228,7 +228,6 @@ export default function ProgrammePage() {
     <div className="min-h-screen flex flex-col bg-[#F9FBFA]">
       <Header />
 
-      {/* Hero Header */}
       <section className="relative overflow-hidden bg-[#0A101D] text-white py-16 sm:py-24">
         <div
           aria-hidden
@@ -278,14 +277,11 @@ export default function ProgrammePage() {
         </div>
       </section>
 
-      {/* Main Content Area */}
       <main className="py-12 sm:py-20 flex-1">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
           
-          {/* Section 1: Official Timetable Poster Showcase */}
           <section className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-10 shadow-xl shadow-slate-200/50">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-              {/* Left preview stage */}
               <div className="lg:col-span-5 flex flex-col items-center">
                 <div
                   onClick={() => setLightboxOpen(true)}
@@ -310,7 +306,6 @@ export default function ProgrammePage() {
                 </p>
               </div>
 
-              {/* Right description & download actions */}
               <div className="lg:col-span-7 space-y-6">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-[#0E7A6E]">
@@ -363,7 +358,6 @@ export default function ProgrammePage() {
             </div>
           </section>
 
-          {/* Section 2: Interactive Day-by-Day Session Breakdown */}
           <section className="space-y-8">
             <div className="text-center space-y-3">
               <span className="text-xs font-bold uppercase tracking-widest text-[#0E7A6E]">
@@ -377,7 +371,6 @@ export default function ProgrammePage() {
               </p>
             </div>
 
-            {/* Day Selector Tabs */}
             <div className="flex items-center justify-start sm:justify-center overflow-x-auto gap-2.5 pb-2 scrollbar-none">
               {OFFICIAL_SCHEDULE.map((day) => {
                 const isActive = activeDate === day.date;
@@ -400,7 +393,6 @@ export default function ProgrammePage() {
               })}
             </div>
 
-            {/* Active Day Card Content */}
             <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-10 shadow-lg shadow-slate-200/40 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
                 <div>
@@ -417,7 +409,6 @@ export default function ProgrammePage() {
                 </div>
               </div>
 
-              {/* Sessions List */}
               <div className="grid grid-cols-1 gap-4">
                 {selectedDay.sessions.map((session, index) => (
                   <article
@@ -448,7 +439,6 @@ export default function ProgrammePage() {
             </div>
           </section>
 
-          {/* Section 3: Call to Register banner */}
           <section className="bg-gradient-to-r from-[#0A101D] to-[#0E1B2D] text-white rounded-3xl p-8 sm:p-12 text-center space-y-5">
             <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Ready to Attend the International Holiness General Conference?
@@ -469,7 +459,6 @@ export default function ProgrammePage() {
         </div>
       </main>
 
-      {/* Lightbox Modal for Fullscreen Poster View */}
       {lightboxOpen && (
         <div
           role="dialog"
@@ -477,7 +466,6 @@ export default function ProgrammePage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
         >
           <div className="relative max-w-5xl w-full h-[90vh] flex flex-col bg-[#0A101D] rounded-2xl overflow-hidden border border-white/10">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
               <div className="text-white font-bold text-sm sm:text-base flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#8EE3D6]" />
@@ -503,7 +491,6 @@ export default function ProgrammePage() {
               </div>
             </div>
 
-            {/* Modal Image viewport */}
             <div className="relative flex-1 overflow-auto p-4 flex items-center justify-center">
               <div className="relative w-full h-full min-h-[400px]">
                 <Image

@@ -1,4 +1,3 @@
-// routes/scans.ts
 import express from 'express';
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
@@ -18,9 +17,6 @@ interface AuthRequest extends Request {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/scans — record an arrival scan
-// ─────────────────────────────────────────────────────────────────────────────
 router.post(
   '/scans',
   authenticateStaff,
@@ -73,9 +69,6 @@ router.post(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/scans/participant/:id
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/scans/participant/:id',
   authenticateStaff,
@@ -97,9 +90,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/scans/stand/:standId/today
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/scans/stand/:standId/today',
   authenticateStaff,
@@ -123,9 +113,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/scans/conflicts
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/scans/conflicts',
   authenticateStaff,
@@ -157,9 +144,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/scans/stats
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/scans/stats',
   authenticateStaff,
@@ -191,9 +175,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/devices/heartbeat
-// ─────────────────────────────────────────────────────────────────────────────
 router.post(
   '/devices/heartbeat',
   authenticateStaff,

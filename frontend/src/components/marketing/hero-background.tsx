@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import {
+  getLandingPerformance,
+  whenLandingIntroDone,
+} from "@/lib/landing-performance";
+import {
   createFallbackModel,
   createModelInstance,
   loadTravelModel,
@@ -23,24 +27,35 @@ export function HeroBackground({
     const host = hostRef.current;
     if (!host) return;
 
+    const perf = getLandingPerformance();
+    if (!perf.heroWebgl) return;
+
     let disposed = false;
     let cleanup = () => {};
 
+    // Load and build the globe while the splash is still on screen. Only the
+    // first frame waits for the intro, so the poster hands off to a ready
+    // scene instead of making the user watch another loading delay.
+    const introReady = whenLandingIntroDone();
+    const modulesReady = Promise.all([
+      import("three"),
+      import("./flag-textures"),
+    ]);
+
     (async () => {
-      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await Promise.all([
-        import("three"),
-        import("./flag-textures"),
-      ]);
+      const [THREE, { FLAGS, makeFlagGeometry, makeFlagTexture, makeFallbackEarth }] = await modulesReady;
       if (disposed) return;
 
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+      // The globe and its flag belts are the signature visual, so they render
+      // at full quality on every WebGL tier.
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
       host.appendChild(renderer.domElement);
 
@@ -56,13 +71,11 @@ export function HeroBackground({
       const worldScroll = new THREE.Group();
       world.add(worldScroll);
 
-      // ---------- Lights ----------
       scene.add(new THREE.AmbientLight(0xffffff, 1.0));
       const sun = new THREE.DirectionalLight(0xffffff, 2.0);
       sun.position.set(4, 3, 6);
       scene.add(sun);
 
-      // ---------- Earth ----------
       const earthTilt = new THREE.Group();
       worldScroll.add(earthTilt);
 
@@ -71,7 +84,11 @@ export function HeroBackground({
         roughness: 0.85,
         metalness: 0,
       });
-      const earth = new THREE.Mesh(new THREE.SphereGeometry(2, 96, 96), earthMat);
+      const earthSegments = 96;
+      const earth = new THREE.Mesh(
+        new THREE.SphereGeometry(2, earthSegments, earthSegments),
+        earthMat
+      );
       earthTilt.add(earth);
 
       const sources = [
@@ -80,12 +97,16 @@ export function HeroBackground({
       ];
       const loader = new THREE.TextureLoader();
       loader.setCrossOrigin("anonymous");
+      const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
       const tryLoad = (i: number) => {
         if (disposed || i >= sources.length) return;
         loader.load(sources[i], (tex) => {
-          if (disposed) return;
+          if (disposed) {
+            tex.dispose();
+            return;
+          }
           tex.colorSpace = THREE.SRGBColorSpace;
-          tex.anisotropy = 8;
+          tex.anisotropy = maxAnisotropy;
           earthMat.map = tex;
           earthMat.needsUpdate = true;
         }, undefined, () => tryLoad(i + 1));
@@ -98,15 +119,18 @@ export function HeroBackground({
         vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
         fragmentShader: `uniform float uGlow; varying vec3 vN; void main(){ float i = pow(0.74 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.5); gl_FragColor = vec4(0.45, 0.8, 1.0, 1.0) * i * uGlow; }`,
       });
-      const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 48, 48), atmosphereMat);
+      const atmosphereSegments = 48;
+      const atmosphere = new THREE.Mesh(
+        new THREE.SphereGeometry(2.22, atmosphereSegments, atmosphereSegments),
+        atmosphereMat
+      );
       worldScroll.add(atmosphere);
 
       const heroAircraftGroup = new THREE.Group();
       worldScroll.add(heroAircraftGroup);
       const heroAircraft: any[] = [];
 
-      // ---------- Constellations & Stars ----------
-      const starCount = 800;
+      const starCount = Math.round(800 * perf.density);
       const starPos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount; i++) {
         const r = 18 + Math.random() * 22;
@@ -121,7 +145,6 @@ export function HeroBackground({
       const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.65, depthWrite: false }));
       scene.add(stars);
 
-      // ---------- The two flag orbits ----------
       const rings = [
         { r: 2.32, rot: [0, 0.55, Math.PI / 2 + 0.12], speed: 0.08, count: 17 },
         { r: 2.52, rot: [0, 0, 0.3], speed: 0.08, count: 20 },
@@ -130,6 +153,9 @@ export function HeroBackground({
       const spinners: { g: any; speed: number }[] = [];
       const textures: any[] = [];
       const flagMaterials: any[] = [];
+      // Both rings reuse the same flag designs. Share the sharper textures so
+      // we can raise resolution without doubling GPU memory.
+      const flagTextureCache = new Map<string, any>();
 
       rings.forEach((ring, ri) => {
         const tiltGroup = new THREE.Group();
@@ -148,16 +174,27 @@ export function HeroBackground({
 
         const w = ((2 * Math.PI * ring.r) / ring.count) * 1.01;
         const h = w * 0.62;
+        // All flags on a ring share geometry and edge material; only the face
+        // texture/material differs. This keeps the flag belts sharp but avoids
+        // dozens of duplicate GPU resources.
+        const flagGeo = makeFlagGeometry(THREE, w, h);
+        const flagEdge = new THREE.MeshStandardMaterial({
+          color: 0x102f4d,
+          roughness: 0.38,
+          metalness: 0.12,
+        });
 
         for (let i = 0; i < ring.count; i++) {
           const def = FLAGS[(i + ri * 11) % FLAGS.length];
-          const tex = makeFlagTexture(THREE, def);
-          textures.push(tex);
-          const geo = makeFlagGeometry(THREE, w, h);
-          const flagFace = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.48, metalness: 0.04, emissive: new THREE.Color(0x0d1f38), emissiveIntensity: 0.12 });
+          let tex = flagTextureCache.get(def.code);
+          if (!tex) {
+            tex = makeFlagTexture(THREE, def, 1.5);
+            flagTextureCache.set(def.code, tex);
+            textures.push(tex);
+          }
+          const flagFace = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.48, metalness: 0.04, emissive: new THREE.Color(0x0d1f38), emissiveIntensity: 0.28 });
           flagMaterials.push(flagFace);
-          const flagEdge = new THREE.MeshStandardMaterial({ color: 0x102f4d, roughness: 0.38, metalness: 0.12 });
-          const mesh = new THREE.Mesh(geo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
+          const mesh = new THREE.Mesh(flagGeo, [flagEdge, flagEdge, flagEdge, flagEdge, flagFace, flagFace]);
           const a = (i / ring.count) * Math.PI * 2;
           const anchor = new THREE.Group();
           anchor.position.set(Math.cos(a) * ring.r, 0, Math.sin(a) * ring.r);
@@ -167,7 +204,6 @@ export function HeroBackground({
         }
       });
 
-      // ---------- Layout ----------
       const layout = () => {
         const w = host.clientWidth || 1;
         const h = host.clientHeight || 1;
@@ -175,12 +211,12 @@ export function HeroBackground({
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
 
-        // Keep flags at their natural spacing. Scaling the plates up on
-        // desktop made neighbours overlap and look broken, so desktop only
-        // gets a stronger emissive lift for readability. The orbits sit just
-        // outside the atmosphere now, so no plate is swallowed by the globe.
+        // Keep flags at their natural spacing. A consistent emissive lift on
+        // every screen size keeps the plates readable without scaling them up
+        // into each other. The orbits sit outside the atmosphere now, so no
+        // plate is swallowed by the globe.
         const desktop = w >= 1024;
-        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.32 : 0.12; });
+        flagMaterials.forEach((material) => { material.emissiveIntensity = desktop ? 0.36 : 0.3; });
 
         const vh = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const vw = vh * camera.aspect;
@@ -236,7 +272,6 @@ export function HeroBackground({
       const ro = new ResizeObserver(layout);
       ro.observe(host);
 
-      // ---------- Aircraft ----------
       (async () => {
         let source;
         try { source = await loadTravelModel(THREE, "aircraft"); } catch { source = createFallbackModel(THREE, "aircraft"); }
@@ -256,18 +291,27 @@ export function HeroBackground({
       const onPointer = (e: PointerEvent) => { pointer.x = (e.clientX / window.innerWidth - 0.5) * 2; pointer.y = (e.clientY / window.innerHeight - 0.5) * 2; };
       window.addEventListener("pointermove", onPointer, { passive: true });
 
-      // ---------- Loop ----------
       const timer = new THREE.Timer();
       timer.connect(document);
       let raf = 0;
       let inView = true;
       let tabVisible = !document.hidden;
+      let introDone = false;
       let posterHidden = false;
       const motion = reduceMotion ? 0.2 : 1;
+      const minFrameMs = perf.fps > 0 ? 1000 / perf.fps : 0;
+      let lastFrame = 0;
 
-      const frame = (timestamp?: number) => {
+      const frame = (timestamp = 0) => {
         raf = 0;
         if (disposed) return;
+        // Cap the render rate instead of burning a full 120fps rAF cycle.
+        // The signature scenes run at 60fps on every WebGL tier.
+        if (minFrameMs && timestamp - lastFrame < minFrameMs - 1) {
+          schedule();
+          return;
+        }
+        lastFrame = timestamp;
         timer.update(timestamp);
         const dt = Math.min(timer.getDelta(), 0.05) * motion;
 
@@ -296,20 +340,38 @@ export function HeroBackground({
         schedule();
       };
 
-      const schedule = () => { if (!raf && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame); };
+      const schedule = () => { if (!raf && introDone && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame); };
       const io = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; if (inView) { timer.reset(); schedule(); } });
       io.observe(host);
       const onVis = () => { tabVisible = !document.hidden; if (tabVisible) { timer.reset(); schedule(); } };
       document.addEventListener("visibilitychange", onVis);
-      schedule();
+
+      // A lost context must not leave an empty circle on low-end devices.
+      const onContextLost = (event: Event) => {
+        event.preventDefault();
+        cancelAnimationFrame(raf);
+        raf = 0;
+        posterHidden = false;
+        if (posterRef.current) posterRef.current.style.opacity = "";
+      };
+      const onContextRestored = () => { timer.reset(); schedule(); };
+      renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+      renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
 
       cleanup = () => {
         cancelAnimationFrame(raf); timer.dispose(); ro.disconnect(); io.disconnect();
         window.removeEventListener("pointermove", onPointer); document.removeEventListener("visibilitychange", onVis);
+        renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+        renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored);
         scene.traverse((o: any) => { o.geometry?.dispose?.(); const mat = o.material; if (Array.isArray(mat)) mat.forEach((x: any) => x.dispose()); else mat?.dispose?.(); });
         textures.forEach((t) => t.dispose()); earthMat.map?.dispose();
         renderer.dispose(); renderer.domElement.remove();
       };
+
+      await introReady;
+      if (disposed) return;
+      introDone = true;
+      schedule();
     })().catch((err) => console.warn("[HeroBackground] 3D scene disabled:", err));
 
     return () => { disposed = true; cleanup(); };

@@ -12,7 +12,6 @@ function apiOrigin(): string {
 }
 
 export function proxy(request: NextRequest) {
-  // ── 1. PROXY API REQUESTS TO EXPRESS BACKEND ─────────────────────────────
   const apiBase = process.env.NEXT_PUBLIC_API_BASE;
   // If the request is for /api and we have a base URL, forward it immediately.
   if (request.nextUrl.pathname.startsWith("/api") && apiBase) {
@@ -20,9 +19,7 @@ export function proxy(request: NextRequest) {
       new URL(request.nextUrl.pathname + request.nextUrl.search, apiBase)
     );
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // ── 2. CSP & SECURITY HEADERS ────────────────────────────────────────────
   // Next.js/Turbopack emits inline bootstrap scripts without a nonce. When a
   // nonce is present, browsers ignore 'unsafe-inline', so keep the script
   // sources nonce-free and allow same-origin + inline scripts explicitly.

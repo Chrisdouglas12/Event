@@ -10,6 +10,9 @@ interface TimeLeft {
   seconds: number;
   isLive: boolean;
   isEnded: boolean;
+  /** Inclusive conference day (1-based) while the event is running. */
+  eventDay: number;
+  totalDays: number;
 }
 
 interface CountdownProps {
@@ -20,6 +23,29 @@ interface CountdownProps {
   onLight?: boolean;
 }
 
+const FALLBACK_TIME: TimeLeft = {
+  days: 0,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  isLive: true,
+  isEnded: false,
+  eventDay: 1,
+  totalDays: 1,
+};
+
+/** UTC day indices keep admin-supplied ISO dates consistent across timezones. */
+function eventDayInfo(startTime: number, endTime: number, now: number) {
+  const startDay = Math.floor(startTime / 86_400_000);
+  const endDay = Math.floor(endTime / 86_400_000);
+  const totalDays = Math.max(1, endDay - startDay + 1);
+  const eventDay = Math.min(
+    totalDays,
+    Math.max(1, Math.floor(now / 86_400_000) - startDay + 1)
+  );
+  return { eventDay, totalDays };
+}
+
 function calculateTime(startsAt: string, endsAt: string): TimeLeft {
   const targetTime = new Date(startsAt).getTime();
   const endTime = new Date(endsAt).getTime();
@@ -27,40 +53,38 @@ function calculateTime(startsAt: string, endsAt: string): TimeLeft {
   // A malformed admin-supplied date should fall back to "live" rather than
   // showing a misleading zeroed countdown.
   if (!Number.isFinite(targetTime) || !Number.isFinite(endTime)) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, isLive: true, isEnded: false };
+    return { ...FALLBACK_TIME };
   }
 
   const now = Date.now();
+  const dayInfo = eventDayInfo(targetTime, endTime, now);
 
   if (now >= endTime) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, isLive: false, isEnded: true };
+    return { ...FALLBACK_TIME, isLive: false, isEnded: true, ...dayInfo };
   }
   if (now >= targetTime) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, isLive: true, isEnded: false };
+    return { ...FALLBACK_TIME, ...dayInfo };
   }
 
   const diff = Math.max(0, targetTime - now);
   return {
+    ...FALLBACK_TIME,
+    isLive: false,
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),
     hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((diff / 1000 / 60) % 60),
     seconds: Math.floor((diff / 1000) % 60),
-    isLive: false,
-    isEnded: false,
+    ...dayInfo,
   };
 }
 
-export function Countdown({
-  startsAt = SITE_CONFIG.startsAt,
-  endsAt = SITE_CONFIG.endsAt,
-  compact = false,
-  onLight = false,
-}: CountdownProps) {
-  // Calculate on the first render instead of waiting for useEffect. This means
-  // the server/static HTML already contains real numbers, not a 00 placeholder.
-  // Hydration text differences are suppressed because the target is an absolute
-  // timestamp; the browser immediately replaces the build-time value with its
-  // own first tick.
+/** Shared state so hosts can swap "Begins in" for "Day X of 4" while live. */
+export function useConferenceTime(
+  startsAt: string = SITE_CONFIG.startsAt,
+  endsAt: string = SITE_CONFIG.endsAt
+): TimeLeft {
+  // Calculate on the first render instead of waiting for useEffect so the
+  // server/static HTML already contains real numbers, not a 00 placeholder.
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() =>
     calculateTime(startsAt, endsAt)
   );
@@ -75,7 +99,25 @@ export function Countdown({
     return () => clearInterval(interval);
   }, [startsAt, endsAt]);
 
+  return timeLeft;
+}
+
+export function Countdown({
+  startsAt = SITE_CONFIG.startsAt,
+  endsAt = SITE_CONFIG.endsAt,
+  compact = false,
+  onLight = false,
+}: CountdownProps) {
+  const timeLeft = useConferenceTime(startsAt, endsAt);
+
   if (timeLeft.isEnded) {
+    if (compact) {
+      return (
+        <div suppressHydrationWarning className="text-[12px] font-medium text-[#6B7280]">
+          Conference ended
+        </div>
+      );
+    }
     return (
       <div
         suppressHydrationWarning
@@ -88,14 +130,14 @@ export function Countdown({
     );
   }
 
-  if (timeLeft.isLive) {
+  if (timeLeft.isLive && !compact) {
     return (
       <div
         suppressHydrationWarning
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#8EE3D6] text-[#0E1020] font-bold text-sm tracking-wide animate-pulse"
       >
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-        CONFERENCE IS LIVE NOW
+        DAY {timeLeft.eventDay} OF {timeLeft.totalDays} · CONFERENCE IS LIVE NOW
       </div>
     );
   }

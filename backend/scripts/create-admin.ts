@@ -8,16 +8,13 @@ const scrypt = promisify(_scrypt);
 
 dotenv.config({ path: '../.env' });
 
-// ── 1. INLINED PASSWORD HASHER ─────────────────────────────────────────────
 // This creates the exact $scrypt$ hash format your auth route expects
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const derived = (await scrypt(password, salt, 64)) as Buffer;
   return `$scrypt$N=16384,r=8,p=1$${salt.toString("base64")}$${derived.toString("base64")}`;
 }
-// ───────────────────────────────────────────────────────────────────────────
 
-// ── 2. INLINED SCHEMA ──────────────────────────────────────────────────────
 const StaffUserSchema = new Schema({
   fullName: { type: String, required: true },
   username: { type: String, required: true, unique: true },
@@ -30,7 +27,6 @@ const StaffUserSchema = new Schema({
 }, { collection: 'staff_users', timestamps: true });
 
 const StaffUser = (mongoose.models.StaffUser || mongoose.model('StaffUser', StaffUserSchema)) as mongoose.Model<any>;
-// ───────────────────────────────────────────────────────────────────────────
 
 async function createAdmin() {
   const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;

@@ -33,7 +33,6 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 
 type Phase = "checking" | "pending" | "timeout" | "need_phone" | "failed" | "error" | "ready";
 
-// --- SHARED UI ---
 
 function HelpLine() {
   return (
@@ -52,7 +51,6 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- TICKET CARD ---
 
 function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }) {
   const [qr, setQr] = useState<string | null>(null);
@@ -186,7 +184,6 @@ function TicketCard({ ticket, bundle }: { ticket: Ticket; bundle: TicketBundle }
   );
 }
 
-// --- STATUS CONTENT ---
 
 function StatusContent() {
   const params = useSearchParams();
@@ -521,7 +518,6 @@ function StatusContent() {
   );
 }
 
-// --- PAGE ---
 
 export default function PaymentStatusPage() {
   return (

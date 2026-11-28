@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Montserrat, Inter } from "next/font/google";
+import { Montserrat, Inter, Fraunces } from "next/font/google";
 import "@/styles/globals.css";
 import { SITE_CONFIG } from "@/config/site";
 import { InstallPromptGate } from "@/components/ui/install-prompt-gate";
@@ -16,6 +16,12 @@ const inter = Inter({
   variable: "--font-inter",
   display: "swap",
   weight: ["400", "500", "600", "700"],
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
 });
 
 const shareImage = "/images/conference_flyer.png";
@@ -56,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
+    <html lang="en" className={`${montserrat.variable} ${inter.variable} ${fraunces.variable}`}>
       <body className="min-h-screen bg-white text-[#111320] antialiased selection:bg-[#8EE3D6] selection:text-[#0E1020]">
         <InstallPromptGate />
         {children}

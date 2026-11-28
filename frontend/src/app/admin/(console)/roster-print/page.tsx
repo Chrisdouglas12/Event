@@ -73,7 +73,6 @@ export default async function AdminRosterPrintPage() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans p-4 sm:p-8">
-      {/* Non-printable Screen Controls */}
       <div className="print:hidden max-w-5xl mx-auto mb-8 p-4 bg-[#0E1020] text-white rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-lg">
         <div className="flex items-center gap-3">
           <Link
@@ -97,9 +96,7 @@ export default async function AdminRosterPrintPage() {
         </div>
       </div>
 
-      {/* Printable Master Document */}
       <main className="max-w-5xl mx-auto space-y-12">
-        {/* Document Header on every print batch */}
         <header className="border-b-2 border-black pb-4 space-y-2">
           <div className="flex items-center justify-between">
             <div>

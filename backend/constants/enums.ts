@@ -1,11 +1,5 @@
-// constants/enums.ts
 //
-// Single source of truth for all enum-like string values.
-// Imported by Mongoose models, validators, routes and services.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ORDER
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const ORDER_STATUSES = [
   'draft',
@@ -19,9 +13,6 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYMENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const PAYMENT_STATUSES = [
   'initiated',
@@ -47,35 +38,63 @@ export const FEE_POLICIES = [
 
 export type FeePolicy = (typeof FEE_POLICIES)[number];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CURRENCY
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const CURRENCIES = [
   'NGN',
   'USD',
   'EUR',
   'GBP',
+  'EGP',
+  'GHS',
+  'GNF',
+  'KES',
+  'MAD',
+  'MWK',
+  'RWF',
+  'SLL',
+  'STD',
+  'TZS',
+  'UGX',
+  'XAF',
+  'XOF',
+  'ZAR',
+  'ZMW',
 ] as const;
 
 export type Currency = (typeof CURRENCIES)[number];
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CURRENCY → PROVIDER ROUTING
 //
 // Single source of truth for which payment provider handles which currency.
-//   - NGN, USD       → Paystack
-//   - EUR / GBP      → Flutterwave
+//   - NGN → Paystack
+//   - USD and everything else → Flutterwave (cards and local African methods)
+// The added codes are the African currencies Flutterwave accepts for card
+// payments, including EGP/MAD and both CFA franc zones. Minor-unit handling
+// for zero-decimal currencies lives in constants/currency-rates.ts.
 //
 // Using `satisfies Record<Currency, PaymentProvider>` means adding a new
 // currency to CURRENCIES will fail type-checking until a mapping is added.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const CURRENCY_PROVIDER_MAP = {
   NGN: 'paystack',
-  USD: 'paystack',
+  USD: 'flutterwave',
   EUR: 'flutterwave',
   GBP: 'flutterwave',
+  EGP: 'flutterwave',
+  GHS: 'flutterwave',
+  GNF: 'flutterwave',
+  KES: 'flutterwave',
+  MAD: 'flutterwave',
+  MWK: 'flutterwave',
+  RWF: 'flutterwave',
+  SLL: 'flutterwave',
+  STD: 'flutterwave',
+  TZS: 'flutterwave',
+  UGX: 'flutterwave',
+  XAF: 'flutterwave',
+  XOF: 'flutterwave',
+  ZAR: 'flutterwave',
+  ZMW: 'flutterwave',
 } as const satisfies Record<Currency, PaymentProvider>;
 
 /**
@@ -102,9 +121,6 @@ export function isProviderValidForCurrency(
   return CURRENCY_PROVIDER_MAP[currency as Currency] === provider;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PARTICIPANT
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const ATTENDANCE_MODES = [
   'physically',
@@ -129,9 +145,6 @@ export const PARTICIPANT_STATUSES = [
 
 export type ParticipantStatus = (typeof PARTICIPANT_STATUSES)[number];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCAN
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const SCAN_TYPES = [
   'arrival',
@@ -151,9 +164,6 @@ export const SCAN_RESULTS = [
 
 export type ScanResult = (typeof SCAN_RESULTS)[number];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const STAFF_ROLES = ['staff', 'admin'] as const;
 

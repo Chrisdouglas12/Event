@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 
-// routes
 import participantRoutes from "./routes/participants.ts";
 import authRoutes from "./routes/auth.ts";
 import scanRoutes from "./routes/scans.ts";
@@ -73,11 +72,6 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RATE LIMITS — SENSITIVE ENDPOINTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 app.use(
   "/api",
@@ -171,9 +165,6 @@ app.use(
   })
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOUNT ROUTES
-// ─────────────────────────────────────────────────────────────────────────────
 
 app.use("/api", participantRoutes);
 app.use("/api", authRoutes);
@@ -182,7 +173,6 @@ app.use("/api", settingsRoutes);
 app.use("/api", resourceRoutes);
 app.use("/api", adminRoutes);
 
-// 404 handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Not found" });
 });
@@ -193,9 +183,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STARTUP
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function start() {
   await mongoose.connect(MONGODB_URI as string);

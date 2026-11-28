@@ -1,4 +1,3 @@
-// routes/auth.ts
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
@@ -13,9 +12,6 @@ import { STAFF_ROLES } from '../constants/enums.ts';
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface AuthRequest extends Request {
   staff?: mongoose.Document & {
@@ -32,9 +28,6 @@ interface AuthRequest extends Request {
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MIDDLEWARE (re-exported so other routers can import it)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function authenticateStaff(
   req: AuthRequest,
@@ -75,9 +68,6 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 
 function generateSessionToken(): string {
   return crypto.randomBytes(64).toString('hex'); // 128 hex chars
@@ -120,21 +110,16 @@ function clientContext(req: Request) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/auth/login
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post('/auth/login', async (req: Request, res: Response) => {
   const { username, password, totpCode } = req.body || {};
   const ctx = clientContext(req);
 
   try {
-    // ── 1. Basic validation ────────────────────────────────────────────────
     if (!username || !password) {
       return res.status(400).json({ error: 'username and password are required' });
     }
 
-    // ── 2. Load staff, including the sensitive hash fields ────────────────
     const staff = await StaffUser.findOne({
       username: String(username).trim().toLowerCase(),
     }).select('+passwordHash +totpSecret');
@@ -163,7 +148,6 @@ router.post('/auth/login', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Account is inactive' });
     }
 
-    // ── 3. Verify password ────────────────────────────────────────────────
     const passwordOk = await verifyPassword(staff.passwordHash, password);
     if (!passwordOk) {
       await logAudit({
@@ -177,7 +161,6 @@ router.post('/auth/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // ── 4. TOTP if enabled ────────────────────────────────────────────────
     if (staff.totpEnabled) {
       if (!totpCode) {
         return res.status(401).json({
@@ -199,7 +182,6 @@ router.post('/auth/login', async (req: Request, res: Response) => {
       }
     }
 
-    // ── 5. Create session ─────────────────────────────────────────────────
     const token = generateSessionToken();
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
@@ -235,9 +217,6 @@ router.post('/auth/login', async (req: Request, res: Response) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/auth/logout — revoke the current session
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post(
   '/auth/logout',
@@ -263,9 +242,6 @@ router.post(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/auth/me — current staff profile
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.get('/auth/me', authenticateStaff, async (req: AuthRequest, res: Response) => {
   const staff = req.staff!;
@@ -284,9 +260,6 @@ router.get('/auth/me', authenticateStaff, async (req: AuthRequest, res: Response
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/auth/password — change own password
-// ─────────────────────────────────────────────────────────────────────────────
 
 router.post(
   '/auth/password',
@@ -347,11 +320,7 @@ router.post(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF MANAGEMENT (admin only)
-// ─────────────────────────────────────────────────────────────────────────────
 
-// POST /api/auth/staff — create a new staff account
 router.post(
   '/auth/staff',
   authenticateStaff,
@@ -416,7 +385,6 @@ router.post(
   }
 );
 
-// GET /api/auth/staff — list staff (admin)
 router.get(
   '/auth/staff',
   authenticateStaff,
@@ -435,7 +403,6 @@ router.get(
   }
 );
 
-// PATCH /api/auth/staff/:id — update role / active state (admin)
 router.patch(
   '/auth/staff/:id',
   authenticateStaff,

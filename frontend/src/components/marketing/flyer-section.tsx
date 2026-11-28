@@ -32,35 +32,17 @@ export function FlyerSection() {
     <section data-scene="arrival" data-enter className="cv-auto relative overflow-hidden py-12 lg:py-10">
       <div className="px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <div className="relative overflow-hidden">
-          {/* Ambient glow */}
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#8EE3D6] opacity-[0.10] blur-3xl"
           />
 
           <div className="landing-card relative grid grid-cols-1 items-stretch lg:grid-cols-12">
-            {/* Left: flyer stage */}
             <div className="relative flex items-center justify-center bg-[#F8FAFC]/80 p-8 sm:p-12 lg:col-span-5 lg:border-r lg:border-[#E5E7EB] lg:p-8">
-              <div className="relative w-full max-w-[300px]">
-                {/* Accent frame, top-right */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 rounded-[4px] border"
-                  style={{
-                    borderColor: "rgba(142,227,214,0.35)",
-                    transform: "translate(14px, -14px)",
-                  }}
-                />
-                {/* Graphite frame, bottom-left */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 rounded-[4px] border-2 border-[#3A404B]"
-                  style={{ transform: "translate(-14px, 14px)" }}
-                />
-
+              <div className="relative w-full">
                 <Parallax
                   speed={0.15}
-                  className="image-frame relative z-10 aspect-[3/4] w-full max-w-[320px] overflow-hidden bg-[#0E1020] lg:max-w-[260px]"
+                  className="image-frame relative z-10 aspect-[4/3] w-full overflow-hidden bg-[#0E1020]"
                 >
                   <Image
                     src="/images/conference_flyer.png"
@@ -68,14 +50,13 @@ export function FlyerSection() {
                     fill
                     className="object-contain"
                     quality={95}
-                    sizes="(max-width: 1024px) 80vw, 260px"
+                    sizes="(max-width: 1024px) 92vw, 560px"
                   />
                   <div className="photo-veil pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07101e]/55 via-transparent to-transparent" />
                 </Parallax>
               </div>
             </div>
 
-            {/* Right: copy */}
             <div className="flex flex-col items-start justify-center p-8 sm:p-12 lg:col-span-7 lg:p-10 xl:p-12">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-[#8EE3D6]" />
@@ -90,7 +71,7 @@ export function FlyerSection() {
               <RevealText
                 as="h2"
                 text="Spread the Word — Share the Flyer"
-                className="mt-5 max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
+                className="mt-5 max-w-xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-[#0E1020] sm:text-4xl lg:text-[40px] xl:text-5xl"
                 speed={14}
               />
 

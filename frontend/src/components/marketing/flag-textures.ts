@@ -108,11 +108,12 @@ export function makeFlagGeometry(THREE: Three, width: number, height: number) {
   return new THREE.BoxGeometry(width, height, 0.09);
 }
 
-export function makeFlagTexture(THREE: Three, flag: FlagDef) {
+export function makeFlagTexture(THREE: Three, flag: FlagDef, quality = 1) {
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = Math.max(64, Math.round(W * quality));
+  canvas.height = Math.max(40, Math.round(H * quality));
   const ctx = canvas.getContext("2d")!;
+  ctx.scale(quality, quality);
 
   if (flag.custom === "us") drawUS(ctx);
   else if (flag.custom === "gb") drawGB(ctx);
@@ -167,11 +168,12 @@ export function makeSunTexture(THREE: Three) {
 }
 
 /** Stylised ocean + graticule, shown until (or if) /textures/earth.jpg loads. */
-export function makeFallbackEarth(THREE: Three) {
+export function makeFallbackEarth(THREE: Three, quality = 1) {
   const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = 512;
+  c.width = Math.max(256, Math.round(1024 * quality));
+  c.height = Math.max(128, Math.round(512 * quality));
   const ctx = c.getContext("2d")!;
+  ctx.scale(quality, quality);
   const g = ctx.createLinearGradient(0, 0, 0, 512);
   g.addColorStop(0, "#0b2a55");
   g.addColorStop(0.5, "#0e4a7a");

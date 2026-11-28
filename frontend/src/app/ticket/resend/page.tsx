@@ -120,7 +120,6 @@ export default function ResendTicketPage() {
             </div>
           )}
 
-          {/* Help Desk Link */}
           <div className="pt-4 border-t border-gray-100 text-center text-xs text-gray-500">
             Still need help? Call or WhatsApp our helpline at{" "}
             <a href={SITE_CONFIG.contact.phoneTel} className="font-semibold text-black underline">

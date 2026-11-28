@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Save, CheckCircle2, AlertCircle, Plus, Trash2, GripVertical } from "lucide-react";
+import {
+  CURRENCIES as CURRENCY_CONFIG,
+  CURRENCY_LIST,
+  type SupportedCurrency,
+} from "@/config/currencies";
 
 type Settings = {
   eventName?: string;
@@ -45,8 +50,8 @@ type ProgrammeItem = {
   sortOrder: number;
 };
 
-const CURRENCIES = ["NGN", "USD", "EUR", "GBP"] as const;
-const PROVIDERS = ["paystack"] as const;
+const CURRENCIES = CURRENCY_LIST;
+const PROVIDERS = ["paystack", "flutterwave"] as const;
 
 const EMPTY_PROGRAMME: ProgrammeItem = {
   eventDate: "",
@@ -146,7 +151,8 @@ export default function AdminSettingsPage() {
         ...prev,
         {
           currency,
-          primaryProvider: "paystack",
+          primaryProvider:
+            CURRENCY_CONFIG[currency as SupportedCurrency]?.defaultProvider ?? "paystack",
           isEnabled: true,
           feePolicy: "organizer_absorbs",
           [field]: value,
@@ -154,10 +160,13 @@ export default function AdminSettingsPage() {
       ];
     });
 
+  const minorUnits = (currency: string) =>
+    CURRENCY_CONFIG[currency as SupportedCurrency]?.minorUnitMultiplier ?? 100;
+
   const updatePrice = (currency: string, amountMajor: number) =>
     setPrices((prev) => {
       const existing = prev.find((p) => p.currency === currency);
-      const amountMinor = Math.round(amountMajor * 100);
+      const amountMinor = Math.round(amountMajor * minorUnits(currency));
       if (existing) {
         return prev.map((p) => (p.currency === currency ? { ...p, amountMinor } : p));
       }
@@ -166,7 +175,7 @@ export default function AdminSettingsPage() {
 
   const getPriceMajor = (currency: string) => {
     const p = prices.find((x) => x.currency === currency);
-    return p ? p.amountMinor / 100 : 0;
+    return p ? p.amountMinor / minorUnits(currency) : 0;
   };
 
   const handleSave = async () => {
@@ -312,7 +321,6 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* Event Settings */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-bold text-[#111320]">Event Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -335,6 +343,9 @@ export default function AdminSettingsPage() {
             <div>
               <label className={labelCls}>Registration Deadline</label>
               <input type="datetime-local" className={inputCls} value={settings.registrationDeadline || ""} onChange={(e) => updateSetting("registrationDeadline", e.target.value)} />
+              <p className="mt-1 text-[11px] text-gray-400">
+                Registration stays open until Ends At (the last conference day), including after the event starts.
+              </p>
             </div>
             <div>
               <label className={labelCls}>Capacity Limit (blank = uncapped)</label>
@@ -343,7 +354,6 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Landing Page Content */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <div>
             <h2 className="text-lg font-bold text-[#111320]">Landing Page Content</h2>
@@ -379,7 +389,6 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Programme */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -463,7 +472,6 @@ export default function AdminSettingsPage() {
           </button>
         </section>
 
-        {/* Venue & Contact */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-bold text-[#111320]">Venue & Contact</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -490,7 +498,6 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Prices */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-bold text-[#111320]">Registration Prices</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -499,7 +506,7 @@ export default function AdminSettingsPage() {
                 <label className={labelCls}>{c}</label>
                 <input
                   type="number"
-                  step="0.01"
+                  step={minorUnits(c) === 1 ? "1" : "0.01"}
                   min="0"
                   className={inputCls}
                   value={getPriceMajor(c) || ""}
@@ -511,7 +518,6 @@ export default function AdminSettingsPage() {
           <p className="text-[11px] text-gray-400">Amounts are per participant, flat rate. Stored in minor units (kobo/cents/pence). The fee label on the landing page is edited separately above.</p>
         </section>
 
-        {/* Provider Routing */}
         <section className="bg-white rounded-[20px] border border-gray-100 p-6 sm:p-8 space-y-5">
           <h2 className="text-lg font-bold text-[#111320]">Payment Provider Routing</h2>
           <div className="overflow-x-auto">
@@ -528,7 +534,8 @@ export default function AdminSettingsPage() {
                 {CURRENCIES.map((c) => {
                   const route = routes.find((r) => r.currency === c) || {
                     currency: c,
-                    primaryProvider: "paystack",
+                    primaryProvider:
+                      CURRENCY_CONFIG[c as SupportedCurrency]?.defaultProvider ?? "paystack",
                     isEnabled: true,
                     feePolicy: "organizer_absorbs",
                   };

@@ -83,8 +83,8 @@ function TicketResult({ entry }: { entry: LookupTicket }) {
     : `IHGC-2026-ticket-${entry.identifier}.png`;
 
   return (
-    <article className="flex flex-col gap-4 rounded-[18px] border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:p-5">
-      <div className="mx-auto flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white p-1.5 sm:mx-0">
+    <article className="flex flex-col gap-4 border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:p-5">
+      <div className="mx-auto flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1.5 sm:mx-0">
         {qr ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={qr} alt={`QR code for ${entry.name}`} className="h-full w-full" />

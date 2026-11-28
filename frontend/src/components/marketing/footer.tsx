@@ -12,13 +12,11 @@ export function Footer() {
       data-trace-label="Footer"
       className="w-full bg-[#0E1020]/85 text-gray-300"
     >
-      {/* 3-Column Main Footer */}
       <div className="max-w-[1240px] mx-auto px-6 sm:px-8 py-16 lg:py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
           
-          {/* Column 1: Logo & Blurb (5 cols) */}
           <div className="md:col-span-5 space-y-4">
-            <div className="inline-block bg-white p-2.5 rounded-xl shadow-sm">
+            <div className="inline-block rounded-lg bg-white p-2.5 shadow-sm">
               <Image
                 src={SITE_CONFIG.logo.src}
                 alt={SITE_CONFIG.logo.alt}
@@ -36,7 +34,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Column 2: Social & Contact Links (3 cols) */}
           <div className="md:col-span-3 space-y-4">
             <h4 className="text-sm font-bold uppercase tracking-wider text-white">
               Social Links
@@ -118,15 +115,13 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Column 3: Upcoming Event Cards with Outlined Pill Buttons (4 cols) */}
           <div className="md:col-span-4 space-y-4">
             <h4 className="text-sm font-bold uppercase tracking-wider text-white">
               Upcoming Event
             </h4>
 
-            {/* Event Card 1: IHGC 2026 */}
-            <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
-              <div className="image-frame relative aspect-[16/7] overflow-hidden bg-gray-900">
+            <div className="bg-[#121528] p-4 border border-white/5 space-y-3">
+              <div className="image-frame relative aspect-[4/3] overflow-hidden bg-gray-900">
                 <Image
                   src="/images/conference_flyer.png"
                   alt="IHGC 2026 Conference Flyer"
@@ -153,8 +148,7 @@ export function Footer() {
               </Link>
             </div>
 
-            {/* Event Card 2: Group Registration Pass */}
-            <div className="bg-[#121528] rounded-[16px] p-4 border border-white/5 space-y-3">
+            <div className="bg-[#121528] p-4 border border-white/5 space-y-3">
               <div className="text-xs text-[#8EE3D6] font-semibold uppercase tracking-wider">
                 Group Pass (Chapter / Zone)
               </div>
@@ -174,7 +168,6 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Lighter Bottom Copyright Bar (#171A2B) */}
       <div className="w-full bg-[#171A2B] border-t border-white/5 py-4 px-6 text-center text-xs text-gray-400">
         <div className="max-w-[1240px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>{SITE_CONFIG.copyright}</div>

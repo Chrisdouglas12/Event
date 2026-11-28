@@ -7,6 +7,8 @@ export const SITE_CONFIG = {
   datesText: "Tuesday 8 December to Friday 11 December 2026",
   startsAt: "2026-12-08T16:00:00+01:00", // WAT UTC+1
   endsAt: "2026-12-11T23:59:59+01:00",
+  /** Close of Day 2: standard fee required before this, any amount after. */
+  customAmountCutoffAt: "2026-12-10T00:00:00+01:00",
   venue: {
     name: "Holiness Campground",
     landmark: "Behind FGC",

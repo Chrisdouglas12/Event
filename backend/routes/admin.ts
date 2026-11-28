@@ -27,9 +27,6 @@ function tokenDigest(value: string, secret: string): string {
   return crypto.createHmac('sha256', secret).update(value).digest('base64url').slice(0, 32);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/dashboard-stats — paid-only attendance/KPI aggregation
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/admin/dashboard-stats',
   authenticateStaff,
@@ -302,9 +299,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/participants
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/admin/participants',
   authenticateStaff,
@@ -325,9 +319,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/payments (and legacy /api/admin/orders alias)
-// ─────────────────────────────────────────────────────────────────────────────
 async function paymentsHandler(_req: Request, res: Response) {
   try {
     const payments = await listPaidPayments(200);
@@ -341,9 +332,6 @@ async function paymentsHandler(_req: Request, res: Response) {
 router.get('/admin/payments', authenticateStaff, requireRole('admin'), paymentsHandler);
 router.get('/admin/orders', authenticateStaff, requireRole('admin'), paymentsHandler);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/admin/tickets/:reference
-// ─────────────────────────────────────────────────────────────────────────────
 router.get(
   '/admin/tickets/:reference',
   authenticateStaff,
@@ -390,9 +378,6 @@ router.get(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/admin/scan — gate check-in (individual or whole group)
-// ─────────────────────────────────────────────────────────────────────────────
 router.post(
   '/admin/scan',
   authenticateStaff,

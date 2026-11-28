@@ -23,7 +23,6 @@ export async function verifyTurnstileToken(
     return { success: true };
   }
 
-  // No token provided
   if (!token) {
     return { success: false, error: "Bot verification token is missing." };
   }

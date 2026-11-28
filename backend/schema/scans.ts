@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 
 import { SCAN_RESULTS, SCAN_TYPES } from '../constants/enums.ts';
 
-// DEVICE
 
 const deviceSchema = new mongoose.Schema(
   {
@@ -35,7 +34,6 @@ const deviceSchema = new mongoose.Schema(
   { collection: 'devices' }
 );
 
-// SCAN EVENT
 
 const scanEventSchema = new mongoose.Schema(
   {
@@ -111,7 +109,6 @@ const scanEventSchema = new mongoose.Schema(
   { collection: 'scan_events' }
 );
 
-// INDEXES
 
 deviceSchema.index({ assignedStand: 1 });
 deviceSchema.index({ isRevoked: 1 });
@@ -125,7 +122,6 @@ scanEventSchema.index({ deviceId: 1 });
 scanEventSchema.index({ staffId: 1 });
 scanEventSchema.index({ isGroupScan: 1 });
 
-// EXPORTS
 
 export const Device = (mongoose.models.Device || mongoose.model('Device', deviceSchema)) as mongoose.Model<any>;
 export const ScanEvent = (mongoose.models.ScanEvent || mongoose.model('ScanEvent', scanEventSchema)) as mongoose.Model<any>;

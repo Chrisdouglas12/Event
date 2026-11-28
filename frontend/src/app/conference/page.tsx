@@ -16,7 +16,6 @@ export default function ConferencePage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* Hero Header */}
       <section className="bg-[#0E1020] text-white py-16 sm:py-20 relative overflow-hidden">
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8 text-center space-y-4">
           <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">
@@ -31,11 +30,9 @@ export default function ConferencePage() {
         </div>
       </section>
 
-      {/* Main Content */}
       <section className="py-16 sm:py-24 bg-white">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-8 space-y-16">
           
-          {/* Key Facts Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-[#F8FAFC] rounded-[18px] p-6 border border-gray-100 flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center shrink-0">
@@ -71,7 +68,6 @@ export default function ConferencePage() {
             </div>
           </div>
 
-          {/* Official Conference Flyer */}
           <div className="bg-[#F8FAFC] rounded-[24px] border border-gray-100 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <Parallax speed={0.15} className="relative aspect-[3/4] lg:aspect-auto lg:min-h-[560px] bg-[#0E1020]">
@@ -124,7 +120,6 @@ export default function ConferencePage() {
             </div>
           </div>
 
-          {/* Official Programme & Schedule Section */}
           <div className="bg-[#F8FAFC] rounded-[24px] border border-gray-100 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-2">
               <div className="relative aspect-[3/4] lg:aspect-auto lg:min-h-[500px] bg-[#0E1020] p-4 flex items-center justify-center">
@@ -168,7 +163,6 @@ export default function ConferencePage() {
             </div>
           </div>
 
-          {/* Important Notice: Accommodation & Food */}
           <div className="bg-[#EAF9F7] border border-[#CDEFEA] rounded-[20px] p-6 sm:p-8 space-y-3">
             <h3 className="text-lg font-bold text-[#0E1020]">
               Important Planning Notice for Participants
@@ -183,7 +177,6 @@ export default function ConferencePage() {
             </div>
           </div>
 
-          {/* Register CTA */}
           <div className="text-center pt-4">
             <Link
               href="/register"

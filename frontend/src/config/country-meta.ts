@@ -276,8 +276,12 @@ export function getCountryMeta(name: string): CountryMeta | undefined {
   return COUNTRY_META[name] ?? COUNTRY_META_BY_LOWERCASE[normalise(name)];
 }
 
+export function countryIso2(name: string): string {
+  return getCountryMeta(name)?.iso2 ?? "";
+}
+
 export function countryFlag(name: string): string {
-  const iso2 = getCountryMeta(name)?.iso2;
+  const iso2 = countryIso2(name);
   if (!iso2 || iso2.length !== 2) return "🌐";
   return String.fromCodePoint(
     ...[...iso2.toUpperCase()].map((letter) => 127397 + letter.charCodeAt(0))
@@ -306,9 +310,9 @@ export function countryCurrencySymbol(name: string): string | undefined {
   }
 }
 
-/** Currency symbol when it is a real glyph; otherwise the national flag. */
+/** Currency symbol when it is a real glyph; otherwise the ISO currency code. */
 export function countryCurrencyBadge(name: string): string {
-  return countryCurrencySymbol(name) ?? countryFlag(name);
+  return countryCurrencySymbol(name) ?? getCountryMeta(name)?.currency ?? "";
 }
 
 /** Replace the leading dial code while keeping whatever number was typed. */

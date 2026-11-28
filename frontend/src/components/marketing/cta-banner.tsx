@@ -11,7 +11,6 @@ export function CtaBanner() {
 
   return (
     <section data-scene="sea" data-enter className="cv-auto relative w-full py-12 lg:py-10 overflow-hidden">
-      {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/crowd-bw_3.jpg"
@@ -23,7 +22,6 @@ export function CtaBanner() {
         <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-[#EAF9F7]/85 to-white/90" />
       </div>
 
-      {/* Decorative Triangles matching KILO inspiration */}
       <div
         className="absolute -bottom-8 -left-8 w-40 h-40 bg-[#8EE3D6] opacity-90 z-10 pointer-events-none"
         style={{ clipPath: "polygon(0 0, 0 100%, 100% 100%)" }}
@@ -33,7 +31,6 @@ export function CtaBanner() {
         style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
       />
 
-      {/* Content */}
       <div className="relative z-20 w-full px-[3px] sm:px-8 lg:px-8 xl:px-10">
         <TiltCard intensity={0} className="landing-card px-8 py-12 sm:px-12 sm:py-9 lg:py-8 space-y-4 text-center">
           <RevealText

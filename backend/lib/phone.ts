@@ -12,14 +12,11 @@ export function toE164(phone: unknown): string | null {
   // Nigerians often write +234 (0) 801 ... — remove the trunk zero.
   if (/^2340\d{10}$/.test(digits)) digits = `234${digits.slice(4)}`;
 
-  // Nigeria: +234 followed by a 10-digit subscriber number.
   if (/^234\d{10}$/.test(digits)) return `+${digits}`;
 
-  // Nigeria: local 0801... or 801... forms.
   if (/^0\d{10}$/.test(digits)) return `+234${digits.slice(1)}`;
   if (/^\d{10}$/.test(digits)) return `+234${digits}`;
 
-  // Any other international number in the E.164 length range.
   if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
 
   return null;

@@ -13,7 +13,6 @@ export default function ContactPage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* Hero Header */}
       <section className="bg-[#0E1020] text-white py-16 sm:py-20 text-center space-y-4">
         <div className="max-w-[1240px] mx-auto px-6 sm:px-8">
           <span className="text-xs font-bold uppercase tracking-widest text-[#8EE3D6]">
@@ -28,13 +27,11 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Main Content */}
       <section className="py-16 sm:py-24 bg-white flex-1">
         <div className="max-w-[1000px] mx-auto px-6 sm:px-8 space-y-12">
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Phone Card */}
             <div className="bg-[#F8FAFC] p-6 rounded-[20px] border border-gray-100 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
@@ -55,7 +52,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* WhatsApp Card */}
             <div className="bg-[#F8FAFC] p-6 rounded-[20px] border border-gray-100 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
@@ -79,7 +75,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* Campground Address Card */}
             <div className="bg-[#F8FAFC] p-6 rounded-[20px] border border-gray-100 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-full bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center">
@@ -97,7 +92,6 @@ export default function ContactPage() {
 
           </div>
 
-          {/* Interactive Map */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-[#111320]">Location Map & Travel Directions</h3>
             <div className="overflow-hidden rounded-[20px] border border-gray-200 shadow-sm bg-white">

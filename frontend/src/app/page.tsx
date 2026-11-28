@@ -4,7 +4,6 @@ import { JourneyHandle } from "@/components/marketing/journey-handle";
 import { LandingDepth } from "@/components/marketing/landing-depth";
 import { LandingProgressProvider } from "@/components/marketing/landing-progress";
 import { LandingSettingsProvider } from "@/components/marketing/landing-settings";
-import { ScrollTrace } from "@/components/marketing/scroll-trace";
 import { SmoothScroll } from "@/components/marketing/smooth-scroll";
 import { SplashScreen } from "@/components/marketing/splash-screen";
 import { WhyAttend } from "@/components/marketing/why-attend";
@@ -14,7 +13,6 @@ import { AboutPreview } from "@/components/marketing/about-preview";
 import { GalleryCollage } from "@/components/marketing/gallery-collage";
 import { FlyerSection } from "@/components/marketing/flyer-section";
 import { Footer } from "@/components/marketing/footer";
-import { RevealText } from "@/components/ui/reveal-text";
 import { TimelineDivider } from "@/components/ui/timeline-divider";
 import { SITE_CONFIG } from "@/config/site";
 
@@ -43,7 +41,6 @@ export default function HomePage() {
     <LandingSettingsProvider>
       <SmoothScroll />
       <LandingProgressProvider>
-        {/* Globe-orbit intro before the landing page */}
         <SplashScreen />
 
         <div className="landing-navy min-h-screen flex flex-col">
@@ -54,30 +51,20 @@ export default function HomePage() {
             }}
           />
 
-          {/* One scroll-synced WebGL layer for the page. No photo backdrop:
-              navy, starfield and orbital geometry carry the whole journey. */}
           <LandingDepth />
 
-          {/* Single scroll-driven car trace connecting every section. */}
-          <ScrollTrace />
-
-          {/* Edge grip that orbits the 3D journey filament in LandingDepth. */}
           <JourneyHandle />
 
           <div className="relative z-10 flex flex-1 flex-col">
             <Header />
 
-            {/* Hero with the orbital 3D countdown */}
             <Hero />
 
-            {/* One joined surface: Why Attend through the Flyer. */}
-            <div className="joined-flow lg:mx-10 bg-[#07101e]/50 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+            <div className="joined-flow lg:mx-10">
               <TimelineDivider label="Why Attend" scene="air" />
               <WhyAttend />
               <TimelineDivider label="Ministers" scene="road" />
 
-              {/* Featured Ministers — navy + orbital depth, tucked tightly
-                  under the Why Attend band so the flow reads as one surface. */}
               <section
                 data-scene="road"
                 data-trace-node
@@ -93,7 +80,6 @@ export default function HomePage() {
                 </div>
 
                 <div className="relative z-10 px-[3px] sm:px-8 lg:px-8 xl:px-10">
-                  {/* Header and cards share one cut surface, like Why Attend. */}
                   <div className="ms-joined mx-auto max-w-[1320px]">
                     <div className="ms-intro px-6 py-6 text-center lg:py-7">
                       <span
@@ -101,19 +87,13 @@ export default function HomePage() {
                         className="mx-auto mb-4 block h-px w-12 bg-[#0E7A6E]"
                       />
 
-                      <RevealText
-                        as="h2"
-                        text="Featured Ministers"
-                        className="text-3xl font-bold leading-[1.1] tracking-tight text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl"
-                        speed={14}
-                      />
+                      <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-[#0E1020] sm:text-4xl lg:text-[44px] xl:text-5xl">
+                        Featured Ministers
+                      </h2>
 
-                      <RevealText
-                        as="p"
-                        text="Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026."
-                        className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base"
-                        speed={12}
-                      />
+                      <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#4B5563] lg:text-base">
+                        Pastor Paul Rika and Evang. Linda Paul Rika are featured at IHGC 2026.
+                      </p>
                     </div>
 
                     <div className="ms-group grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0">
@@ -145,7 +125,6 @@ export default function HomePage() {
               <FlyerSection />
             </div>
 
-            {/* Deep Navy Footer */}
             <Footer />
           </div>
         </div>

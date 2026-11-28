@@ -2,9 +2,6 @@ import mongoose from 'mongoose';
 
 import { CURRENCIES, PAYMENT_PROVIDERS, FEE_POLICIES } from '../constants/enums.ts';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EVENT SETTINGS  (singleton)
-// ─────────────────────────────────────────────────────────────────────────────
 
 const eventSettingsSchema = new mongoose.Schema(
   {
@@ -142,9 +139,6 @@ eventSettingsSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROVIDER ROUTE  (one doc per currency)
-// ─────────────────────────────────────────────────────────────────────────────
 
 const providerRouteSchema = new mongoose.Schema(
   {
@@ -199,9 +193,6 @@ providerRouteSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MINISTER
-// ─────────────────────────────────────────────────────────────────────────────
 
 const ministerSchema = new mongoose.Schema(
   {
@@ -244,9 +235,6 @@ ministerSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROGRAMME ITEM
-// ─────────────────────────────────────────────────────────────────────────────
 
 const programmeItemSchema = new mongoose.Schema(
   {
@@ -257,13 +245,12 @@ const programmeItemSchema = new mongoose.Schema(
       match: /^\d{4}-\d{2}-\d{2}$/,
     },
     startTime: {
-      // Stored as "HH:mm" (24h). See notes below for the why.
+      // Stored as "HH:mm" (24h).
       type: String,
       required: true,
       match: /^([01]\d|2[0-3]):[0-5]\d$/,
     },
     endTime: {
-      // Optional, same format as startTime.
       type: String,
       match: /^([01]\d|2[0-3]):[0-5]\d$/,
     },
@@ -296,27 +283,19 @@ programmeItemSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INDEXES
-// ─────────────────────────────────────────────────────────────────────────────
 
-// Event settings — exactly one document.
 eventSettingsSchema.index({ singleton: 1 }, { unique: true });
 
 // Provider routes — _id is the currency, but a stable sort/lookup index helps.
 providerRouteSchema.index({ isEnabled: 1 });
 providerRouteSchema.index({ primaryProvider: 1 });
 
-// Ministers
 ministerSchema.index({ isActive: 1, sortOrder: 1 });
 
 // Programme items — the primary read pattern is "give me the schedule,
 // sorted by day then time".
 programmeItemSchema.index({ eventDate: 1, startTime: 1, sortOrder: 1 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EXPORTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const EventSettings = (mongoose.models.EventSettings || mongoose.model('EventSettings', eventSettingsSchema)) as mongoose.Model<any>;
 export const ProviderRoute = (mongoose.models.ProviderRoute || mongoose.model('ProviderRoute', providerRouteSchema)) as mongoose.Model<any>;

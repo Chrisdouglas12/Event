@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react";
 import type * as Three from "three";
 import { journeyControls } from "@/components/marketing/journey-controls";
-import { getLandingPerformance } from "@/lib/landing-performance";
+import {
+  getLandingPerformance,
+  whenLandingIntroDone,
+} from "@/lib/landing-performance";
 import {
   createFallbackModel,
   createModelInstance,
@@ -170,7 +173,7 @@ export function LandingDepth() {
     if (!host) return;
 
     const perf = getLandingPerformance();
-    // Low-power devices keep the flat ScrollTrace; this persistent WebGL layer
+    // Low-power devices keep the static backdrop; this persistent WebGL layer
     // is the most expensive thing on the page, so it is the first to go.
     if (!perf.journeyWebgl) return;
 
@@ -178,6 +181,7 @@ export function LandingDepth() {
     let cleanup = () => {};
 
     (async () => {
+      await whenLandingIntroDone();
       const THREE = await import("three");
       if (disposed) return;
 
@@ -224,7 +228,6 @@ export function LandingDepth() {
         return mat;
       };
 
-      // ---------- Depth layers ----------
       const starLayers: {
         points: Three.Points;
         lines: Three.LineSegments;
@@ -293,7 +296,6 @@ export function LandingDepth() {
         starLayers.push({ points, lines, depth: cfg.depth, speed: cfg.speed });
       });
 
-      // ---------- Core formation (kept subtle behind the cards) ----------
       const core = new THREE.Group();
       root.add(core);
 
@@ -341,7 +343,6 @@ export function LandingDepth() {
       const particles = new THREE.Points(particleGeo, particleMat);
       root.add(particles);
 
-      // ---------- Travel route guides ----------
       const makeRoute = (
         sceneName: SceneName,
         y: number,
@@ -389,7 +390,6 @@ export function LandingDepth() {
         makeRoute("arrival", 1.2, 0.5, 0x8ee3d6, 0.22, 0.25),
       ];
 
-      // ---------- 3D journey filament ----------
       // A single ribbon threads every section waypoint. Scrolling moves the
       // ribbon through the virtual camera; dragging the edge grip orbits it.
       const journey = new THREE.Group();
@@ -488,7 +488,6 @@ export function LandingDepth() {
 
       const waypointColor = new THREE.Color();
 
-      // ---------- Scroll + section state ----------
       // Cache section offsets and document height instead of reading layout on
       // every scroll frame. getBoundingClientRect()/scrollHeight in a scroll
       // handler forces synchronous layout and is the usual cause of jank.
@@ -616,7 +615,6 @@ export function LandingDepth() {
       const bodyRO = new ResizeObserver(onLoad);
       bodyRO.observe(document.body);
 
-      // ---------- Realistic vehicles ----------
       const vehicles: Vehicle[] = [];
       const modelSources: Three.Object3D[] = [];
 
@@ -679,13 +677,13 @@ export function LandingDepth() {
       const lightColor = new THREE.Color(0x0e5f57);
       const currentColor = darkColor.clone();
 
-      // ---------- Loop ----------
       const timer = new THREE.Timer();
       timer.connect(document);
       let raf = 0;
       let tabVisible = !document.hidden;
 
       let lastRender = 0;
+      let sceneEnvelope = 1;
       const renderInterval = 1000 / perf.fps;
 
       const update = (time: number, step: number, damp: (k: number) => number) => {
@@ -714,6 +712,9 @@ export function LandingDepth() {
         sectionPulse = mix(sectionPulse, Math.sin(sectionProgress * Math.PI), damp(2.5));
         // Stay visible across the landing sections and fade only near the footer.
         const envelope = 1 - smooth((progress - 0.94) / 0.06);
+        sceneEnvelope = envelope;
+        renderer.domElement.style.opacity = String(Math.min(1, envelope * 2));
+        if (envelope <= 0.01) return;
         const controls = journeyControls.get();
 
         starLayers.forEach((layer) => {
@@ -895,7 +896,7 @@ export function LandingDepth() {
         const dt = Math.min(timer.getDelta(), 0.05);
         const step = reduceMotion ? 0 : dt;
         update(timer.getElapsed(), step, (k) => (reduceMotion ? 1 : Math.min(1, step * k)));
-        renderer.render(scene, camera);
+        if (sceneEnvelope > 0.01) renderer.render(scene, camera);
         schedule();
       };
       const schedule = () => {

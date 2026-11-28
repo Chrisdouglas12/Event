@@ -14,7 +14,6 @@ try {
   console.warn("[auth] argon2 not available, falling back to scrypt:", (e as Error).message?.split("\n")[0]);
 }
 
-// --- scrypt fallback ---
 // Format: $scrypt$N=16384,r=8,p=1$<salt-b64>$<hash-b64>
 async function scryptHash(password: string): Promise<string> {
   const salt = randomBytes(16);
@@ -35,24 +34,20 @@ async function scryptVerify(hash: string, password: string): Promise<boolean> {
   }
 }
 
-// --- Public API ---
 export async function hashPassword(password: string): Promise<string> {
   if (argon2) {
-    // ✅ FIX: Call the argon2 library directly, not this function
     return argon2.hash(password, { type: argon2.argon2id });
   }
   return scryptHash(password);
 }
 
 export async function verifyPassword(hash: string, password: string): Promise<boolean> {
-  // Auto-detect which one was used
   if (hash.startsWith("$argon2")) {
     if (!argon2) {
       console.error("[auth] Password was hashed with argon2 but argon2 is not available on this device");
       return false;
     }
     try {
-      // ✅ FIX: Call the argon2 library directly
       return await argon2.verify(hash, password);
     } catch {
       return false;

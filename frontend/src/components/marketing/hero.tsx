@@ -30,7 +30,6 @@ const ring = (outer: string[], inner: string[]) =>
   `polygon(evenodd, ${outer.join(", ")}, ${inner.join(", ")})`;
 
 const HB_CSS = `
-/* NO WHITE ANYWHERE - solid dark plates, teal hairline only */
 .hb-wrap{position:relative}
 .hb-plate{position:relative;overflow:hidden}
 .hb-top{background:#0E1020}
@@ -55,7 +54,6 @@ export function Hero() {
     >
       <style dangerouslySetInnerHTML={{ __html: HB_CSS }} />
 
-      {/* REMOVED: hero-heaven white glow */}
 
       <ParallaxLayer speed={0.4} className="absolute inset-0">
         <HeroBackground desktopLift={10} />
@@ -104,7 +102,6 @@ export function Hero() {
                   />
                 </div>
 
-                {/* THEME BOX */}
                 <div className="hero-fade relative" style={{ animationDelay: "0.5s" }}>
                   <div
                     className="hb-plate hb-bot relative flex h-full flex-col justify-center py-3 pl-4 pr-4 sm:py-3 sm:pl-5 sm:pr-5 md:py-3.5 md:pl-6 md:pr-6 lg:py-3.5"
@@ -113,7 +110,7 @@ export function Hero() {
                   >
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute right-4 -top-2 select-none font-serif text-[64px] leading-none text-[#8EE3D6]/15 sm:right-5 sm:text-[58px] md:right-6 md:text-[50px] lg:text-[50px]"
+                      className="pointer-events-none absolute right-4 -top-2 select-none font-display text-[64px] italic leading-none text-[#8EE3D6]/15 sm:right-5 sm:text-[58px] md:right-6 md:text-[50px] lg:text-[50px]"
                     >
                       &ldquo;
                     </span>
@@ -123,14 +120,12 @@ export function Hero() {
                       THEME
                     </span>
 
-                    {/* Mobile keeps the full theme wrapped on two lines. */}
                     <span className="relative z-[2] mt-1.5 block pr-4 text-[14px] font-extrabold uppercase leading-[1.25] tracking-tight text-white sm:hidden">
                      MAN AND SATAN IN CONTENTION
                       <br />
                       AGAINST THE HOLY GOD
                     </span>
 
-                    {/* Desktop uses the same full theme, auto-fit to the box. */}
                     <div className="relative z-[2] mt-1 hidden sm:block sm:pr-5 md:pr-6">
                       <FitTwoLines
                         text={themeTitle}
@@ -155,7 +150,6 @@ export function Hero() {
 
           <ParallaxLayer speed={0.16} className="w-full min-w-0 md:col-span-2 md:row-start-2">
             <div className="hero-fade pt-0 pb-0" style={{ animationDelay: "0.8s" }}>
-              {/* No dup: countdown no go print theme again */}
               <CountdownClock startsAt={startsAt} endsAt={endsAt} theme="" show3DClock={false} />
             </div>
           </ParallaxLayer>

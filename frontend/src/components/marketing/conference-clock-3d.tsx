@@ -2,6 +2,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  getLandingPerformance,
+  whenLandingIntroDone,
+} from "@/lib/landing-performance";
 
 type ConferenceClock3DProps = {
   /** Countdown deadline in ms (Date.now() scale). null = hands rest at 12. */
@@ -27,7 +31,6 @@ type ConferenceClock3DProps = {
  *  - Pauses when off-screen; reduced-motion users get no sway
  */
 
-// ---------- dial drawing helpers ----------
 
 function fitFont(
   ctx: CanvasRenderingContext2D,
@@ -186,14 +189,33 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
     const host = hostRef.current;
     if (!host) return;
 
+    const perf = getLandingPerformance();
+    if (!perf.clockWebgl) {
+      fallbackRef.current?.classList.add("cc-static-clock");
+      return;
+    }
+
     let disposed = false;
     let cleanup = () => {};
 
+    // Preload the clock chunks while the splash plays. Building the scene
+    // behind the overlay removes the post-intro loading pause; only the first
+    // frame is held back until the intro hands control to the page.
+    const introReady = whenLandingIntroDone();
+    const fontsReady = document.fonts?.ready ?? Promise.resolve();
+    const threeReady = import("three");
+    const roomEnvironmentReady = import("three/examples/jsm/environments/RoomEnvironment.js")
+      .catch((err) => {
+        console.warn("[ConferenceClock3D] environment lighting skipped:", err);
+        return null;
+      });
+
     (async () => {
       try {
-        const THREE = await import("three");
-        if (disposed) return;
-        await (document.fonts?.ready ?? Promise.resolve());
+        const [THREE, roomEnvironmentModule] = await Promise.all([
+          threeReady,
+          roomEnvironmentReady,
+        ]);
         if (disposed) return;
 
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -203,7 +225,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           alpha: true,
           powerPreference: "high-performance",
         });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perf.maxDpr));
         renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
         host.appendChild(renderer.domElement);
 
@@ -211,18 +233,18 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
         camera.position.set(0, 0, 5.2);
 
-        // ---------- Studio lighting (reflections for the metal) ----------
         let pmrem: InstanceType<typeof THREE.PMREMGenerator> | null = null;
         let envTex: InstanceType<typeof THREE.Texture> | null = null;
-        try {
-          const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
-          pmrem = new THREE.PMREMGenerator(renderer);
-          const envScene = new RoomEnvironment();
-          envTex = pmrem.fromScene(envScene, 0.04).texture;
-          scene.environment = envTex;
-          (scene as unknown as { environmentIntensity: number }).environmentIntensity = 0.9;
-        } catch (err) {
-          console.warn("[ConferenceClock3D] environment lighting skipped:", err);
+        if (roomEnvironmentModule) {
+          try {
+            pmrem = new THREE.PMREMGenerator(renderer);
+            const envScene = new roomEnvironmentModule.RoomEnvironment();
+            envTex = pmrem.fromScene(envScene, 0.04).texture;
+            scene.environment = envTex;
+            (scene as unknown as { environmentIntensity: number }).environmentIntensity = 1;
+          } catch (err) {
+            console.warn("[ConferenceClock3D] environment lighting skipped:", err);
+          }
         }
         scene.add(new THREE.AmbientLight(0xffffff, 0.45));
         const key = new THREE.DirectionalLight(0xffffff, 2.0);
@@ -235,9 +257,16 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         const clock = new THREE.Group();
         scene.add(clock);
 
-        // ---------- Case + bezel ----------
-        const graphite = new THREE.MeshStandardMaterial({ color: 0x2b2f37, metalness: 0.85, roughness: 0.4 });
-        const graphiteLight = new THREE.MeshStandardMaterial({ color: 0x59606b, metalness: 0.9, roughness: 0.28 });
+        const graphite = new THREE.MeshStandardMaterial({
+          color: 0x2b2f37,
+          metalness: 0.85,
+          roughness: 0.4,
+        });
+        const graphiteLight = new THREE.MeshStandardMaterial({
+          color: 0x59606b,
+          metalness: 0.9,
+          roughness: 0.28,
+        });
         const mint = new THREE.MeshBasicMaterial({ color: 0x8ee3d6 });
 
         // The case sits BEHIND the dial: its front face is at z = 0.08, the dial at z = 0.1.
@@ -247,7 +276,10 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         caseMesh.position.z = -0.02;
         clock.add(caseMesh);
 
-        const bezel = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.085, 28, 160), graphiteLight);
+        const bezel = new THREE.Mesh(
+          new THREE.TorusGeometry(1.0, 0.085, 28, 160),
+          graphiteLight
+        );
         bezel.position.z = 0.1;
         clock.add(bezel);
 
@@ -255,10 +287,16 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         lip.position.z = 0.11;
         clock.add(lip);
 
-        // ---------- Dial ----------
         const faceTex = new THREE.CanvasTexture(makeFaceCanvas(title, theme));
         faceTex.colorSpace = THREE.SRGBColorSpace;
         faceTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        // Draw with the fonts available now, then sharpen the dial when the
+        // webfonts settle. Font loading no longer holds up the 3D clock.
+        void fontsReady.then(() => {
+          if (disposed) return;
+          faceTex.image = makeFaceCanvas(title, theme);
+          faceTex.needsUpdate = true;
+        });
         const face = new THREE.Mesh(
           new THREE.CircleGeometry(0.92, 128),
           new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.85, metalness: 0 })
@@ -292,7 +330,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
               return;
             }
             tex.colorSpace = THREE.SRGBColorSpace;
-            tex.anisotropy = 4;
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
             logoTex = tex;
             const img = tex.image as { width: number; height: number };
             const aspect = img && img.height ? img.width / img.height : 1;
@@ -305,8 +343,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           (err) => console.warn("[ConferenceClock3D] logo failed to load:", err)
         );
 
-        // ---------- Hands ----------
-        const handMat = new THREE.MeshStandardMaterial({ color: 0xe8eef2, metalness: 0.8, roughness: 0.3 });
+        const handMat = new THREE.MeshStandardMaterial({ color: 0xe8eef2, metalness: 0.9, roughness: 0.22 });
         const secMat = new THREE.MeshStandardMaterial({
           color: 0x8ee3d6,
           emissive: 0x2a8a7f,
@@ -338,9 +375,8 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         capDot.position.z = 0.175;
         clock.add(capDot);
 
-        // ---------- Glass + moving highlight ----------
         const glass = new THREE.Mesh(
-          new THREE.CircleGeometry(0.93, 96),
+          new THREE.CircleGeometry(0.93, 128),
           new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             transparent: true,
@@ -357,7 +393,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
 
         const glareTex = new THREE.CanvasTexture(makeGlareCanvas());
         const glare = new THREE.Mesh(
-          new THREE.CircleGeometry(0.93, 96),
+          new THREE.CircleGeometry(0.93, 128),
           new THREE.MeshBasicMaterial({
             map: glareTex,
             transparent: true,
@@ -369,7 +405,6 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         glare.position.z = 0.205;
         clock.add(glare);
 
-        // ---------- Size ----------
         const layout = () => {
           const w = host.clientWidth || 1;
           const h = host.clientHeight || 1;
@@ -381,7 +416,6 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         const ro = new ResizeObserver(layout);
         ro.observe(host);
 
-        // ---------- Pointer ----------
         const pointer = { x: 0, y: 0 };
         let hasPointer = false;
         const onPointer = (e: PointerEvent) => {
@@ -390,18 +424,27 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           pointer.x = (e.clientX / window.innerWidth - 0.5) * 2;
           pointer.y = (e.clientY / window.innerHeight - 0.5) * 2;
         };
-        window.addEventListener("pointermove", onPointer, { passive: true });
+        if (perf.pointerEffects) {
+          window.addEventListener("pointermove", onPointer, { passive: true });
+        }
 
-        // ---------- Loop ----------
         let raf = 0;
         let inView = true;
         let tabVisible = !document.hidden;
+        let introDone = false;
         let firstFrame = true;
+        let lastFrame = 0;
+        const frameInterval = 1000 / perf.fps;
         const TAU = Math.PI * 2;
 
-        const frame = () => {
+        const frame = (timestamp = 0) => {
           raf = 0;
           if (disposed) return;
+          if (timestamp && timestamp - lastFrame < frameInterval) {
+            schedule();
+            return;
+          }
+          lastFrame = timestamp || performance.now();
           const t = performance.now() / 1000;
 
           // Hands = time left. They turn backwards as the countdown runs down.
@@ -435,7 +478,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           schedule();
         };
         const schedule = () => {
-          if (!raf && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame);
+          if (!raf && introDone && inView && tabVisible && !disposed) raf = requestAnimationFrame(frame);
         };
 
         const io = new IntersectionObserver(([entry]) => {
@@ -450,14 +493,27 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
         };
         document.addEventListener("visibilitychange", onVis);
 
-        schedule();
+        // If the GPU drops the context, bring back the static clock face so
+        // the countdown never disappears mid-scroll on a low-end device.
+        const onContextLost = (event: Event) => {
+          event.preventDefault();
+          cancelAnimationFrame(raf);
+          raf = 0;
+          firstFrame = true;
+          if (fallbackRef.current) fallbackRef.current.style.opacity = "";
+        };
+        const onContextRestored = () => schedule();
+        renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+        renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
 
         cleanup = () => {
           cancelAnimationFrame(raf);
           ro.disconnect();
           io.disconnect();
-          window.removeEventListener("pointermove", onPointer);
+          if (perf.pointerEffects) window.removeEventListener("pointermove", onPointer);
           document.removeEventListener("visibilitychange", onVis);
+          renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+          renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored);
           scene.traverse((o) => {
             const m = o as InstanceType<typeof THREE.Mesh>;
             m.geometry?.dispose?.();
@@ -473,6 +529,11 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
           renderer.dispose();
           renderer.domElement.remove();
         };
+
+        await introReady;
+        if (disposed) return;
+        introDone = true;
+        schedule();
       } catch (err) {
         console.warn("[ConferenceClock3D] 3D clock disabled:", err);
       }
@@ -486,7 +547,7 @@ export function ConferenceClock3D({ target, title, theme, logoSrc, className = "
 
   return (
     <div className={`relative ${className}`} aria-hidden>
-      {/* Shown until the first 3D frame (or forever if WebGL is unavailable) */}
+      {/* Fallback until WebGL is ready, or permanently if unavailable. */}
       <div
         ref={fallbackRef}
         className="absolute inset-[14%] rounded-full bg-contain bg-center bg-no-repeat transition-opacity duration-500"

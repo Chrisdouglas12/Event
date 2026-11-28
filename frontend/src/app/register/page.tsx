@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/marketing/header";
-import { Footer } from "@/components/marketing/footer";
 import { Countdown } from "@/components/ui/countdown";
+import {
+  FacebookIcon,
+  XIcon,
+  YoutubeIcon,
+} from "@/components/icons/social-icons";
 import {
   AlertCircle,
   CalendarDays,
@@ -14,8 +25,10 @@ import {
   CircleQuestionMark,
   Lock,
   MapPin,
+  MessageCircle,
   Minus,
   Monitor,
+  Phone,
   Plus,
   Search,
   UserCheck,
@@ -34,24 +47,52 @@ import {
 import {
   countryCurrencyBadge,
   countryDialCode,
-  countryFlag,
+  countryIso2,
   phoneWithCountryDial,
 } from "@/config/country-meta";
 import {
   CURRENCIES,
+  CURRENCY_LIST,
+  currencyForCountry,
   formatMoneyMinor,
   type SupportedCurrency,
 } from "@/config/currencies";
+import { SITE_CONFIG } from "@/config/site";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/+$/, "");
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-const CURRENCY_LIST: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_PHONE = "+234 ";
-const MIN_NGN_PER_PASS_MINOR = 200_000;
 const LEGACY_DRAFT_KEY = "ihgc_draft_registration";
 const TOTAL_STEPS = 6;
 const HISTORY_KEY = "registrationStep";
+
+/* Real flag images instead of regional-indicator emoji, which Windows desktop
+   browsers do not render. XAF/XOF use a representative member-country flag. */
+const CURRENCY_FLAG_ISO2: Record<SupportedCurrency, string> = {
+  NGN: "NG",
+  USD: "US",
+  EUR: "EU",
+  GBP: "GB",
+  EGP: "EG",
+  GHS: "GH",
+  GNF: "GN",
+  KES: "KE",
+  MAD: "MA",
+  MWK: "MW",
+  RWF: "RW",
+  SLL: "SL",
+  STD: "ST",
+  TZS: "TZ",
+  UGX: "UG",
+  XAF: "CM",
+  XOF: "SN",
+  ZAR: "ZA",
+  ZMW: "ZM",
+};
+
+/** Keep the currencies most attendees use at the top of the picker. */
+const PREFERRED_CURRENCIES: SupportedCurrency[] = ["NGN", "USD", "EUR", "GBP"];
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string;
@@ -76,7 +117,7 @@ type FieldKey =
   | "state"
   | "guardianName"
   | "guardianPhone"
-  | "customNairaAmount"
+  | "customAmount"
   | "groupAttendance"
   | "consent"
   | "turnstile";
@@ -99,7 +140,7 @@ const FIELD_ORDER: FieldKey[] = [
   "guardianName",
   "guardianPhone",
   "groupAttendance",
-  "customNairaAmount",
+  "customAmount",
   "consent",
   "turnstile",
 ];
@@ -121,7 +162,7 @@ const FIELD_STEP: Record<FieldKey, number> = {
   guardianName: 3,
   guardianPhone: 3,
   groupAttendance: 4,
-  customNairaAmount: 5,
+  customAmount: 5,
   consent: 6,
   turnstile: 6,
 };
@@ -171,7 +212,6 @@ const normaliseSearch = (text: string) =>
 
 const toInt = (value: string) => Number.parseInt(value, 10) || 0;
 
-/* ---------- Small UI primitives ---------- */
 
 type CompletedItem = {
   label: string;
@@ -183,19 +223,19 @@ function CompletedDetails({ items }: { items: CompletedItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[#E5E7EB] pb-3 text-[12px] leading-5 text-[#6B7280]">
-      <span className="font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[12px] border border-[#D6EFE9] bg-[#F5FBFA] px-3.5 py-2.5 text-[12px] leading-5 text-[#4B5563]">
+      <span className="font-bold uppercase tracking-[0.16em] text-[#0E7A6E]">
         Completed
       </span>
       {items.map((item, index) => (
         <span key={item.label} className="inline-flex min-w-0 items-center gap-1.5">
           {index > 0 && (
-            <span aria-hidden="true" className="mr-1.5 hidden h-3 w-px bg-[#E5E7EB] sm:block" />
+            <span aria-hidden="true" className="mr-1.5 hidden h-3 w-px bg-[#CDE7E1] sm:block" />
           )}
-          <Check className="h-3.5 w-3.5 shrink-0 text-[#0F6E56]" strokeWidth={2.5} aria-hidden="true" />
+          <Check className="h-3.5 w-3.5 shrink-0 text-[#0E7A6E]" strokeWidth={2.5} aria-hidden="true" />
           <span className="shrink-0">{item.label}:</span>
           <span
-            className="min-w-0 max-w-[220px] truncate font-medium text-[#111C18]"
+            className="min-w-0 max-w-[220px] truncate font-semibold text-[#0E1020]"
             title={item.value}
           >
             {item.value}
@@ -203,7 +243,7 @@ function CompletedDetails({ items }: { items: CompletedItem[] }) {
           <button
             type="button"
             onClick={item.onEdit}
-            className="shrink-0 font-semibold text-[#0F6E56] transition-colors hover:underline"
+            className="shrink-0 font-semibold text-[#0E7A6E] transition-colors hover:underline"
             aria-label={`Edit ${item.label.toLowerCase()}`}
           >
             Edit
@@ -217,36 +257,367 @@ function CompletedDetails({ items }: { items: CompletedItem[] }) {
 function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3.5 text-[14px] sm:text-[15px]">
-      <span className="shrink-0 text-[#6B7280]">{label}</span>
-      <span className="min-w-0 break-words text-right font-bold text-[#111C18] sm:max-w-[70%]">
+      <span className="shrink-0 text-[#4B5563]">{label}</span>
+      <span className="min-w-0 break-words text-right font-semibold text-[#0E1020] sm:max-w-[70%]">
         {children}
       </span>
     </div>
   );
 }
 
+const STEP_LABELS = ["Choose", "Details", "Contact", "Attend", "Payment", "Confirm"] as const;
+
 function StepProgress({ step }: { step: number }) {
+  const progress = TOTAL_STEPS > 1 ? ((step - 1) / (TOTAL_STEPS - 1)) * 100 : 0;
+
   return (
-    <div className="mb-4 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[14px] font-semibold text-[#0F6E56]">
-          Step {step} of {TOTAL_STEPS}
-        </span>
-        <span className="text-[14px] font-normal text-[#6B7280]">
-          Registration
+    <div className="mb-6 w-full" aria-label={`Step ${step} of ${TOTAL_STEPS}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="register-eyebrow">Registration · IHGC 2026</span>
+        <span className="text-[12px] font-semibold text-[#0E1020]">
+          Step {String(step).padStart(2, "0")} of {TOTAL_STEPS}
         </span>
       </div>
-      <div className="grid w-full grid-cols-6 gap-2">
-        {Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((i) => (
-          <div
-            key={i}
-            className={`h-[4px] rounded-full transition-all duration-300 ${
-              i <= step ? "bg-[#0F6E56]" : "bg-[#D1D5DB]"
-            }`}
-            aria-current={i === step ? "step" : undefined}
+      <div className="relative flex items-start justify-between">
+        <span aria-hidden className="absolute left-3 right-3 top-[13px] h-px bg-[#E5E7EB]" />
+        <span
+          aria-hidden
+          className="absolute left-3 top-[13px] h-px bg-[#0E1020] transition-[width] duration-500"
+          style={{ width: `calc((100% - 24px) * ${progress / 100})` }}
+        />
+        {STEP_LABELS.map((label, index) => {
+          const value = index + 1;
+          const done = value <= step;
+          return (
+            <div key={label} className="relative z-10 flex min-w-0 flex-col items-center gap-2">
+              <span
+                className={`grid h-[26px] w-[26px] place-items-center rounded-full border text-[11px] font-bold transition-colors ${
+                  done
+                    ? "border-[#0E1020] bg-[#0E1020] text-white"
+                    : "border-[#D1D5DB] bg-white text-[#9CA3AF]"
+                }`}
+                aria-current={value === step ? "step" : undefined}
+              >
+                {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : value}
+              </span>
+              <span className="hidden whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.12em] text-[#6B7280] sm:block">
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Cross-platform flag badge. Emoji flags fail on Windows desktop, so the
+ * registration form uses small flag images with an ISO-code fallback.
+ */
+function FlagImage({
+  iso2,
+  label,
+  className = "h-4 w-6",
+}: {
+  iso2: string;
+  label?: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const code = iso2.toUpperCase();
+
+  if (failed || code.length !== 2) {
+    return (
+      <span
+        aria-hidden={label ? undefined : true}
+        className={`flag-fallback ${className}`}
+      >
+        {code || "–"}
+      </span>
+    );
+  }
+
+  const lower = code.toLowerCase();
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`https://flagcdn.com/w40/${lower}.png`}
+      srcSet={`https://flagcdn.com/w20/${lower}.png 1x, https://flagcdn.com/w40/${lower}.png 2x`}
+      width={24}
+      height={16}
+      alt={label ? `${label} flag` : ""}
+      aria-hidden={label ? undefined : true}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={`flag-image ${className}`}
+    />
+  );
+}
+
+/**
+ * Compact searchable currency picker. The old grid of 18 buttons took over the
+ * payment step; this keeps the full choice one click away without the clutter.
+ */
+function CurrencyPicker({
+  value,
+  pricesMinor,
+  currencyAvailable,
+  disabled,
+  onSelect,
+}: {
+  value: SupportedCurrency;
+  pricesMinor: Partial<Record<SupportedCurrency, number>>;
+  currencyAvailable: Record<string, boolean>;
+  disabled: boolean;
+  onSelect: (code: SupportedCurrency) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const options = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const ranked = CURRENCY_LIST.slice().sort((a, b) => {
+      const aIndex = PREFERRED_CURRENCIES.indexOf(a);
+      const bIndex = PREFERRED_CURRENCIES.indexOf(b);
+      return (
+        (aIndex === -1 ? PREFERRED_CURRENCIES.length : aIndex) -
+        (bIndex === -1 ? PREFERRED_CURRENCIES.length : bIndex)
+      );
+    });
+
+    if (!term) return ranked;
+    return ranked.filter((code) => {
+      const config = CURRENCIES[code];
+      return (
+        code.toLowerCase().includes(term) ||
+        config.label.toLowerCase().includes(term) ||
+        config.symbol.toLowerCase().includes(term)
+      );
+    });
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setActiveIndex(0);
+    const frame = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const activeCode = options[activeIndex];
+    if (!activeCode) return;
+    document
+      .getElementById(`currency-option-${activeCode}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open, options]);
+
+  const selectCurrency = (code: SupportedCurrency) => {
+    onSelect(code);
+    setOpen(false);
+  };
+
+  const onSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      return;
+    }
+    if (!options.length) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.min(index + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const code = options[activeIndex];
+      if (code && currencyAvailable[code] !== false) selectCurrency(code);
+    }
+  };
+
+  const selectedPrice = pricesMinor[value];
+  const activeDescendant = options[activeIndex]
+    ? `currency-option-${options[activeIndex]}`
+    : undefined;
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        id="field-currency"
+        type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="currency-listbox"
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-[60px] w-full items-center justify-between gap-3 rounded-[12px] border border-[#D1D5DB] bg-white px-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E1020]/25 disabled:cursor-wait disabled:opacity-70 sm:px-4"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <FlagImage
+            iso2={CURRENCY_FLAG_ISO2[value]}
+            label={CURRENCIES[value].label}
+            className="h-5 w-7 shrink-0 rounded-[2px] object-cover"
           />
-        ))}
+          <span className="min-w-0">
+            <span className="block truncate text-[14px] font-semibold text-[#111C18]">
+              {CURRENCIES[value].label}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-[#6B7280]">
+              {value}
+              {typeof selectedPrice === "number" ? (
+                <>
+                  {" · "}
+                  <span className="currency-symbol">{formatMoneyMinor(selectedPrice, value)}</span>
+                  {" per person"}
+                </>
+              ) : (
+                " · loading price"
+              )}
+            </span>
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden
+          className={`h-4 w-4 shrink-0 text-[#6B7280] transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-[14px] border border-[#D1D5DB] bg-white"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setOpen(false);
+          }}
+        >
+          <div className="flex items-center gap-2 border-b border-[#E5E7EB] px-3.5 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-[#6B7280]" aria-hidden />
+            <input
+              ref={searchRef}
+              type="text"
+              role="combobox"
+              value={query}
+              aria-expanded
+              aria-controls="currency-listbox"
+              aria-activedescendant={activeDescendant}
+              aria-label="Search currencies"
+              placeholder="Search currency or country"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={onSearchKeyDown}
+              className="h-8 w-full border-0 bg-transparent text-[13px] text-[#111C18] outline-none placeholder:text-[#9CA3AF]"
+            />
+          </div>
+
+          <ul
+            id="currency-listbox"
+            role="listbox"
+            aria-label="Currency"
+            className="max-h-[292px] overflow-y-auto overscroll-contain py-1.5"
+          >
+            {options.map((code, index) => {
+              const unavailable = currencyAvailable[code] === false;
+              const price = pricesMinor[code];
+              const selected = code === value;
+              return (
+                <li key={code} role="presentation">
+                  <button
+                    id={`currency-option-${code}`}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    disabled={unavailable}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => selectCurrency(code)}
+                    className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                      index === activeIndex ? "bg-[#EEF1F6]" : "bg-white hover:bg-[#F9FAFB]"
+                    }`}
+                  >
+                    <FlagImage
+                      iso2={CURRENCY_FLAG_ISO2[code]}
+                      label={CURRENCIES[code].label}
+                      className="h-4 w-6 shrink-0 rounded-[2px] object-cover"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold text-[#111C18]">
+                        {CURRENCIES[code].label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-[#6B7280]">
+                        {unavailable ? (
+                          "Currently unavailable"
+                        ) : typeof price === "number" ? (
+                          <>
+                            <span className="currency-symbol">{formatMoneyMinor(price, code)}</span>
+                            {" per person"}
+                          </>
+                        ) : (
+                          "Price loading"
+                        )}
+                      </span>
+                    </span>
+                    {selected && (
+                      <Check className="h-4 w-4 shrink-0 text-[#0E1020]" aria-hidden />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+
+            {options.length === 0 && (
+              <li className="px-4 py-7 text-center text-[13px] text-[#6B7280]">
+                No currency found. Try the currency code, e.g. NGN.
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepHeading({
+  step,
+  title,
+  description,
+}: {
+  step: number;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden className="h-px w-7 bg-[#8EE3D6]" />
+        <span className="register-eyebrow">
+          Step {String(step).padStart(2, "0")} · {STEP_LABELS[step - 1]}
+        </span>
       </div>
+      <h1 className="register-title text-[20px] font-semibold uppercase leading-tight tracking-wide text-[#0E1020]">
+        {title}
+      </h1>
+      <p className="max-w-2xl text-[14px] leading-relaxed text-[#4B5563] sm:text-[15px]">
+        {description}
+      </p>
     </div>
   );
 }
@@ -261,12 +632,12 @@ function Field({
   label: string;
   htmlFor: string;
   error?: string;
-  hint?: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="w-full space-y-2">
-      <label htmlFor={htmlFor} className="block text-[14px] font-medium text-[#111C18]">
+      <label htmlFor={htmlFor} className="block text-[13px] font-semibold text-[#0E1020]">
         {label}
       </label>
       {children}
@@ -304,8 +675,8 @@ function ChoiceButton({
       onClick={onClick}
       className={`inline-flex min-h-[38px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] font-medium transition-all sm:min-h-[40px] sm:px-4 sm:text-[14px] ${
         active
-          ? "border-[#0F6E56] bg-[#0F6E56] text-white shadow-sm"
-          : "border-[#E5E7EB] bg-white text-[#111C18] hover:border-[#0F6E56]/40 hover:bg-[#F7FAF9]"
+          ? "border-[#0E1020] bg-[#0E1020] text-white"
+          : "border-[#D1D5DB] bg-white text-[#0E1020] hover:border-[#0E1020] hover:bg-[#F5F6F8]"
       }`}
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -334,9 +705,9 @@ function ToggleRow({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-4 text-left transition hover:border-[#0F6E56]/40"
+      className="flex w-full items-center justify-between gap-4 rounded-[12px] border border-[#D1D5DB] bg-white px-4 py-4 text-left transition hover:border-[#0E1020] hover:bg-[#F5F6F8]"
     >
-      <span className="min-w-0 text-[14px] font-medium text-[#111C18]">
+      <span className="min-w-0 text-[14px] font-medium text-[#0E1020]">
         {label}
         {description && (
           <small className="mt-1 block text-[12px] font-normal leading-relaxed text-[#6B7280]">
@@ -347,7 +718,7 @@ function ToggleRow({
       <span
         aria-hidden="true"
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-          checked ? "bg-[#0F6E56]" : "bg-[#D1D5DB]"
+          checked ? "bg-[#0E1020]" : "bg-[#D1D5DB]"
         }`}
       >
         <span
@@ -391,7 +762,7 @@ function NumberField({
       className={`flex h-[60px] w-full items-center overflow-hidden rounded-[12px] border bg-white transition focus-within:ring-2 ${
         invalid
           ? "border-rose-500 focus-within:border-rose-500 focus-within:ring-rose-500/20"
-          : "border-[#D1D5DB] focus-within:border-[#0F6E56] focus-within:ring-[#0F6E56]/20"
+          : "border-[#D1D5DB] focus-within:border-[#0E1020] focus-within:ring-[#0E1020]/20"
       }`}
     >
       <button
@@ -400,7 +771,7 @@ function NumberField({
         aria-label={`Decrease ${label}`}
         disabled={!canDecrease}
         onClick={() => onChange(String(Math.max(min, current - 1)))}
-        className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#E5E7EB] text-[#4B5563] transition hover:bg-[#EEF1F6] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Minus className="h-4 w-4" />
       </button>
@@ -415,7 +786,7 @@ function NumberField({
         aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
-        className="min-w-0 flex-1 bg-transparent px-2 text-center text-[16px] font-semibold text-[#111C18] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="min-w-0 flex-1 bg-transparent px-2 text-center text-[16px] font-semibold text-[#0E1020] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <button
         type="button"
@@ -425,7 +796,7 @@ function NumberField({
         onClick={() =>
           onChange(String(Math.min(max ?? Number.MAX_SAFE_INTEGER, Math.max(min, current + 1))))
         }
-        className="flex h-full w-12 shrink-0 items-center justify-center border-l border-[#E5E7EB] text-[#374151] transition hover:bg-[#F4F4F2] disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-full w-12 shrink-0 items-center justify-center border-l border-[#E5E7EB] text-[#4B5563] transition hover:bg-[#EEF1F6] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Plus className="h-4 w-4" />
       </button>
@@ -456,12 +827,12 @@ function Tally({
   else text = `${current - total} over. Reduce a count so the total is ${total}.`;
 
   return (
-    <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4">
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#D1D5DB]">
+    <div className="rounded-[12px] border border-[#D6EFE9] bg-[#F5FBFA] p-4">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#DCE7E4]">
         <span
           aria-hidden="true"
           className={`block h-full rounded-full transition-all ${
-            error ? "bg-rose-500" : matched ? "bg-[#0F6E56]" : "bg-[#8FB8A9]"
+            error ? "bg-rose-500" : matched ? "bg-[#0E7A6E]" : "bg-[#8FB8A9]"
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -472,8 +843,8 @@ function Tally({
           <span>{error}</span>
         </p>
       ) : (
-        <p aria-live="polite" className="mt-2.5 flex items-center gap-1.5 text-[13px] text-[#374151]">
-          {matched && <Check className="h-3.5 w-3.5 text-[#0F6E56]" />}
+        <p aria-live="polite" className="mt-2.5 flex items-center gap-1.5 text-[13px] text-[#4B5563]">
+          {matched && <Check className="h-3.5 w-3.5 text-[#0E7A6E]" />}
           <span>{text}</span>
         </p>
       )}
@@ -629,7 +1000,7 @@ function SearchableSelect({
           setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
         }}
         onKeyDown={handleKeyDown}
-        className={`h-[60px] w-full rounded-[12px] border bg-white pl-11 pr-10 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20 disabled:cursor-not-allowed disabled:bg-[#F4F4F2] disabled:text-gray-500 ${
+        className={`h-[60px] w-full rounded-[12px] border bg-white pl-11 pr-10 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20 disabled:cursor-not-allowed disabled:bg-[#F5FBFA] disabled:text-gray-500 ${
           inputProps?.["aria-invalid"] ? "border-rose-500" : "border-[#D1D5DB]"
         }`}
       />
@@ -645,7 +1016,7 @@ function SearchableSelect({
           setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
           inputRef.current?.focus();
         }}
-        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-gray-500 transition hover:text-[#111C18] disabled:opacity-40"
+        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-gray-500 transition hover:text-[#0E1020] disabled:opacity-40"
       >
         <ChevronDown className="h-5 w-5" />
       </button>
@@ -655,7 +1026,7 @@ function SearchableSelect({
           ref={listRef}
           id={`${id}-options`}
           role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-64 overflow-auto rounded-[12px] border border-[#E5E7EB] bg-white p-1.5 shadow-xl"
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-64 overflow-auto rounded-[12px] border border-[#E5E7EB] bg-white p-1.5"
         >
           {filtered.length === 0 ? (
             <div className="px-4 py-3 text-[14px] text-[#6B7280]">{emptyMessage}</div>
@@ -670,11 +1041,20 @@ function SearchableSelect({
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => commit(option)}
-                className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-[14px] text-[#111C18] transition ${
-                  index === activeIndex ? "bg-[#EEF4F1]" : "hover:bg-[#F4F4F2]"
+                className={`flex cursor-pointer items-center gap-2 rounded-[8px] px-3 py-2.5 text-[14px] text-[#0E1020] transition ${
+                  index === activeIndex ? "bg-[#EEF1F6]" : "hover:bg-[#EEF1F6]"
                 }`}
               >
-                {renderOption ? renderOption(option) : option}
+                <span
+                  className={`flex min-w-0 flex-1 items-center gap-2 ${
+                    option === value ? "font-semibold text-[#0E1020]" : ""
+                  }`}
+                >
+                  {renderOption ? renderOption(option) : option}
+                </span>
+                {option === value && (
+                  <Check className="ml-1 h-4 w-4 shrink-0 text-[#0E1020]" aria-hidden />
+                )}
               </div>
             ))
           )}
@@ -690,27 +1070,28 @@ function RegistrationLayout({
   children,
 }: {
   step: number;
-  hintBelowCard?: React.ReactNode;
+  hintBelowCard?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="register-premium-bg flex min-h-screen flex-col">
+    <div className="register-shell register-premium-bg flex min-h-screen flex-col">
       <Header />
 
       <main className="flex flex-1 flex-col items-center justify-start px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
         <div className="flex w-full max-w-[700px] flex-col items-center">
           <StepProgress step={step} />
-          <div className="register-premium-card w-full rounded-[24px] bg-white">
-            <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-t-[24px] border-b border-[#EEF2F0] bg-white/80 px-3 py-3 sm:gap-3 sm:px-12 sm:py-4">
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
-                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.06em] text-[#0F6E56] sm:text-[13px] sm:tracking-[0.12em]">
+          <div className="register-premium-card w-full overflow-hidden rounded-[4px] bg-white">
+            <div className="register-top-plate flex min-w-0 items-center justify-between gap-2 rounded-t-[4px] px-4 py-4 text-[#0E1020] sm:px-12 sm:py-5">
+              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8EE3D6] to-transparent" />
+              <div className="relative z-10 flex min-w-0 items-center gap-2 sm:gap-4">
+                <span className="shrink-0 whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.18em] text-[#0E1020] sm:text-[13px]">
                   IHGC 2026
                 </span>
-                <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
-                <div className="flex min-w-0 items-center gap-1 text-[12px] font-medium text-[#6B7280] sm:gap-2 sm:text-[13px]">
+                <span aria-hidden className="hidden h-4 w-px bg-[#D1D5DB] sm:block" />
+                <div className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-[#4B5563] sm:text-[13px]">
                   <span className="whitespace-nowrap sm:hidden">In</span>
                   <span className="hidden whitespace-nowrap sm:inline">Begins in</span>
-                  <span className="min-w-0 [&>div]:gap-1 sm:[&>div]:gap-1.5">
+                  <span className="min-w-0 text-[#0E1020] [&>div]:gap-1 sm:[&>div]:gap-1.5">
                     <Countdown compact onLight />
                   </span>
                 </div>
@@ -719,23 +1100,77 @@ function RegistrationLayout({
                 href="/programme"
                 aria-label="View schedule"
                 title="View schedule"
-                className="inline-flex shrink-0 items-center whitespace-nowrap text-[13px] font-semibold text-[#0F6E56] hover:underline"
+                className="relative z-10 inline-flex shrink-0 items-center whitespace-nowrap text-[12px] font-semibold text-[#0E7A6E] transition-colors hover:text-[#0E1020] sm:text-[13px]"
               >
-                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[3px] bg-[#8EE3D6]/45">
+                  <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+                </span>
                 <span className="hidden sm:ml-1.5 sm:inline">View schedule</span>
               </Link>
             </div>
             <div className="p-6 sm:p-12">{children}</div>
           </div>
-          {hintBelowCard && (
-            <div className="mt-6 text-center text-[13px] text-[#6B7280] sm:text-[14px]">
-              {hintBelowCard}
+          <div className="mt-5 flex w-full flex-col items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[12px] text-[#6B7280]">
+              <span className="font-medium text-[#0E1020]">Need help?</span>
+              <a
+                href={SITE_CONFIG.contact.phoneTel}
+                className="inline-flex items-center gap-1.5 font-medium text-[#0E1020] transition hover:text-[#0E7A6E]"
+              >
+                <Phone className="h-3.5 w-3.5" aria-hidden />
+                <span>{SITE_CONFIG.contact.phone}</span>
+              </a>
+              <span aria-hidden className="hidden h-3 w-px bg-[#D1D5DB] sm:block" />
+              <div className="flex items-center gap-2.5">
+                <a
+                  href={SITE_CONFIG.contact.whatsAppUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Chat with us on WhatsApp"
+                  className="text-[#6B7280] transition hover:text-[#0E7A6E]"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden />
+                </a>
+                <a
+                  href={SITE_CONFIG.socials.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="HOREMOW on Facebook"
+                  className="text-[#6B7280] transition hover:text-[#0E7A6E]"
+                >
+                  <FacebookIcon className="h-4 w-4" />
+                </a>
+                <a
+                  href={SITE_CONFIG.socials.youtube}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="HOREMOW on YouTube"
+                  className="text-[#6B7280] transition hover:text-[#0E7A6E]"
+                >
+                  <YoutubeIcon className="h-4 w-4" />
+                </a>
+                <a
+                  href={SITE_CONFIG.socials.x}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="HOREMOW on X"
+                  className="text-[#6B7280] transition hover:text-[#0E7A6E]"
+                >
+                  <XIcon className="h-4 w-4" />
+                </a>
+              </div>
             </div>
-          )}
+
+            <div className="flex items-center justify-center gap-1.5 text-center text-[12px] text-[#6B7280]">
+              <Lock className="h-3.5 w-3.5 shrink-0 text-[#0E7A6E]" aria-hidden />
+              <span>
+                {hintBelowCard ??
+                  "Secure registration · Your progress stays on this device"}
+              </span>
+            </div>
+          </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }
@@ -751,8 +1186,12 @@ export default function RegisterPage() {
   const [isGroup, setIsGroup] = useState(false);
   const [currency, setCurrency] = useState<SupportedCurrency>("NGN");
   const [pricesMinor, setPricesMinor] = useState<Partial<Record<SupportedCurrency, number>>>({});
+  const [currencyAvailable, setCurrencyAvailable] = useState<Record<string, boolean>>({});
+  const [customAmountCutoffAt, setCustomAmountCutoffAt] = useState<string | null>(null);
   const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [closedReason, setClosedReason] = useState<string | null>(null);
   const [configState, setConfigState] = useState<"loading" | "ready" | "error">("loading");
+  const [now, setNow] = useState(() => Date.now());
 
   const [payerName, setPayerName] = useState("");
   const [payerPhone, setPayerPhone] = useState(INITIAL_PHONE);
@@ -776,7 +1215,8 @@ export default function RegisterPage() {
   const [guardianPhone, setGuardianPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [customNairaAmount, setCustomNairaAmount] = useState("5000");
+  const [customAmount, setCustomAmount] = useState("5000");
+  const [customAmountTouched, setCustomAmountTouched] = useState(false);
   const [groupAttendance, setGroupAttendance] = useState({ physically: 0, online: 0, not_sure: 0 });
 
   const [loading, setLoading] = useState(false);
@@ -792,7 +1232,6 @@ export default function RegisterPage() {
   const isNigeria = matchedCountry === NIGERIA || country.trim().toLowerCase() === "nigeria";
   const selectedCountry = findCountry(country) ?? country;
   const selectedDial = countryDialCode(selectedCountry);
-  const selectedFlag = countryFlag(selectedCountry);
   const inviteeNumber = hasInvitees ? Number(inviteeCount) || 0 : 0;
   const returningCount = Math.max(0, seatsCount - inviteeNumber);
   const groupAttendanceTotal =
@@ -828,7 +1267,6 @@ export default function RegisterPage() {
     [writeStepToHistory]
   );
 
-  /* ---------- Reset helpers ---------- */
 
   const resetTurnstile = useCallback(() => {
     const api = getTurnstile();
@@ -863,7 +1301,8 @@ export default function RegisterPage() {
     setGuardianName("");
     setGuardianPhone("");
     setConsent(false);
-    setCustomNairaAmount("5000");
+    setCustomAmount("5000");
+    setCustomAmountTouched(false);
     setGroupAttendance({ physically: 0, online: 0, not_sure: 0 });
     setError(null);
     setFieldErrors({});
@@ -917,7 +1356,6 @@ export default function RegisterPage() {
     }, 60);
   };
 
-  /* ---------- Effects ---------- */
 
   useEffect(() => {
     try {
@@ -968,7 +1406,10 @@ export default function RegisterPage() {
         if (!response.ok) throw new Error(data.error || "Config unavailable");
         if (cancelled) return;
         setPricesMinor(data.pricesMinor || {});
+        setCurrencyAvailable(data.currencyAvailable || {});
+        setCustomAmountCutoffAt(data.customAmountCutoffAt || null);
         setRegistrationOpen(Boolean(data.registrationOpen));
+        setClosedReason(typeof data.closedReason === "string" ? data.closedReason : null);
         setConfigState("ready");
       })
       .catch((caught) => {
@@ -980,6 +1421,22 @@ export default function RegisterPage() {
       cancelled = true;
     };
   }, []);
+
+  // Keep the locked-fee window accurate if the page stays open across Day 2.
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  // Fall back to a configured currency if the preferred one has no provider.
+  useEffect(() => {
+    if (configState !== "ready" || currencyAvailable[currency] !== false) return;
+    const fallback =
+      CURRENCY_LIST.find((code) => currencyAvailable[code] !== false) || "NGN";
+    setCurrency(fallback);
+    setCustomAmountTouched(false);
+    clearErr("customAmount");
+  }, [configState, currencyAvailable, currency]);
 
   // Load states/regions for the selected country. Nigeria is local; every
   // other country comes from the open CountriesNow dataset.
@@ -1076,29 +1533,36 @@ export default function RegisterPage() {
     };
   }, [step]);
 
-  /* ---------- Pricing ---------- */
 
   const effectiveSeats = isGroup ? seatsCount : 1;
-  const unitMinor = pricesMinor[currency];
-  const minimumNairaMinor = effectiveSeats * MIN_NGN_PER_PASS_MINOR;
-  const standardGroupNairaMinor =
-    typeof pricesMinor.NGN === "number" ? pricesMinor.NGN * seatsCount : null;
-  const customNairaMajor = Number(customNairaAmount);
-  const customNairaMinor =
-    currency === "NGN" && Number.isFinite(customNairaMajor)
-      ? Math.round(customNairaMajor * 100)
+  const currencyConfig = CURRENCIES[currency];
+  const backendUnitMinor = pricesMinor[currency];
+  // Backend prices win; static config prices cover first paint and offline use.
+  const standardUnitMinor =
+    typeof backendUnitMinor === "number" && backendUnitMinor > 0
+      ? backendUnitMinor
+      : currencyConfig.standardPriceMinor;
+  const standardTotalMinor = standardUnitMinor * effectiveSeats;
+  const cutoffMs = customAmountCutoffAt ? Date.parse(customAmountCutoffAt) : null;
+  // Before Day 2 closes the standard fee is the floor; afterwards any
+  // positive amount is allowed. A missing cutoff keeps the floor in place.
+  const standardFeeLocked = cutoffMs === null || now < cutoffMs;
+  const minimumMinor = standardFeeLocked ? standardTotalMinor : 1;
+  const customMajor = Number(customAmount);
+  const customMinor =
+    customAmount.trim() !== "" && Number.isFinite(customMajor) && customMajor > 0
+      ? Math.round(customMajor * currencyConfig.minorUnitMultiplier)
       : null;
   const totalMinor =
-    currency === "NGN"
-      ? isGroup
-        ? standardGroupNairaMinor
-        : customNairaMinor
-      : typeof unitMinor === "number"
-        ? effectiveSeats * unitMinor
-        : null;
+    customMinor !== null && customMinor >= minimumMinor ? customMinor : null;
   const formattedTotal = totalMinor !== null ? formatMoneyMinor(totalMinor, currency) : "—";
 
-  /* ---------- Validation (same rules as the original full form) ---------- */
+  useEffect(() => {
+    if (customAmountTouched) return;
+    const major = standardTotalMinor / currencyConfig.minorUnitMultiplier;
+    setCustomAmount(String(Number.isFinite(major) ? major : ""));
+  }, [standardTotalMinor, currencyConfig.minorUnitMultiplier, customAmountTouched]);
+
 
   const validate = (): FieldErrors => {
     const errs: FieldErrors = {};
@@ -1116,13 +1580,13 @@ export default function RegisterPage() {
         errs.inviteeCount = `Enter a number between 1 and ${seatsCount}.`;
       }
       if (genderCounts.male + genderCounts.female !== seatsCount) {
-        errs.genderCounts = `Brothers and Sisters must add up to ${seatsCount} participants (children included).`;
+        errs.genderCounts = `Male and female counts must add up to ${seatsCount} participants (children included).`;
       }
       if (hasChildren && (childCount < 1 || childCount > seatsCount)) {
         errs.childCount = `Enter a child count between 1 and ${seatsCount}.`;
       }
     } else {
-      if (gender !== "male" && gender !== "female") errs.gender = "Select Brother or Sister.";
+      if (gender !== "male" && gender !== "female") errs.gender = "Select Male or Female.";
       if (firstTime !== "yes" && firstTime !== "no") errs.firstTime = "Select Yes or No.";
     }
 
@@ -1145,14 +1609,10 @@ export default function RegisterPage() {
       if (!guardianPhone.trim()) errs.guardianPhone = "Enter a parent or guardian phone number.";
     }
 
-    if (!isGroup && currency === "NGN") {
-      if (
-        !Number.isInteger(customNairaMajor) ||
-        customNairaMinor === null ||
-        customNairaMinor < minimumNairaMinor
-      ) {
-        errs.customNairaAmount = "Enter a valid whole-naira amount.";
-      }
+    if (customMinor === null || customMinor < minimumMinor) {
+      errs.customAmount = standardFeeLocked
+        ? `Enter at least ${formatMoneyMinor(standardTotalMinor, currency)}.`
+        : "Enter an amount greater than zero.";
     }
 
     if (isGroup && seatsValid) {
@@ -1195,7 +1655,7 @@ export default function RegisterPage() {
       ];
     }
     if (current === 4) return isGroup ? ["groupAttendance"] : [];
-    if (current === 5) return ["customNairaAmount"];
+    if (current === 5) return ["customAmount"];
     if (current === TOTAL_STEPS) return ["consent", "turnstile"];
     return [];
   };
@@ -1245,7 +1705,6 @@ export default function RegisterPage() {
     goToStep(target);
   };
 
-  /* ---------- Submit ---------- */
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1293,7 +1752,7 @@ export default function RegisterPage() {
         childCount: isGroup && hasChildren ? childCount : undefined,
         turnstileToken: turnstileToken || undefined,
         consent,
-        customAmountMinor: !isGroup && currency === "NGN" ? customNairaMinor : undefined,
+        customAmountMinor: customMinor ?? undefined,
         groupAttendance: isGroup ? groupAttendance : undefined,
       };
 
@@ -1357,6 +1816,14 @@ export default function RegisterPage() {
     clearErr("state");
     clearErr("payerPhone");
     setState("");
+
+    // Prefer the participant's local currency where Flutterwave supports it.
+    const localCurrency = currencyForCountry(next);
+    if (localCurrency && currencyAvailable[localCurrency] !== false) {
+      setCurrency(localCurrency);
+      setCustomAmountTouched(false);
+      clearErr("customAmount");
+    }
   };
 
   const locationFields = (
@@ -1379,14 +1846,12 @@ export default function RegisterPage() {
             clearErr("state");
           }}
           onChange={handleCountryChange}
-          renderLeading={() => <span aria-hidden>{countryFlag(country)}</span>}
+          renderLeading={() => <FlagImage iso2={countryIso2(country)} label={country} />}
           renderOption={(option) => (
             <>
-              <span aria-hidden className="text-[18px] leading-none">
-                {countryFlag(option)}
-              </span>
+              <FlagImage iso2={countryIso2(option)} label={option} />
               <span className="min-w-0 truncate">{option}</span>
-              <span aria-hidden className="ml-auto opacity-60">
+              <span aria-hidden className="currency-symbol ml-auto text-[12px] opacity-60">
                 {countryCurrencyBadge(option)}
               </span>
             </>
@@ -1442,19 +1907,25 @@ export default function RegisterPage() {
 
   const phoneValid = Boolean(toE164Phone(payerPhone));
   const emailValid = EMAIL_RE.test(payerEmail.trim());
-  const nairaChips: { label: string; minor: number }[] =
-    typeof pricesMinor.NGN === "number" && pricesMinor.NGN !== minimumNairaMinor
-      ? [{ label: "Standard", minor: pricesMinor.NGN }]
+  const standardChips: { label: string; minor: number; major: number }[] =
+    standardFeeLocked && standardTotalMinor > 0
+      ? [
+          {
+            label: "Standard",
+            minor: standardTotalMinor,
+            major: standardTotalMinor / currencyConfig.minorUnitMultiplier,
+          },
+        ]
       : [];
 
   const categorySummary = isGroup
     ? `Group participants · ${groupName.trim() || "Chapter"} · ${seatsCount} participants`
-    : `Individual participant · ${gender === "male" ? "Brother" : "Sister"} · ${
+    : `Individual participant · ${gender === "male" ? "Male" : "Female"} · ${
         firstTime === "yes" ? "First-time" : "Returning"
       } attendee`;
   const attendeeSummary = isGroup
     ? `${groupName.trim() || "Chapter"} · ${seatsCount} participants`
-    : `${gender === "male" ? "Brother" : "Sister"} · ${
+    : `${gender === "male" ? "Male" : "Female"} · ${
         firstTime === "yes" ? "First-time" : "Returning"
       }`;
   const contactSummary = payerName.trim()
@@ -1492,19 +1963,22 @@ export default function RegisterPage() {
         <button
           type="button"
           onClick={prevStep}
-          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#0E1020] transition hover:text-[#0E1020]"
         >
           Back
         </button>
       ) : (
-        <Link href="/" className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] hover:text-black">
+        <Link
+          href="/"
+          className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#0E1020] transition hover:text-[#0E1020]"
+        >
           Back to Home
         </Link>
       )}
       <button
         type="button"
         onClick={nextStep}
-        className="h-[44px] rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0D5E49]"
+        className="register-primary h-[44px] rounded-[10px] border px-5 text-[14px] font-semibold transition-colors"
       >
         {nextLabel}
       </button>
@@ -1515,26 +1989,19 @@ export default function RegisterPage() {
     <RegistrationLayout
       step={step}
       hintBelowCard={
-        step === TOTAL_STEPS ? (
-          <div className="flex items-center justify-center gap-1.5 text-[12px] text-[#6B7280] sm:text-[13px]">
-            <Lock className="h-3.5 w-3.5" />
-            <span>Secure checkout · Registration fees are non-refundable</span>
-          </div>
-        ) : undefined
+        step === TOTAL_STEPS
+          ? "Secure checkout · Registration fees are non-refundable"
+          : undefined
       }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        {/* Step 1: category */}
         {step === 1 && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
-                Registration category
-              </h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Select how you will be attending IHGC 2026.
-              </p>
-            </div>
+            <StepHeading
+              step={1}
+              title="Registration category"
+              description="Select how you will be attending IHGC 2026."
+            />
 
             <div className="grid gap-3.5 pt-2 sm:grid-cols-2">
               {[
@@ -1559,13 +2026,18 @@ export default function RegisterPage() {
                     onClick={() => switchMode(option.group)}
                     className={`rounded-[12px] border p-5 text-left transition-all ${
                       isGroup === option.group
-                        ? "border-[#0F6E56] bg-[#EEF4F1]/60 ring-2 ring-[#0F6E56]/15"
+                        ? "border-[#0E1020] bg-[#EEF1F6]/70 ring-2 ring-[#0E1020]/10"
                         : "border-[#D1D5DB] bg-white hover:border-gray-400"
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon className="h-[18px] w-[18px] shrink-0 text-[#0F6E56]" aria-hidden="true" />
-                      <div className="text-[16px] font-semibold text-[#111C18]">{option.title}</div>
+                      <Icon
+                        className={`h-[18px] w-[18px] shrink-0 ${
+                          isGroup === option.group ? "text-[#0E1020]" : "text-[#0E7A6E]"
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <div className="text-[16px] font-semibold text-[#0E1020]">{option.title}</div>
                     </div>
                     <div className="mt-1 text-[13px] text-[#6B7280]">{option.desc}</div>
                   </button>
@@ -1577,19 +2049,17 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 2: attendee / group details */}
         {step === 2 && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
-                {isGroup ? "Group details" : "About you"}
-              </h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                {isGroup
+            <StepHeading
+              step={2}
+              title={isGroup ? "Group details" : "About you"}
+              description={
+                isGroup
                   ? "Tell us about your chapter or zone and the people attending."
-                  : "Tell us your gender and whether you’re attending as an invitee or a first-timer."}
-              </p>
-            </div>
+                  : "Tell us your gender and whether you’re an invitee/first-timer or a returning participant."
+              }
+            />
 
             <CompletedDetails
               items={[
@@ -1615,7 +2085,7 @@ export default function RegisterPage() {
                         clearErr("groupName");
                       }}
                       {...fp("groupName")}
-                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                     />
                   </Field>
 
@@ -1782,7 +2252,7 @@ export default function RegisterPage() {
               </div>
             ) : (
               <div className="grid gap-6 pt-2 sm:grid-cols-2">
-                <Field htmlFor="field-gender" label="Title / Gender" error={fieldErrors.gender}>
+                <Field htmlFor="field-gender" label="Gender" error={fieldErrors.gender}>
                   <div id="field-gender" role="group" aria-label="Gender" className="flex flex-wrap gap-2">
                     {(["male", "female"] as const).map((value) => (
                       <ChoiceButton
@@ -1793,7 +2263,7 @@ export default function RegisterPage() {
                           clearErr("gender");
                         }}
                       >
-                        {value === "male" ? "Brother" : "Sister"}
+                        {value === "male" ? "Male" : "Female"}
                       </ChoiceButton>
                     ))}
                   </div>
@@ -1823,19 +2293,17 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 3: contact */}
         {step === 3 && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
-                {isGroup ? "Group leader details" : "Your contact details"}
-              </h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                {isGroup
+            <StepHeading
+              step={3}
+              title={isGroup ? "Group leader details" : "Your contact details"}
+              description={
+                isGroup
                   ? "The person registering and paying for the group."
-                  : "Your digital pass and check-in barcode will be sent here."}
-              </p>
-            </div>
+                  : "Your digital pass and check-in barcode will be sent here."
+              }
+            />
 
             <CompletedDetails items={[attendeeHistory]} />
 
@@ -1849,17 +2317,17 @@ export default function RegisterPage() {
                       id="field-payerName"
                       type="text"
                       autoComplete="name"
-                      placeholder="Brother / Sister Full Name"
+                      placeholder="Full Name"
                       value={payerName}
                       onChange={(event) => {
                         setPayerName(event.target.value);
                         clearErr("payerName");
                       }}
                       {...fp("payerName")}
-                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                      className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                     />
                     {payerName.trim() && !fieldErrors.payerName && (
-                      <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                      <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0E7A6E]" />
                     )}
                   </div>
                 </Field>
@@ -1869,11 +2337,16 @@ export default function RegisterPage() {
                 htmlFor="field-payerPhone"
                 label="Phone number"
                 error={fieldErrors.payerPhone}
-                hint={`${selectedFlag} ${selectedDial} for ${selectedCountry || "your selected country"}`}
+                hint={
+                  <span className="inline-flex items-center gap-1.5">
+                    <FlagImage iso2={countryIso2(selectedCountry)} label={selectedCountry} />
+                    <span>{selectedDial} for {selectedCountry || "your selected country"}</span>
+                  </span>
+                }
               >
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[18px]" aria-hidden>
-                    {selectedFlag}
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2" aria-hidden>
+                    <FlagImage iso2={countryIso2(selectedCountry)} label={selectedCountry} />
                   </span>
                   <input
                     id="field-payerPhone"
@@ -1886,10 +2359,10 @@ export default function RegisterPage() {
                       clearErr("payerPhone");
                     }}
                     {...fp("payerPhone")}
-                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] pl-12 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] pl-12 pr-11 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                   />
                   {phoneValid && !fieldErrors.payerPhone && (
-                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0E7A6E]" />
                   )}
                 </div>
               </Field>
@@ -1909,10 +2382,10 @@ export default function RegisterPage() {
                       clearErr("payerEmail");
                     }}
                     {...fp("payerEmail")}
-                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                    className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] px-4 pr-11 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                   />
                   {emailValid && !fieldErrors.payerEmail && (
-                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F6E56]" />
+                    <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0E7A6E]" />
                   )}
                 </div>
               </Field>
@@ -1944,7 +2417,7 @@ export default function RegisterPage() {
                           clearErr("guardianName");
                         }}
                         {...fp("guardianName")}
-                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                       />
                     </Field>
                     <Field htmlFor="field-guardianPhone" label="Parent / guardian phone" error={fieldErrors.guardianPhone}>
@@ -1958,7 +2431,7 @@ export default function RegisterPage() {
                           clearErr("guardianPhone");
                         }}
                         {...fp("guardianPhone")}
-                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#111C18] outline-none transition placeholder:text-gray-400 focus:border-[#0F6E56] focus:ring-2 focus:ring-[#0F6E56]/20"
+                        className="h-[60px] w-full rounded-[12px] border border-[#D1D5DB] bg-white px-4 text-[16px] text-[#0E1020] outline-none transition placeholder:text-gray-400 focus:border-[#0E1020] focus:ring-2 focus:ring-[#0E1020]/20"
                       />
                     </Field>
                   </div>
@@ -1970,21 +2443,19 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 4: attendance */}
         {step === 4 && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
-                {isGroup ? "How will the group attend?" : "How will you attend?"}
-              </h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                {isGroup
+            <StepHeading
+              step={4}
+              title={isGroup ? "How will the group attend?" : "How will you attend?"}
+              description={
+                isGroup
                   ? seatsCount > 0
                     ? `Enter a count for each mode. The counts must add up to all ${seatsCount} participants.`
                     : "Set the number of participants in step 2 first."
-                  : "Select your attendance mode."}
-              </p>
-            </div>
+                  : "Select your attendance mode."
+              }
+            />
 
             <CompletedDetails
               items={contactHistory ? [attendeeHistory, contactHistory] : [attendeeHistory]}
@@ -2044,15 +2515,13 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 5: payment */}
         {step === 5 && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">Payment</h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Choose the currency you want to pay in. Standard prices are per participant.
-              </p>
-            </div>
+            <StepHeading
+              step={5}
+              title="Payment"
+              description="Choose the currency you want to pay in. Standard prices are per participant."
+            />
 
             <CompletedDetails
               items={[
@@ -2064,105 +2533,75 @@ export default function RegisterPage() {
 
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
-                <label className="block text-[14px] font-medium text-[#111C18]">Currency</label>
-                <div className="flex flex-wrap gap-2.5 sm:gap-3">
-                  {CURRENCY_LIST.map((code) => {
-                    const price = pricesMinor[code];
-                    const selected = currency === code;
-                    return (
-                      <button
-                        key={code}
-                        type="button"
-                        disabled={configState !== "ready"}
-                        onClick={() => {
-                          setCurrency(code);
-                          clearErr("customNairaAmount");
-                        }}
-                        className={`flex h-[50px] min-w-[92px] flex-col items-center justify-center rounded-[12px] px-3 text-[14px] font-semibold transition-all disabled:cursor-wait disabled:opacity-60 ${
-                          selected
-                            ? "bg-[#0F6E56] text-white shadow-sm"
-                            : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
-                        }`}
-                        title={CURRENCIES[code].label}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span aria-hidden>{CURRENCIES[code].flag}</span>
-                          {code}
-                        </span>
-                        {typeof price === "number" && (
-                          <span className={`text-[10px] ${selected ? "text-white/75" : "text-[#6B7280]"}`}>
-                            {formatMoneyMinor(price, code)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label htmlFor="field-currency" className="block text-[14px] font-medium text-[#0E1020]">
+                  Currency
+                </label>
+                <CurrencyPicker
+                  value={currency}
+                  pricesMinor={pricesMinor}
+                  currencyAvailable={currencyAvailable}
+                  disabled={configState !== "ready"}
+                  onSelect={(code) => {
+                    setCurrency(code);
+                    setCustomAmountTouched(false);
+                    clearErr("customAmount");
+                  }}
+                />
+                <p className="text-[11px] leading-relaxed text-[#6B7280]">
+                  Choose the currency you want to be charged in. Prices shown are per participant.
+                </p>
               </div>
 
-              {currency === "NGN" ? (
-                <Field
-                  htmlFor="field-customNairaAmount"
-                  label="Registration amount"
-                  error={fieldErrors.customNairaAmount}
-                  hint={
-                    isGroup
-                      ? "Calculated automatically from the standard price and your participant count."
-                      : `Minimum is ${formatMoneyMinor(minimumNairaMinor, "NGN")}.`
-                  }
-                >
-                  <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#D1D5DB] transition focus-within:border-[#0F6E56] focus-within:ring-2 focus-within:ring-[#0F6E56]/20">
-                    <span className="flex w-[54px] shrink-0 items-center justify-center border-r border-[#E5E7EB] bg-[#F4F4F2] text-[18px] font-bold text-[#111C18]">
-                      ₦
-                    </span>
-                    <input
-                      id="field-customNairaAmount"
-                      type="number"
-                      inputMode="numeric"
-                      step="1"
-                      readOnly={isGroup}
-                      value={
-                        isGroup
-                          ? standardGroupNairaMinor !== null
-                            ? String(standardGroupNairaMinor / 100)
-                            : ""
-                          : customNairaAmount
-                      }
-                      onChange={(event) => {
-                        if (isGroup) return;
-                        setCustomNairaAmount(event.target.value);
-                        clearErr("customNairaAmount");
-                      }}
-                      {...fp("customNairaAmount")}
-                      className="min-w-0 flex-1 bg-white px-4 text-[18px] font-bold text-[#111C18] outline-none sm:text-[20px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                  </div>
-                </Field>
-              ) : (
-                <div className="rounded-[12px] border border-[#E5E7EB] bg-[#F8FAF9] p-4 text-[14px] text-[#374151]">
-                  {typeof unitMinor === "number"
-                    ? `You will pay ${formatMoneyMinor(unitMinor, currency)} per participant in ${currency}.`
-                    : `The ${currency} price is not available right now.`}
+              <Field
+                htmlFor="field-customAmount"
+                label="Registration amount"
+                error={fieldErrors.customAmount}
+                hint={
+                  standardFeeLocked
+                    ? `Minimum is ${formatMoneyMinor(standardTotalMinor, currency)} until Day 2 ends.`
+                    : "Any amount above zero is now allowed."
+                }
+              >
+                <div className="flex h-[60px] w-full overflow-hidden rounded-[12px] border border-[#D1D5DB] transition focus-within:border-[#0E1020] focus-within:ring-2 focus-within:ring-[#0E1020]/20">
+                  <span className="currency-symbol flex w-[54px] shrink-0 items-center justify-center border-r border-[#E5E7EB] bg-[#F5FBFA] text-[18px] font-bold text-[#0E1020]">
+                    {currencyConfig.symbol}
+                  </span>
+                  <input
+                    id="field-customAmount"
+                    type="number"
+                    inputMode="numeric"
+                    step={currencyConfig.minorUnitMultiplier === 1 ? "1" : "0.01"}
+                    min={minimumMinor / currencyConfig.minorUnitMultiplier}
+                    value={customAmount}
+                    onChange={(event) => {
+                      setCustomAmount(event.target.value);
+                      setCustomAmountTouched(true);
+                      clearErr("customAmount");
+                    }}
+                    {...fp("customAmount")}
+                    className="min-w-0 flex-1 bg-white px-4 text-[18px] font-bold text-[#0E1020] outline-none sm:text-[20px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
                 </div>
-              )}
+              </Field>
 
-              {!isGroup && currency === "NGN" && nairaChips.length > 0 && (
+              {standardChips.length > 0 && (
                 <div className="flex flex-wrap gap-3">
-                  {nairaChips.map((chip) => (
+                  {standardChips.map((chip) => (
                     <button
                       key={chip.label}
                       type="button"
                       onClick={() => {
-                        setCustomNairaAmount(String(chip.minor / 100));
-                        clearErr("customNairaAmount");
+                        setCustomAmount(String(chip.major));
+                        setCustomAmountTouched(false);
+                        clearErr("customAmount");
                       }}
-                      className={`h-[46px] rounded-[12px] px-5 text-[14px] font-bold transition-all ${
-                        customNairaMinor === chip.minor
-                          ? "bg-[#0F6E56] text-white shadow-sm"
-                          : "border border-[#D1D5DB] bg-white text-[#374151] hover:border-gray-400"
+                      className={`h-[46px] rounded-[12px] border px-5 text-[14px] font-bold transition-all ${
+                        customMinor === chip.minor
+                          ? "border-[#0E1020] bg-[#0E1020] text-white"
+                          : "border-[#D1D5DB] bg-white text-[#4B5563] hover:border-[#0E1020]"
                       }`}
                     >
-                      {chip.label} {formatMoneyMinor(chip.minor, "NGN")}
+                      {chip.label} <span className="currency-symbol">{formatMoneyMinor(chip.minor, currency)}</span>
                     </button>
                   ))}
                 </div>
@@ -2177,7 +2616,7 @@ export default function RegisterPage() {
                   <span>
                     {configState === "error"
                       ? "Registration pricing could not be loaded. Refresh the page to try again."
-                      : "Online registration is closed."}
+                      : closedReason || "Online registration is closed."}
                   </span>
                 </div>
               )}
@@ -2187,17 +2626,13 @@ export default function RegisterPage() {
           </>
         )}
 
-        {/* Step 6: review and pay */}
         {step === TOTAL_STEPS && (
           <>
-            <div>
-              <h1 className="text-[24px] font-bold leading-tight tracking-tight text-[#111C18] sm:text-[34px]">
-                Review and confirm
-              </h1>
-              <p className="mt-1.5 text-[15px] text-[#6B7280] sm:text-[16px]">
-                Check your details before the secure checkout.
-              </p>
-            </div>
+            <StepHeading
+              step={6}
+              title="Review and confirm"
+              description="Check your details before the secure checkout."
+            />
 
             <div className="divide-y divide-[#E5E7EB] pt-2">
               <SummaryRow label="Category">
@@ -2207,15 +2642,13 @@ export default function RegisterPage() {
                 <SummaryRow label="Chapter / zone">{groupName.trim()}</SummaryRow>
               )}
               <SummaryRow label="Participants">{effectiveSeats}</SummaryRow>
-              {(currency !== "NGN" || isGroup) && typeof unitMinor === "number" && (
-                <SummaryRow label="Standard price per participant">
-                  {formatMoneyMinor(unitMinor, currency)}
-                </SummaryRow>
-              )}
+              <SummaryRow label="Standard price per participant">
+                <span className="currency-symbol">{formatMoneyMinor(standardUnitMinor, currency)}</span>
+              </SummaryRow>
               {!isGroup && (
                 <>
                   <SummaryRow label="Title">
-                    {gender === "male" ? "Brother" : "Sister"}
+                    {gender === "male" ? "Male" : "Female"}
                   </SummaryRow>
                   <SummaryRow label="Attendance history">
                     {firstTime === "yes" ? "First-time" : "Returning"}
@@ -2252,13 +2685,13 @@ export default function RegisterPage() {
 
             <div className="flex items-baseline justify-between border-t border-[#E5E7EB] pb-2 pt-4">
               <div>
-                <div className="text-[17px] font-bold text-[#111C18] sm:text-[18px]">Total payable</div>
-                <div className="mt-0.5 text-[12px] text-[#6B7280] sm:text-[13px]">
+                <div className="text-[15px] font-semibold text-[#0E1020]">Total payable</div>
+                <div className="mt-0.5 text-[12px] text-[#6B7280]">
                   Includes all event materials and pass
                 </div>
               </div>
-              <div className="text-[34px] font-extrabold tracking-tight text-[#111C18] sm:text-[40px]">
-                {formattedTotal}
+              <div className="register-total text-[26px] font-bold text-[#0E1020] sm:text-[30px]">
+                <span className="currency-symbol">{formattedTotal}</span>
               </div>
             </div>
 
@@ -2274,12 +2707,12 @@ export default function RegisterPage() {
                     setConsent(event.target.checked);
                     clearErr("consent");
                   }}
-                  className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-[#0F6E56] focus:ring-[#0F6E56]"
+                  className="mt-0.5 h-5 w-5 rounded border-gray-300 accent-[#0E1020] focus:ring-[#0E1020]"
                 />
                 <span className="text-[13px] leading-relaxed text-[#6B7280] sm:text-[14px]">
                   I understand that registration fees are non-refundable. I consent to personal data processing
-                  under the <Link href="/privacy" className="font-medium text-[#0F6E56] underline">Privacy Policy</Link>{" "}
-                  and <Link href="/terms" className="font-medium text-[#0F6E56] underline">Terms</Link>.
+                  under the <Link href="/privacy" className="font-medium text-[#0E7A6E] underline">Privacy Policy</Link>{" "}
+                  and <Link href="/terms" className="font-medium text-[#0E7A6E] underline">Terms</Link>.
                 </span>
               </label>
               {fieldErrors.consent && (
@@ -2344,7 +2777,7 @@ export default function RegisterPage() {
                   <span>
                     {configState === "error"
                       ? "Registration pricing could not be loaded. Refresh the page to try again."
-                      : "Online registration is closed."}
+                      : closedReason || "Online registration is closed."}
                   </span>
                 </div>
               )}
@@ -2354,14 +2787,14 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#111C18] transition hover:text-black"
+                className="py-2.5 pl-1 pr-2 text-[13px] font-semibold text-[#0E1020] transition hover:text-[#0E1020]"
               >
                 Back
               </button>
               <button
                 type="submit"
                 disabled={submitDisabled}
-                className="inline-flex h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0F6E56] px-5 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0D5E49] disabled:cursor-not-allowed disabled:opacity-50"
+                className="register-primary inline-flex h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border px-5 text-[14px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Lock className="h-4 w-4" />
                 {loading
@@ -2370,7 +2803,7 @@ export default function RegisterPage() {
                     ? "Registration closed"
                     : totalMinor === null
                       ? "Loading price..."
-                      : `Pay ${formattedTotal} securely`}
+                      : <>Pay <span className="currency-symbol">{formattedTotal}</span> securely</>}
               </button>
             </div>
           </>

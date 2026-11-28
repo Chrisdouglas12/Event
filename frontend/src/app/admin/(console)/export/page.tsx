@@ -12,7 +12,6 @@ export default function AdminExportPage() {
       </div>
 
       <div className="space-y-6">
-        {/* CSV Export Card */}
         <div className="bg-white rounded-[20px] border border-gray-200 p-6 sm:p-8 space-y-6 shadow-2xs">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-[#EAF9F7] text-[#0E7A6E] flex items-center justify-center shrink-0">
@@ -44,7 +43,6 @@ export default function AdminExportPage() {
           </div>
         </div>
 
-        {/* Physical Plan B Gate Manifest Card */}
         <div className="bg-white rounded-[20px] border border-gray-200 p-6 sm:p-8 space-y-6 shadow-2xs">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">

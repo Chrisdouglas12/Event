@@ -2,9 +2,6 @@ import mongoose from 'mongoose';
 
 import { STAFF_ROLES } from '../constants/enums.ts';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STAFF USER
-// ─────────────────────────────────────────────────────────────────────────────
 
 const staffUserSchema = new mongoose.Schema(
   {
@@ -70,9 +67,6 @@ staffUserSchema.pre('save', function () {
   this.updatedAt = new Date();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SESSION
-// ─────────────────────────────────────────────────────────────────────────────
 
 const sessionSchema = new mongoose.Schema(
   {
@@ -102,9 +96,6 @@ const sessionSchema = new mongoose.Schema(
   }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUDIT LOG
-// ─────────────────────────────────────────────────────────────────────────────
 
 const auditLogSchema = new mongoose.Schema(
   {
@@ -153,17 +144,12 @@ const auditLogSchema = new mongoose.Schema(
   { collection: 'audit_log' }
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INDEXES
-// ─────────────────────────────────────────────────────────────────────────────
 
-// Staff users
 // username and email already unique via field-level `unique: true`
 staffUserSchema.index({ role: 1 });
 staffUserSchema.index({ isActive: 1 });
 staffUserSchema.index({ createdAt: -1 });
 
-// Sessions
 sessionSchema.index({ userId: 1 });
 sessionSchema.index({ revoked: 1 });
 // TTL index — MongoDB automatically removes expired sessions.
@@ -171,15 +157,11 @@ sessionSchema.index({ revoked: 1 });
 // Only ONE index on expiresAt is needed: the TTL index *is* a normal index.
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Audit log
 auditLogSchema.index({ staffId: 1 });
 auditLogSchema.index({ action: 1 });
 auditLogSchema.index({ entityType: 1, entityId: 1 });
 auditLogSchema.index({ createdAt: -1 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EXPORTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const StaffUser = (mongoose.models.StaffUser || mongoose.model('StaffUser', staffUserSchema)) as mongoose.Model<any>;
 export const Session = (mongoose.models.Session   || mongoose.model('Session',   sessionSchema)) as mongoose.Model<any>;
